@@ -16,6 +16,12 @@ Content-Length: 71
 
 {"Name":"redis","Listen":"localhost:40736","Upstream":"localhost:6379"}
 
+$ redis-cli -p 53646
+127.0.0.1:53646> SET omg pandas
+OK
+127.0.0.1:53646> GET omg
+"pandas"
+
 $ curl -i localhost:8474/proxies
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -28,6 +34,9 @@ $ curl -i -X DELETE localhost:8474/proxies/redis
 HTTP/1.1 204 No Content
 Date: Sun, 07 Sep 2014 23:40:00 GMT
 
+$ telnet localhost 53646
+Trying 127.0.0.1...
+telnet: Unable to connect to remote host: Connection refused
 
 ```
 >>>>>>> more
