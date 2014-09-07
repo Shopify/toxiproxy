@@ -22,6 +22,9 @@ func init() {
 	}
 }
 
+// Proxy represents the proxy in its entirity with all its links. The main
+// responsibility of Proxy is to accept new client and create Links between the
+// client and upstream.
 type Proxy struct {
 	sync.Mutex
 
@@ -51,6 +54,8 @@ func (proxy *Proxy) Start() {
 	go proxy.server()
 }
 
+// server runs the Proxy server, accepting new clients and creating Links to
+// connect them to upstreams.
 func (proxy *Proxy) server() {
 	ln, err := net.Listen("tcp", proxy.Listen)
 	if err != nil {

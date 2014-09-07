@@ -8,6 +8,12 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
+// Link is the TCP link between a client and an upstream.
+//
+// Client <-> toxiproxy <-> Upstream
+//
+// Its responsibility is to shove from each side to the other. Clients don't
+// need to know they are talking to the upsream through toxiproxy.
 type link struct {
 	sync.Mutex
 	proxy *Proxy
