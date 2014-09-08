@@ -18,6 +18,8 @@ module Toxiproxy
     def self.all
       request = Net::HTTP::Get.new("/proxies")
       response = http.request(request)
+      response.value # raises if not OK
+
       JSON.parse(response.body).map do |name, attrs|
         Toxiproxy::Proxy.new(
           upstream: attrs["Upstream"],
@@ -39,6 +41,7 @@ module Toxiproxy
       request = Net::HTTP::Post.new("/proxies")
       request.body = {Upstream: upstream, Name: name}.to_json
       response = http.request(request)
+      response.value # raises if not OK
 
       new = JSON.parse(response.body)
       @proxy = new["Listen"]
@@ -48,7 +51,10 @@ module Toxiproxy
 
     def destroy
       request = Net::HTTP::Delete.new("/proxies/#{name}")
-      http.request(request)
+      response = http.request(request)
+      response.value # raises if not OK
+
+      self
     end
 
     private
