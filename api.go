@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 )
 
@@ -41,7 +42,10 @@ func (server *server) ProxyIndex(response http.ResponseWriter, request *http.Req
 
 	response.Header().Set("Content-Type", "application/json")
 	response.WriteHeader(200)
-	response.Write(data)
+	_, err = response.Write(data)
+	if err != nil {
+		logrus.Warn("ProxyIndex: Failed to write response to client", err)
+	}
 }
 
 func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Request) {
@@ -69,7 +73,10 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 
 	response.Header().Set("Content-Type", "application/json")
 	response.WriteHeader(201)
-	response.Write(data)
+	_, err = response.Write(data)
+	if err != nil {
+		logrus.Warn("ProxyIndex: Failed to write response to client", err)
+	}
 }
 
 func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Request) {
@@ -82,7 +89,10 @@ func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Re
 	}
 
 	response.WriteHeader(204)
-	response.Write(nil)
+	_, err = response.Write(nil)
+	if err != nil {
+		logrus.Warn("ProxyIndex: Failed to write headers to client", err)
+	}
 }
 
 func (server *server) apiError(err error, code int) string {
