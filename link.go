@@ -46,20 +46,17 @@ func (link *link) Open() (err error) {
 }
 
 func (link *link) pipe(src, dst net.Conn) {
-	_, err := io.Copy(dst, src)
+	bytes, err := io.Copy(dst, src)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"name":     link.proxy.Name,
 			"upstream": link.proxy.Upstream,
+			"bytes":    bytes,
 			"err":      err,
 		}).Warn("Client or source terminated")
 	}
 
-	link.Lock()
-	defer link.Unlock()
-
-	link.client.Close()
-	link.upstream.Close()
+	link.Close()
 }
 
 func (link *link) Close() {
