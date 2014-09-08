@@ -7,17 +7,6 @@ proxy = Toxiproxy::Proxy.create(
   proxy: "localhost:22222"
 )
 
-# proxies traffic through to mysql
-TCPSocket.new("localhost", 22222)
-
-proxy.destroy
-
-TCPSocket.new("localhost", 22222)
-# raises Errno::ECONNREFUSED
-
-# we can now route traffic again
-proxy.create
-
 Toxiproxy[:mysql_master]
 # => Toxiproxy::Proxy
 
@@ -26,6 +15,6 @@ Toxiproxy[:mysql_master].state(:down) do
   # raises Errno::ECONNREFUSED
 end
 
-# all good now
+# all good outside the block
 TCPSocket.new("localhost", 22222)
 ```
