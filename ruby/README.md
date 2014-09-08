@@ -1,29 +1,31 @@
 # Toxiproxy
 
-TODO: Write a gem description
+```ruby
+proxy = Toxiproxy::Proxy.create(
+  upstream: "localhost:3306",
+  name: "mysql_master",
+  proxy: "localhost:22222"
+)
 
-## Installation
+# proxies traffic through to mysql
+TCPSocket.new("localhost", 22222)
 
-Add this line to your application's Gemfile:
+proxy.destroy
 
-    gem 'toxiproxy'
+TCPSocket.new("localhost", 22222)
+# raises Errno::ECONNREFUSED
 
-And then execute:
+# we can now route traffic again
+proxy.create
 
-    $ bundle
+Toxiproxy[:mysql_master]
+# => Toxiproxy::Proxy
 
-Or install it yourself as:
+Toxiproxy[:mysql_master].state(:down) do
+  TCPSocket.new("localhost", 22222)
+  # raises Errno::ECONNREFUSED
+end
 
-    $ gem install toxiproxy
-
-## Usage
-
-TODO: Write usage instructions here
-
-## Contributing
-
-1. Fork it ( http://github.com/<my-github-username>/toxiproxy/fork )
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
+# all good now
+TCPSocket.new("localhost", 22222)
+```
