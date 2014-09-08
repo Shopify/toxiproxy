@@ -5,14 +5,10 @@ module Toxiproxy
   class Proxy
     attr_reader :upstream, :proxy, :name
 
-    def initialize(upstream:, proxy: nil, name:)
+    def initialize(upstream:, name:, proxy: nil)
       @upstream = upstream
       @proxy = proxy
       @name = name
-    end
-
-    def self.create(*args)
-      self.new(*args).create
     end
 
     def self.all
@@ -37,6 +33,15 @@ module Toxiproxy
       create
     end
 
+    private
+    def self.http
+      @http ||= Net::HTTP.new("localhost", 8474)
+    end
+
+    def http
+      self.class.http
+    end
+
     def create
       request = Net::HTTP::Post.new("/proxies")
       request.body = {Upstream: upstream, Name: name}.to_json
@@ -56,23 +61,14 @@ module Toxiproxy
 
       self
     end
-
-    private
-    def self.http
-      @http ||= Net::HTTP.new("localhost", 8474)
-    end
-
-    def http
-      self.class.http
-    end
   end
 
   class << self
     attr_accessor :proxies
 
-    def service(name)
+    def proxy(name)
       Toxiproxy::Proxy.all.find { |proxy| proxy.name == name }
     end
-    alias_method :[], :service
+    alias_method :[], :proxy
   end
 end
