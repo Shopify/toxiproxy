@@ -12,7 +12,7 @@ import (
 func init() {
 	// Lower timeout makes the proxy quit faster
 	if os.Getenv("ENV") == "test" {
-		AccepTimeout = time.Millisecond
+		AcceptTimeout = time.Millisecond
 	}
 }
 

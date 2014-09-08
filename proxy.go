@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var AccepTimeout = time.Second
+var AcceptTimeout = time.Second
 
 // Proxy represents the proxy in its entirity with all its links. The main
 // responsibility of Proxy is to accept new client and create Links between the
@@ -70,7 +70,7 @@ func (proxy *Proxy) server() {
 	for {
 		// Set a deadline to not make Accept() block forever, allowing us to shut
 		// down this thread.
-		err = ln.(*net.TCPListener).SetDeadline(time.Now().Add(AccepTimeout))
+		err = ln.(*net.TCPListener).SetDeadline(time.Now().Add(AcceptTimeout))
 		if err != nil {
 			logrus.WithField("name", proxy.Name).Fatal("Unable to set deadline")
 		}
