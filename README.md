@@ -16,7 +16,7 @@ Content-Length: 71
 
 {"Name":"redis","Listen":"localhost:40736","Upstream":"localhost:6379"}
 
-$ redis-cli -p 53646
+$ redis-cli -p 40736
 127.0.0.1:53646> SET omg pandas
 OK
 127.0.0.1:53646> GET omg
