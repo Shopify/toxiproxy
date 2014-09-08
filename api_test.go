@@ -85,7 +85,7 @@ func TestIndexWithNoProxies(t *testing.T) {
 
 func TestCreateProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != 201 {
+		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 	})
@@ -93,7 +93,7 @@ func TestCreateProxy(t *testing.T) {
 
 func TestIndexWithProxies(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != 201 {
+		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 
@@ -106,7 +106,7 @@ func TestIndexWithProxies(t *testing.T) {
 
 func TestDeleteProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != 201 {
+		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 
@@ -115,7 +115,7 @@ func TestDeleteProxy(t *testing.T) {
 			t.Fatal("Expected new proxy in list")
 		}
 
-		if resp := DeleteProxy(t, addr, "mysql_master"); resp.StatusCode != 204 {
+		if resp := DeleteProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusNoContent {
 			t.Fatal("Unable to delete proxy")
 		}
 
@@ -128,20 +128,20 @@ func TestDeleteProxy(t *testing.T) {
 
 func TestCreateProxyTwice(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != 201 {
+		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 
-		if resp := CreateProxy(t, addr); resp.StatusCode != 409 {
-			t.Fatal("Expected 409 Conflict back from API")
+		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusConflict {
+			t.Fatal("Expected http.StatusConflict Conflict back from API")
 		}
 	})
 }
 
 func TestDeleteNonExistantProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := DeleteProxy(t, addr, "non_existant"); resp.StatusCode != 404 {
-			t.Fatal("Expected 404 Not found when deleting non existant proxy")
+		if resp := DeleteProxy(t, addr, "non_existant"); resp.StatusCode != http.StatusNotFound {
+			t.Fatal("Expected http.StatusNotFound Not found when deleting non existant proxy")
 		}
 	})
 }
