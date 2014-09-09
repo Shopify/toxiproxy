@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -37,12 +36,6 @@ func NewProxy() *Proxy {
 }
 
 func (proxy *Proxy) Start() {
-	logrus.WithFields(logrus.Fields{
-		"name":     proxy.Name,
-		"proxy":    proxy.Listen,
-		"upstream": proxy.Upstream,
-	}).Info("Starting proxy")
-
 	go proxy.server()
 }
 
@@ -59,13 +52,19 @@ func (proxy *Proxy) server() {
 	// We want to set #Listen because if it's not supplied in the API we'll just
 	// use an ephemeral port.
 	tcpAddr := ln.Addr().(*net.TCPAddr)
-	tcpAddrIp := strings.Trim(string(tcpAddr.IP), "\u0000")
-	if tcpAddrIp == "" {
-		tcpAddrIp = "localhost"
+	tcpAddrIp := string(tcpAddr.IP)
+	if net.ParseIP(string(tcpAddr.IP)) == nil {
+		tcpAddrIp = "127.0.0.1"
 	}
 	proxy.Listen = fmt.Sprintf("%s:%d", tcpAddrIp, tcpAddr.Port)
 
 	proxy.started <- true
+
+	logrus.WithFields(logrus.Fields{
+		"name":     proxy.Name,
+		"proxy":    proxy.Listen,
+		"upstream": proxy.Upstream,
+	}).Info("Started proxy")
 
 	for {
 		// Set a deadline to not make Accept() block forever, allowing us to shut
