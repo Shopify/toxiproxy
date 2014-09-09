@@ -14,9 +14,9 @@ type server struct {
 	collection *ProxyCollection
 }
 
-func NewServer() *server {
+func NewServer(collection *ProxyCollection) *server {
 	return &server{
-		collection: NewProxyCollection(),
+		collection: collection,
 	}
 }
 
@@ -63,7 +63,6 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 	}
 
 	proxy.Start()
-	<-proxy.started
 
 	data, err := json.Marshal(&proxy)
 	if err != nil {

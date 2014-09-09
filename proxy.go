@@ -37,6 +37,7 @@ func NewProxy() *Proxy {
 
 func (proxy *Proxy) Start() {
 	go proxy.server()
+	<-proxy.started
 }
 
 // server runs the Proxy server, accepting new clients and creating Links to
