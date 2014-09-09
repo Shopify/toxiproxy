@@ -4,17 +4,8 @@ import (
 	"bytes"
 	"io/ioutil"
 	"net"
-	"os"
 	"testing"
-	"time"
 )
-
-func init() {
-	// Lower timeout makes the proxy quit faster
-	if os.Getenv("ENV") == "test" {
-		AcceptTimeout = time.Millisecond
-	}
-}
 
 func NewTestProxy(name, upstream string) *Proxy {
 	proxy := NewProxy()

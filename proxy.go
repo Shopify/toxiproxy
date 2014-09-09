@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var AcceptTimeout = time.Second
+var AcceptTimeout = time.Millisecond
 
 // Proxy represents the proxy in its entirity with all its links. The main
 // responsibility of Proxy is to accept new client and create Links between the
