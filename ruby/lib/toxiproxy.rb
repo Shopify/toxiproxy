@@ -45,7 +45,11 @@ module Toxiproxy
 
     def create
       request = Net::HTTP::Post.new("/proxies")
-      request.body = {Upstream: upstream, Name: name}.to_json
+
+      hash = {Upstream: upstream, Name: name}
+      hash[:Listen] = @proxy
+      request.body = hash.to_json
+
       response = http.request(request)
       response.value # raises if not OK
 
@@ -68,7 +72,7 @@ module Toxiproxy
     attr_accessor :proxies
 
     def proxy(name)
-      Toxiproxy::Proxy.all.find { |proxy| proxy.name == name }
+      Toxiproxy::Proxy.all.find { |proxy| proxy.name == name.to_s }
     end
     alias_method :[], :proxy
   end
