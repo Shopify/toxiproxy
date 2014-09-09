@@ -20,8 +20,12 @@ class MiniTest::Unit::TestCase
   end
 
   def with_tcpserver(port: 20122, &block)
+    mon = Monitor.new
+    cond = mon.new_cond
+
     thread = Thread.new {
       server = TCPServer.new(port)
+      mon.synchronize { cond.signal }
       loop do
         client = server.accept
         client.close
@@ -29,8 +33,11 @@ class MiniTest::Unit::TestCase
       server.close
     }
 
+    mon.synchronize { cond.wait }
+
     yield(port)
 
+  ensure
     thread.kill
   end
 end

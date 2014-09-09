@@ -30,6 +30,7 @@ module Toxiproxy
 
       destroy
       yield
+    ensure
       create
     end
 
