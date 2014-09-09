@@ -47,4 +47,19 @@ class ProxyTest < MiniTest::Unit::TestCase
       TCPSocket.new(*proxy.proxy.split(":"))
     end
   end
+
+  def test_reuse_port_on_state_down
+    with_tcpserver do |port|
+      create_proxy(upstream: "localhost:#{port}", name: "rubby_server",
+                   proxy: "localhost:22220")
+
+      assert_equal "127.0.0.1:22220", Toxiproxy["rubby_server"].proxy
+
+      Toxiproxy["rubby_server"].state(:down) do
+        # do nothing
+      end
+
+      TCPSocket.new(*Toxiproxy["rubby_server"].proxy.split(":"))
+    end
+  end
 end
