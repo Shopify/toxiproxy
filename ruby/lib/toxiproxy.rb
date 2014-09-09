@@ -36,7 +36,7 @@ module Toxiproxy
 
     private
     def self.http
-      @http ||= Net::HTTP.new("localhost", 8474)
+      @http ||= Net::HTTP.new("127.0.0.1", 8474)
     end
 
     def http
