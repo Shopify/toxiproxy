@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/Sirupsen/logrus"
@@ -27,7 +28,12 @@ func (server *server) Listen() {
 	r.HandleFunc("/proxies/{name}", server.ProxyDelete).Methods("DELETE")
 	http.Handle("/", r)
 
-	err := http.ListenAndServe(":8474", nil)
+	logrus.WithFields(logrus.Fields{
+		"host": apiHost,
+		"port": apiPort,
+	}).Info("API HTTP server started")
+
+	err := http.ListenAndServe(net.JoinHostPort(apiHost, apiPort), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
