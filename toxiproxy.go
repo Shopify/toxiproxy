@@ -28,7 +28,7 @@ func main() {
 		logrus.WithFields(logrus.Fields{
 			"err":    err,
 			"config": configPath,
-		}).Info("No configuration file loaded")
+		}).Warn("No configuration file loaded")
 	} else {
 		var configProxies []Proxy
 
