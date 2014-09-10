@@ -145,3 +145,20 @@ func TestDeleteNonExistantProxy(t *testing.T) {
 		}
 	})
 }
+
+func TestCreateProxyAndReset(t *testing.T) {
+	WithServer(t, func(addr string) {
+		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
+			t.Fatal("Unable to create proxy")
+		}
+
+		_, err := http.Post(addr+"/reset", "application/json", strings.NewReader(""))
+		if err != nil {
+			t.Fatal("Unable to delete proxy")
+		}
+
+		if len(ListProxies(t, addr)) > 0 {
+			t.Error("Expected no proxies in list")
+		}
+	})
+}
