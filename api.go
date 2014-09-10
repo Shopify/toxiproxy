@@ -26,8 +26,6 @@ func (server *server) Listen() {
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
 	r.HandleFunc("/proxies/{name}", server.ProxyDelete).Methods("DELETE")
-
-	r.HandleFunc("/reset", server.Reset).Methods("POST")
 	http.Handle("/", r)
 
 	logrus.WithFields(logrus.Fields{
@@ -99,20 +97,6 @@ func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Re
 	_, err = response.Write(nil)
 	if err != nil {
 		logrus.Warn("ProxyIndex: Failed to write headers to client", err)
-	}
-}
-
-func (server *server) Reset(response http.ResponseWriter, request *http.Request) {
-	err := server.collection.Clear()
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
-		return
-	}
-
-	response.WriteHeader(http.StatusNoContent)
-	_, err = response.Write(nil)
-	if err != nil {
-		logrus.Warn("Reset: Failed to write headers to client", err)
 	}
 }
 

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"regexp"
 	"sync"
 )
 
@@ -68,14 +70,23 @@ func (collection *ProxyCollection) Clear() error {
 // removeByName removes a proxy by its name. Its used from both #clear and
 // #remove. It assumes the lock has already been acquired.
 func (collection *ProxyCollection) removeByName(name string) error {
-	proxy, exists := collection.proxies[name]
-	if !exists {
-		return fmt.Errorf("Proxy with name %s doesn't exist", name)
+	nameMatcher, err := regexp.Compile(name)
+	if err != nil {
+		return err
 	}
 
-	proxy.Stop()
+	proxiesBefore := len(collection.proxies)
 
-	delete(collection.proxies, name)
+	for _, proxy := range collection.proxies {
+		if nameMatcher.MatchString(proxy.Name) {
+			proxy.Stop()
+			delete(collection.proxies, proxy.Name)
+		}
+	}
+
+	if len(collection.proxies) == proxiesBefore {
+		return errors.New("No matching proxies found")
+	}
 
 	return nil
 }
