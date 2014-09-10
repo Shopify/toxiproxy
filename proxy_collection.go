@@ -1,12 +1,10 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"regexp"
 	"sync"
-
-	"github.com/Sirupsen/logrus"
 )
 
 // ProxyCollection is a collection of proxies. It's the interface for anything
@@ -69,54 +67,26 @@ func (collection *ProxyCollection) Clear() error {
 	return nil
 }
 
-func (collection *ProxyCollection) AddConfig(path string) {
-	// Read the proxies from the JSON configuration file
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"err":    err,
-			"config": path,
-		}).Warn("No configuration file loaded")
-	} else {
-		var configProxies []Proxy
-
-		err := json.Unmarshal(data, &configProxies)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"err":    err,
-				"config": configPath,
-			}).Warn("Unable to unmarshal configuration file")
-		}
-
-		for _, proxy := range configProxies {
-			// Allocate members since Proxy was created without the initializer
-			// (`NewProxy`) which normally takes care of this.
-			proxy.allocate()
-
-			err := collection.Add(&proxy)
-			if err != nil {
-				logrus.WithFields(logrus.Fields{
-					"err":  err,
-					"name": proxy.Name,
-				}).Warn("Unable to add proxy to collection")
-			} else {
-				proxy.Start()
-			}
-		}
-	}
-}
-
 // removeByName removes a proxy by its name. Its used from both #clear and
 // #remove. It assumes the lock has already been acquired.
 func (collection *ProxyCollection) removeByName(name string) error {
-	proxy, exists := collection.proxies[name]
-	if !exists {
-		return fmt.Errorf("Proxy with name %s doesn't exist", name)
+	nameMatcher, err := regexp.Compile(name)
+	if err != nil {
+		return err
 	}
 
-	proxy.Stop()
+	proxiesBefore := len(collection.proxies)
 
-	delete(collection.proxies, name)
+	for _, proxy := range collection.proxies {
+		if nameMatcher.MatchString(proxy.Name) {
+			proxy.Stop()
+			delete(collection.proxies, proxy.Name)
+		}
+	}
+
+	if len(collection.proxies) == proxiesBefore {
+		return errors.New("No matching proxies found")
+	}
 
 	return nil
 }

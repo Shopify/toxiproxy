@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -29,13 +30,12 @@ func WithServer(t *testing.T, f func(string)) {
 	}
 }
 
-func CreateProxy(t *testing.T, addr string) *http.Response {
-	body := `
+func CreateProxy(t *testing.T, addr string, name string) *http.Response {
+	body := fmt.Sprintf(`
 	{
-		"Name": "mysql_master",
-		"Listen": "localhost:3310",
+		"Name": "%s",
 		"Upstream": "localhost:20001"
-	}`
+	}`, name)
 
 	resp, err := http.Post(addr+"/proxies", "application/json", strings.NewReader(body))
 	if err != nil {
@@ -85,7 +85,7 @@ func TestIndexWithNoProxies(t *testing.T) {
 
 func TestCreateProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 	})
@@ -93,7 +93,7 @@ func TestCreateProxy(t *testing.T) {
 
 func TestIndexWithProxies(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 
@@ -106,7 +106,7 @@ func TestIndexWithProxies(t *testing.T) {
 
 func TestDeleteProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 
@@ -128,11 +128,11 @@ func TestDeleteProxy(t *testing.T) {
 
 func TestCreateProxyTwice(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 
-		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusConflict {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusConflict {
 			t.Fatal("Expected http.StatusConflict Conflict back from API")
 		}
 	})
@@ -142,6 +142,30 @@ func TestDeleteNonExistantProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
 		if resp := DeleteProxy(t, addr, "non_existant"); resp.StatusCode != http.StatusNotFound {
 			t.Fatal("Expected http.StatusNotFound Not found when deleting non existant proxy")
+		}
+	})
+}
+
+func TestCreateProxyAndRemoveByWildcard(t *testing.T) {
+	WithServer(t, func(addr string) {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
+			t.Fatal("Expected http.StatusConflict Conflict back from API")
+		}
+
+		if resp := CreateProxy(t, addr, "mysql_slave"); resp.StatusCode != http.StatusCreated {
+			t.Fatal("Expected http.StatusConflict Conflict back from API")
+		}
+
+		if len(ListProxies(t, addr)) != 2 {
+			t.Fatal("Expected to have created two new proxies")
+		}
+
+		if resp := DeleteProxy(t, addr, "mysql_.*"); resp.StatusCode != http.StatusNoContent {
+			t.Fatal("Expected to delete all mysql proxies with wildcard")
+		}
+
+		if len(ListProxies(t, addr)) != 0 {
+			t.Fatal("Expected all proxies to be deleted")
 		}
 	})
 }
