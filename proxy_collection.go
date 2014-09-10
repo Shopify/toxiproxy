@@ -1,12 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"sync"
-
-	"github.com/Sirupsen/logrus"
 )
 
 // ProxyCollection is a collection of proxies. It's the interface for anything
@@ -67,43 +63,6 @@ func (collection *ProxyCollection) Clear() error {
 	}
 
 	return nil
-}
-
-func (collection *ProxyCollection) AddConfig(path string) {
-	// Read the proxies from the JSON configuration file
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"err":    err,
-			"config": path,
-		}).Warn("No configuration file loaded")
-	} else {
-		var configProxies []Proxy
-
-		err := json.Unmarshal(data, &configProxies)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"err":    err,
-				"config": configPath,
-			}).Warn("Unable to unmarshal configuration file")
-		}
-
-		for _, proxy := range configProxies {
-			// Allocate members since Proxy was created without the initializer
-			// (`NewProxy`) which normally takes care of this.
-			proxy.allocate()
-
-			err := collection.Add(&proxy)
-			if err != nil {
-				logrus.WithFields(logrus.Fields{
-					"err":  err,
-					"name": proxy.Name,
-				}).Warn("Unable to add proxy to collection")
-			} else {
-				proxy.Start()
-			}
-		}
-	}
 }
 
 // removeByName removes a proxy by its name. Its used from both #clear and
