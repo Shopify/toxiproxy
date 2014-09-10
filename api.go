@@ -31,7 +31,7 @@ func (server *server) Listen() {
 	logrus.WithFields(logrus.Fields{
 		"host": apiHost,
 		"port": apiPort,
-	}).Info("API HTTP server started")
+	}).Info("API HTTP server starting")
 
 	err := http.ListenAndServe(net.JoinHostPort(apiHost, apiPort), nil)
 	if err != nil {
