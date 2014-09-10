@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/Sirupsen/logrus"
@@ -14,9 +15,9 @@ type server struct {
 	collection *ProxyCollection
 }
 
-func NewServer() *server {
+func NewServer(collection *ProxyCollection) *server {
 	return &server{
-		collection: NewProxyCollection(),
+		collection: collection,
 	}
 }
 
@@ -27,7 +28,12 @@ func (server *server) Listen() {
 	r.HandleFunc("/proxies/{name}", server.ProxyDelete).Methods("DELETE")
 	http.Handle("/", r)
 
-	err := http.ListenAndServe(":8474", nil)
+	logrus.WithFields(logrus.Fields{
+		"host": apiHost,
+		"port": apiPort,
+	}).Info("API HTTP server starting")
+
+	err := http.ListenAndServe(net.JoinHostPort(apiHost, apiPort), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
@@ -63,7 +69,6 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 	}
 
 	proxy.Start()
-	<-proxy.started
 
 	data, err := json.Marshal(&proxy)
 	if err != nil {

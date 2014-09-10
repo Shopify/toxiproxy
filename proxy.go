@@ -30,13 +30,21 @@ type Proxy struct {
 }
 
 func NewProxy() *Proxy {
-	return &Proxy{
-		started: make(chan bool, 1),
-	}
+	proxy := &Proxy{}
+	proxy.allocate()
+	return proxy
+}
+
+// allocate instantiates the necessary dependencies. This is in a seperate
+// method because it allows us to read Proxies from JSON and then call
+// `allocate()` on them, sharing this with `NewProxy()`.
+func (proxy *Proxy) allocate() {
+	proxy.started = make(chan bool, 1)
 }
 
 func (proxy *Proxy) Start() {
 	go proxy.server()
+	<-proxy.started
 }
 
 // server runs the Proxy server, accepting new clients and creating Links to
