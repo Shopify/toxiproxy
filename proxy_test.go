@@ -79,8 +79,6 @@ func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, pro
 
 		proxy.Start()
 
-		<-proxy.started
-
 		conn, err := net.Dial("tcp", "localhost:20000")
 		if err != nil {
 			t.Error("Unable to dial TCP server", err)

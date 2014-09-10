@@ -14,7 +14,7 @@ func WithServer(t *testing.T, f func(string)) {
 	// Make sure only one server is running at a time. Apparently there's no clean
 	// way to shut it down between each test run.
 	if testServer == nil {
-		testServer = NewServer()
+		testServer = NewServer(NewProxyCollection())
 		go testServer.Listen()
 
 		// Allow server to start. There's no clean way to know when it listens.
