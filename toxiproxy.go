@@ -2,6 +2,8 @@ package main
 
 import "flag"
 
+var Version = "0.0.1"
+
 var configPath string
 var apiHost string
 var apiPort string
