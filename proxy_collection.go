@@ -100,7 +100,15 @@ func (collection *ProxyCollection) AddConfig(path string) {
 					"name": proxy.Name,
 				}).Warn("Unable to add proxy to collection")
 			} else {
-				proxy.Start()
+				err := proxy.Start()
+				if err != nil {
+					logrus.WithFields(logrus.Fields{
+						"err":      err,
+						"name":     proxy.Name,
+						"upstream": proxy.Upstream,
+						"listen":   proxy.Listen,
+					}).Fatal("Unable to start proxy to collection")
+				}
 			}
 		}
 	}

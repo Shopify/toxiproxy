@@ -23,7 +23,7 @@ type Proxy struct {
 	Listen   string
 	Upstream string
 
-	started chan bool
+	started chan error
 
 	tomb  tomb.Tomb
 	links []*link
@@ -39,12 +39,12 @@ func NewProxy() *Proxy {
 // method because it allows us to read Proxies from JSON and then call
 // `allocate()` on them, sharing this with `NewProxy()`.
 func (proxy *Proxy) allocate() {
-	proxy.started = make(chan bool, 1)
+	proxy.started = make(chan error)
 }
 
-func (proxy *Proxy) Start() {
+func (proxy *Proxy) Start() error {
 	go proxy.server()
-	<-proxy.started
+	return <-proxy.started
 }
 
 // server runs the Proxy server, accepting new clients and creating Links to
@@ -53,6 +53,7 @@ func (proxy *Proxy) server() {
 	ln, err := net.Listen("tcp", proxy.Listen)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{"upstream": proxy.Upstream, "err": err}).Error("Unable to start proxy server")
+		proxy.started <- err
 		return
 	}
 
@@ -66,7 +67,7 @@ func (proxy *Proxy) server() {
 	}
 	proxy.Listen = fmt.Sprintf("%s:%d", tcpAddrIp, tcpAddr.Port)
 
-	proxy.started <- true
+	proxy.started <- nil
 
 	logrus.WithFields(logrus.Fields{
 		"name":     proxy.Name,
