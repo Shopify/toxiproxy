@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
@@ -142,6 +143,24 @@ func TestDeleteNonExistantProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
 		if resp := DeleteProxy(t, addr, "non_existant"); resp.StatusCode != http.StatusNotFound {
 			t.Fatal("Expected http.StatusNotFound Not found when deleting non existant proxy")
+		}
+	})
+}
+
+func TestVersionEndpointReturnsVersion(t *testing.T) {
+	WithServer(t, func(addr string) {
+		resp, err := http.Get(addr + "/version")
+		if err != nil {
+			t.Fatal("Failed to get index", err)
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal("Unable to read body from response")
+		}
+
+		if string(body) != Version {
+			t.Fatal("Expected to return Version from /version, got:", string(body))
 		}
 	})
 }

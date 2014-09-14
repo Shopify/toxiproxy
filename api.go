@@ -26,6 +26,8 @@ func (server *server) Listen() {
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
 	r.HandleFunc("/proxies/{name}", server.ProxyDelete).Methods("DELETE")
+
+	r.HandleFunc("/version", server.Version).Methods("GET")
 	http.Handle("/", r)
 
 	logrus.WithFields(logrus.Fields{
@@ -62,13 +64,17 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 		return
 	}
 
-	err = server.collection.Add(proxy)
+	err = proxy.Start()
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusConflict), http.StatusConflict)
 		return
 	}
 
-	proxy.Start()
+	err = server.collection.Add(proxy)
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusConflict), http.StatusConflict)
+		return
+	}
 
 	data, err := json.Marshal(&proxy)
 	if err != nil {
@@ -97,6 +103,13 @@ func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Re
 	_, err = response.Write(nil)
 	if err != nil {
 		logrus.Warn("ProxyIndex: Failed to write headers to client", err)
+	}
+}
+
+func (server *server) Version(response http.ResponseWriter, request *http.Request) {
+	_, err := response.Write([]byte(Version))
+	if err != nil {
+		logrus.Warn("Version: Failed to write response to client", err)
 	}
 }
 
