@@ -76,6 +76,7 @@ func TestSimpleServer(t *testing.T) {
 func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, proxyServer *Proxy)) {
 	WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
+		proxy.allocate()
 
 		proxy.Start()
 
@@ -145,5 +146,19 @@ func TestClosingProxyMultipleTimes(t *testing.T) {
 		proxy.Stop()
 		proxy.Stop()
 		proxy.Stop()
+	})
+}
+
+func TestStartTwoProxiesOnSameAddress(t *testing.T) {
+	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
+		proxy2 := &Proxy{
+			Name:     "proxy_2",
+			Listen:   "localhost:20000",
+			Upstream: "localhost:3306",
+		}
+		proxy2.allocate()
+		if err := proxy2.Start(); err == nil {
+			t.Fatal("Expected an err back from start")
+		}
 	})
 }

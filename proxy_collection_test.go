@@ -39,24 +39,6 @@ func TestAddTwoProxiesToCollection(t *testing.T) {
 	}
 }
 
-func TestAddTwoProxiesWithSameProxyListen(t *testing.T) {
-	collection := NewProxyCollection()
-	proxy1 := NewTestProxy("test", "localhost:20000")
-
-	err := collection.Add(proxy1)
-	if err != nil {
-		t.Error("Expected to be able to add first proxy to collection")
-	}
-
-	proxy2 := NewTestProxy("test2", "localhost:20000")
-	proxy2.Listen = proxy1.Listen
-
-	err = collection.Add(proxy2)
-	if err == nil {
-		t.Error("Expected to not be able to add proxy with same listen")
-	}
-}
-
 func TestAddAndRemoveProxyFromCollection(t *testing.T) {
 	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
 		collection := NewProxyCollection()

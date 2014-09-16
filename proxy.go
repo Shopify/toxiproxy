@@ -52,7 +52,6 @@ func (proxy *Proxy) Start() error {
 func (proxy *Proxy) server() {
 	ln, err := net.Listen("tcp", proxy.Listen)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{"upstream": proxy.Upstream, "err": err}).Error("Unable to start proxy server")
 		proxy.started <- err
 		return
 	}
