@@ -33,12 +33,6 @@ func (collection *ProxyCollection) Add(proxy *Proxy) error {
 		return fmt.Errorf("Proxy with name %s already exists", proxy.Name)
 	}
 
-	for _, otherProxy := range collection.proxies {
-		if proxy.Listen == otherProxy.Listen {
-			return fmt.Errorf("Proxy %s is already listening on %s", otherProxy.Name, proxy.Listen)
-		}
-	}
-
 	collection.proxies[proxy.Name] = proxy
 
 	return nil
@@ -107,7 +101,7 @@ func (collection *ProxyCollection) AddConfig(path string) {
 						"name":     proxy.Name,
 						"upstream": proxy.Upstream,
 						"listen":   proxy.Listen,
-					}).Fatal("Unable to start proxy to collection")
+					}).Error("Unable to start proxy server")
 				}
 			}
 		}
