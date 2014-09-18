@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Add godep for dependency sandboxing
+go get github.com/tools/godep
+export PATH="$GOPATH/bin:$PATH"
+
+# Run the tests in the sandbox
+godep go test
