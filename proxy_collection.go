@@ -53,7 +53,10 @@ func (collection *ProxyCollection) Remove(name string) error {
 }
 
 func (collection *ProxyCollection) Clear() error {
-	for _, proxy := range collection.Proxies() {
+	collection.Lock()
+	defer collection.Unlock()
+
+	for _, proxy := range collection.proxies {
 		err := collection.removeByName(proxy.Name)
 		if err != nil {
 			return err
