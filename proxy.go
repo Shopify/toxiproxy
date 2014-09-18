@@ -8,10 +8,7 @@ import (
 	"github.com/Sirupsen/tomb"
 
 	"net"
-	"time"
 )
-
-var AcceptTimeout = 50 * time.Millisecond
 
 // Proxy represents the proxy in its entirity with all its links. The main
 // responsibility of Proxy is to accept new client and create Links between the
@@ -74,36 +71,44 @@ func (proxy *Proxy) server() {
 		"upstream": proxy.Upstream,
 	}).Info("Started proxy")
 
-	for {
-		// Set a deadline to not make Accept() block forever, allowing us to shut
-		// down this thread.
-		err = ln.(*net.TCPListener).SetDeadline(time.Now().Add(AcceptTimeout))
+	quit := make(chan bool)
+
+	// This channel is to kill the blocking Accept() call below by closing the
+	// net.Listener.
+	go func() {
+		<-proxy.tomb.Dying()
+
+		err := ln.Close()
 		if err != nil {
-			logrus.WithField("name", proxy.Name).Fatal("Unable to set deadline")
+			logrus.WithFields(logrus.Fields{
+				"proxy":  proxy.Name,
+				"listen": proxy.Listen,
+			}).Warn("Attempted to close an already closed proxy server")
 		}
 
-		// Shut down if the tomb is not empty
-		select {
-		case <-proxy.tomb.Dying():
-			if err := ln.Close(); err != nil {
-				logrus.WithFields(logrus.Fields{
-					"proxy":    proxy.Listen,
-					"upstream": proxy.Upstream,
-					"name":     proxy.Name,
-					"err":      err,
-				}).Warn("Failed to shut down proxy server")
-			}
-			proxy.tomb.Done()
-			return
-		default:
-		}
+		quit <- true
 
+		proxy.tomb.Done()
+	}()
+
+	for {
 		client, err := ln.Accept()
 		if err != nil {
-			if !err.(*net.OpError).Timeout() {
-				logrus.WithFields(logrus.Fields{"proxy": proxy.Listen, "err": err}).Error("Unable to accept client")
+			// This is to confirm we're being shut down in a legit way. Unfortunately,
+			// Go doesn't export the error when it's closed from Close() so we have to
+			// sync up with a channel here.
+			//
+			// See http://zhen.org/blog/graceful-shutdown-of-go-net-dot-listeners/
+			select {
+			case <-quit:
+			default:
+				logrus.WithFields(logrus.Fields{
+					"proxy":  proxy.Name,
+					"listen": proxy.Listen,
+					"err":    err,
+				}).Warn("Error while accepting client")
 			}
-			continue
+			return
 		}
 
 		logrus.WithFields(logrus.Fields{
