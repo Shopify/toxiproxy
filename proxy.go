@@ -1,9 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"sync"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/Sirupsen/tomb"
 
@@ -14,8 +11,6 @@ import (
 // responsibility of Proxy is to accept new client and create Links between the
 // client and upstream.
 type Proxy struct {
-	sync.Mutex
-
 	Name     string
 	Listen   string
 	Upstream string
@@ -53,16 +48,6 @@ func (proxy *Proxy) server() {
 		return
 	}
 
-	// This is a super hacky way to get a local address correct.
-	// We want to set #Listen because if it's not supplied in the API we'll just
-	// use an ephemeral port.
-	tcpAddr := ln.Addr().(*net.TCPAddr)
-	tcpAddrIp := string(tcpAddr.IP)
-	if net.ParseIP(string(tcpAddr.IP)) == nil {
-		tcpAddrIp = "127.0.0.1"
-	}
-	proxy.Listen = fmt.Sprintf("%s:%d", tcpAddrIp, tcpAddr.Port)
-
 	proxy.started <- nil
 
 	logrus.WithFields(logrus.Fields{
@@ -71,13 +56,17 @@ func (proxy *Proxy) server() {
 		"upstream": proxy.Upstream,
 	}).Info("Started proxy")
 
-	quit := make(chan bool)
+	quit := make(chan bool, 1)
+	done := make(chan bool)
+
+	defer close(done)
 
 	// This channel is to kill the blocking Accept() call below by closing the
 	// net.Listener.
 	go func() {
 		<-proxy.tomb.Dying()
 
+		quit <- true
 		err := ln.Close()
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
@@ -86,8 +75,7 @@ func (proxy *Proxy) server() {
 			}).Warn("Attempted to close an already closed proxy server")
 		}
 
-		quit <- true
-
+		<-done
 		proxy.tomb.Done()
 	}()
 
@@ -118,10 +106,8 @@ func (proxy *Proxy) server() {
 			"upstream": proxy.Upstream,
 		}).Info("Accepted client")
 
-		proxy.Lock()
 		link := NewLink(proxy, client)
 		proxy.links = append(proxy.links, link)
-		proxy.Unlock()
 
 		if err := link.Open(); err != nil {
 			logrus.WithFields(logrus.Fields{
@@ -136,14 +122,11 @@ func (proxy *Proxy) server() {
 
 func (proxy *Proxy) Stop() {
 	proxy.tomb.Killf("Shutting down from stop()")
+	proxy.tomb.Wait() // Wait until we stop accepting new connections
 
-	proxy.Lock()
 	for _, link := range proxy.links {
 		link.Close()
 	}
-	proxy.Unlock()
-
-	proxy.tomb.Wait()
 
 	logrus.WithFields(logrus.Fields{
 		"name":     proxy.Name,

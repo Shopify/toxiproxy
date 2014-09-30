@@ -1,17 +1,12 @@
 package main
 
-import (
-	"fmt"
-	"sync"
-)
+import "fmt"
 
 // ProxyCollection is a collection of proxies. It's the interface for anything
 // to add and remove proxies from the toxiproxy instance. It's responsibilty is
 // to maintain the integrity of the proxy set, by guarding for things such as
 // duplicate names.
 type ProxyCollection struct {
-	sync.Mutex
-
 	proxies map[string]*Proxy
 }
 
@@ -22,9 +17,6 @@ func NewProxyCollection() *ProxyCollection {
 }
 
 func (collection *ProxyCollection) Add(proxy *Proxy) error {
-	collection.Lock()
-	defer collection.Unlock()
-
 	if _, exists := collection.proxies[proxy.Name]; exists {
 		return fmt.Errorf("Proxy with name %s already exists", proxy.Name)
 	}
@@ -35,23 +27,14 @@ func (collection *ProxyCollection) Add(proxy *Proxy) error {
 }
 
 func (collection *ProxyCollection) Proxies() map[string]*Proxy {
-	collection.Lock()
-	defer collection.Unlock()
-
 	return collection.proxies
 }
 
 func (collection *ProxyCollection) Remove(name string) error {
-	collection.Lock()
-	defer collection.Unlock()
-
 	return collection.removeByName(name)
 }
 
 func (collection *ProxyCollection) Clear() error {
-	collection.Lock()
-	defer collection.Unlock()
-
 	for _, proxy := range collection.proxies {
 		err := collection.removeByName(proxy.Name)
 		if err != nil {
@@ -69,10 +52,9 @@ func (collection *ProxyCollection) removeByName(name string) error {
 	if !exists {
 		return fmt.Errorf("Proxy with name %s doesn't exist", name)
 	}
+	delete(collection.proxies, name)
 
 	proxy.Stop()
-
-	delete(collection.proxies, name)
 
 	return nil
 }
