@@ -1,4 +1,3 @@
 #!/bin/bash
 
-go get
-go build -o toxiproxy
+godep go build -o toxiproxy

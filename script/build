@@ -1,0 +1,4 @@
+#!/bin/bash
+
+script/compile
+md5sum toxiproxy | awk '{print $1}' | xargs -I% mv toxiproxy toxiproxy-%

@@ -39,4 +39,16 @@ Trying 127.0.0.1...
 telnet: Unable to connect to remote host: Connection refused
 
 ```
->>>>>>> more
+
+### Building
+
+To compile:
+
+`script/compile`
+
+To build and rename for release:
+
+`script/build`
+
+To release upload to Vagrant bucket in the Toxiproxy directory, with the name
+from `script/build`.
