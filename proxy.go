@@ -72,6 +72,7 @@ func (proxy *Proxy) server() {
 			logrus.WithFields(logrus.Fields{
 				"proxy":  proxy.Name,
 				"listen": proxy.Listen,
+				"err":    err,
 			}).Warn("Attempted to close an already closed proxy server")
 		}
 
