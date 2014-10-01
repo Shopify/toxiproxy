@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Add godep for dependency sandboxing
+go get github.com/tools/godep
+export PATH="$GOPATH/bin:$PATH"

@@ -1,3 +1,4 @@
 #!/bin/bash
 
+script/env
 godep go build -o toxiproxy
