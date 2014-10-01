@@ -46,7 +46,8 @@ To compile:
 
 `script/compile`
 
-To build and rename for release:
+To build and rename for release (makes sure it has the right name and is cross
+compiled for 64 bit Linux):
 
 `script/build`
 

@@ -1,4 +1,4 @@
 #!/bin/bash
 
-script/compile
+GOOS=linux GOARCH=amd64 script/compile
 md5sum toxiproxy | awk '{print $1}' | xargs -I% mv toxiproxy toxiproxy-%
