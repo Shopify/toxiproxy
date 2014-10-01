@@ -56,17 +56,17 @@ func (proxy *Proxy) server() {
 		"upstream": proxy.Upstream,
 	}).Info("Started proxy")
 
-	quit := make(chan bool, 1)
-	done := make(chan bool)
-
-	defer close(done)
+	acceptTomb := tomb.Tomb{}
+	defer acceptTomb.Done()
 
 	// This channel is to kill the blocking Accept() call below by closing the
 	// net.Listener.
 	go func() {
 		<-proxy.tomb.Dying()
 
-		quit <- true
+		// Notify ln.Accept() that the shutdown was safe
+		acceptTomb.Killf("Shutting down from stop()")
+		// Unblock ln.Accept()
 		err := ln.Close()
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
@@ -75,7 +75,8 @@ func (proxy *Proxy) server() {
 			}).Warn("Attempted to close an already closed proxy server")
 		}
 
-		<-done
+		// Wait for the accept loop to finish processing
+		acceptTomb.Wait()
 		proxy.tomb.Done()
 	}()
 
@@ -88,7 +89,7 @@ func (proxy *Proxy) server() {
 			//
 			// See http://zhen.org/blog/graceful-shutdown-of-go-net-dot-listeners/
 			select {
-			case <-quit:
+			case <-acceptTomb.Dying():
 			default:
 				logrus.WithFields(logrus.Fields{
 					"proxy":  proxy.Name,
