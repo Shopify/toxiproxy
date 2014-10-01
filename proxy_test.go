@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"net"
 	"testing"
+
+	"github.com/Sirupsen/tomb"
 )
 
 func NewTestProxy(name, upstream string) *Proxy {
@@ -26,30 +28,21 @@ func WithTCPServer(t *testing.T, f func(string, chan []byte)) {
 	defer ln.Close()
 
 	response := make(chan []byte, 1)
-	quit := make(chan bool, 1)
-	done := make(chan bool)
+	tomb := tomb.Tomb{}
 
 	go func() {
-		defer close(done)
+		defer tomb.Done()
 		src, err := ln.Accept()
 		if err != nil {
 			select {
-			case <-quit:
+			case <-tomb.Dying():
 			default:
 				t.Fatal("Failed to accept client")
 			}
 			return
 		}
 
-		err = ln.Close()
-		if err != nil {
-			select {
-			case <-quit:
-			default:
-				t.Fatal("Failed to close listener")
-			}
-			return
-		}
+		ln.Close()
 
 		val, err := ioutil.ReadAll(src)
 		if err != nil {
@@ -61,9 +54,9 @@ func WithTCPServer(t *testing.T, f func(string, chan []byte)) {
 
 	f(ln.Addr().String(), response)
 
-	quit <- true
+	tomb.Killf("Function body finished")
 	ln.Close()
-	<-done
+	tomb.Wait()
 
 	close(response)
 }
