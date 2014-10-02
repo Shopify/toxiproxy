@@ -4,6 +4,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 )
@@ -46,7 +47,15 @@ func (link *link) Open() (err error) {
 }
 
 func (link *link) pipe(src, dst net.Conn) {
-	bytes, err := io.Copy(dst, src)
+	pipe := NewPipe(link.proxy, src)
+	pipe2 := NewPipe(link.proxy, pipe)
+
+	latency := new(LatencyToxic)
+	latency.SetLatency(time.Millisecond * 300)
+	pipe.Start(latency)
+	pipe2.Start(new(NoopToxic))
+
+	bytes, err := io.Copy(dst, pipe2)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"name":     link.proxy.Name,
