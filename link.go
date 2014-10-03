@@ -46,7 +46,7 @@ func (link *link) pipe(src, dst net.Conn) {
 	pipe2 := NewPipe(link.proxy, pipe)
 
 	latency := new(LatencyToxic)
-	latency.SetLatency(time.Millisecond * 300)
+	latency.Latency = time.Millisecond * 300
 	pipe.Start(latency)
 	pipe2.Start(new(NoopToxic))
 
