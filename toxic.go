@@ -33,14 +33,17 @@ type pipe struct {
 }
 
 func (p *pipe) Read(buf []byte) (int, error) {
-	<-p.outSignal
+	<-p.outSignal // Wait until either EOF or some data is ready
 	return p.output.Read(buf)
 }
 
+// Start piping data through using the specified toxic
 func (p *pipe) Start(toxic Toxic) {
 	go toxic.Pipe(p)
 }
 
+// Interrupt the flow of data through the pipe so that the toxic
+// can be replaced or a new pipe can be added.
 func (p *pipe) Interrupt() {
 	p.interrupt <- true
 }
@@ -55,7 +58,15 @@ func NewPipe(proxy *Proxy, input io.Reader) *pipe {
 	}
 }
 
-type NoopToxic struct{}
+// BaseToxic is to allow for common fields between all toxics.
+type BaseToxic struct {
+	Enabled bool `json:"enabled"`
+}
+
+// The NoopToxic passes all data through without any toxic effects.
+type NoopToxic struct {
+	BaseToxic
+}
 
 func (t *NoopToxic) Pipe(p *pipe) {
 	bytes, err := copy(p.input, p.output, nil, p.interrupt, p.outSignal)
@@ -70,17 +81,11 @@ func (t *NoopToxic) Pipe(p *pipe) {
 	}
 }
 
+// The LatencyToxic passes data through with the specified latency and jitter added.
 type LatencyToxic struct {
-	Latency time.Duration
-	Jitter  time.Duration
-}
-
-func (t *LatencyToxic) SetLatency(latency time.Duration) {
-	t.Latency = latency
-}
-
-func (t *LatencyToxic) SetJitter(jitter time.Duration) {
-	t.Jitter = jitter
+	BaseToxic
+	Latency time.Duration `json:"latency"`
+	Jitter  time.Duration `json:"jitter"`
 }
 
 func (t *LatencyToxic) Pipe(p *pipe) {

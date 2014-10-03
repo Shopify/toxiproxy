@@ -3,7 +3,6 @@ package main
 import (
 	"io"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -16,7 +15,6 @@ import (
 // Its responsibility is to shove from each side to the other. Clients don't
 // need to know they are talking to the upsream through toxiproxy.
 type link struct {
-	sync.Mutex
 	proxy *Proxy
 
 	client   net.Conn
@@ -32,9 +30,6 @@ func NewLink(proxy *Proxy, client net.Conn) *link {
 }
 
 func (link *link) Open() (err error) {
-	link.Lock()
-	defer link.Unlock()
-
 	link.upstream, err = net.Dial("tcp", link.proxy.Upstream)
 	if err != nil {
 		return err
@@ -69,9 +64,6 @@ func (link *link) pipe(src, dst net.Conn) {
 }
 
 func (link *link) Close() {
-	link.Lock()
-	defer link.Unlock()
-
 	link.client.Close()
 	link.upstream.Close()
 }

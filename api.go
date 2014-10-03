@@ -25,7 +25,11 @@ func (server *server) Listen() {
 	r := mux.NewRouter()
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
-	r.HandleFunc("/proxies/{name}", server.ProxyDelete).Methods("DELETE")
+	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE")
+	// r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicIndex).Methods("GET")
+	// r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicCreate).Methods("POST")
+	// r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicModify).Methods("POST")
+	// r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE")
 
 	r.HandleFunc("/version", server.Version).Methods("GET")
 	http.Handle("/", r)
@@ -93,7 +97,7 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Request) {
 	vars := mux.Vars(request)
 
-	err := server.collection.Remove(vars["name"])
+	err := server.collection.Remove(vars["proxy"])
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
 		return
