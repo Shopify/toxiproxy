@@ -1,9 +1,6 @@
 package main
 
-import (
-	"net"
-	"time"
-)
+import "net"
 
 // Link is the TCP link between a client and an upstream.
 //
@@ -39,15 +36,26 @@ func (link *link) Open() (err error) {
 }
 
 func (link *link) pipe(src, dst net.Conn) {
-	buf := NewStreamBuffer()
-	noop := new(NoopToxic)
-	noop.Init(link.proxy, src, buf)
-	latency := new(LatencyToxic)
-	latency.Init(link.proxy, buf, dst)
-	latency.Latency = time.Millisecond * 300
+	buf1 := NewStreamBuffer()
+	buf2 := NewStreamBuffer()
+	buf3 := NewStreamBuffer()
+	buf4 := NewStreamBuffer()
+	noop1 := new(NoopToxic)
+	noop2 := new(NoopToxic)
+	noop3 := new(NoopToxic)
+	noop4 := new(NoopToxic)
+	noop5 := new(NoopToxic)
+	noop1.Init(link.proxy, src, buf1)
+	noop2.Init(link.proxy, buf1, buf2)
+	noop3.Init(link.proxy, buf2, buf3)
+	noop4.Init(link.proxy, buf3, buf4)
+	noop5.Init(link.proxy, buf4, dst)
 
-	go noop.Pipe()
-	go latency.Pipe()
+	go noop1.Pipe()
+	go noop2.Pipe()
+	go noop3.Pipe()
+	go noop4.Pipe()
+	go noop5.Pipe()
 }
 
 func (link *link) Close() {

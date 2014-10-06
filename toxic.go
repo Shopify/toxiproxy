@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"io"
 	"math/rand"
 	"time"
@@ -58,52 +57,13 @@ func (t *BaseToxic) Resume() {
 	t.pauseOut <- false
 }
 
-// StreamBuffer is used for chaining Toxic's together. It implements both the
-// io.Reader and io.WriteCloser interfaces, so it can be passed into Toxics.
-// Read() will block until data is written to the buffer rather than
-// returning EOF if Read() is called faster than Write().
-//
-// The Toxic pipeline looks like this: (|| == StreamBuffer)
-//
-// Input > Toxic || Toxic || Toxic > Output
-//
-type StreamBuffer struct {
-	buffer      *bytes.Buffer
-	writeSignal chan bool // true: More data available, false: EOF
-}
-
-func (s *StreamBuffer) Read(buf []byte) (int, error) {
-	<-s.writeSignal // Wait until either EOF or some data is ready
-	return s.buffer.Read(buf)
-}
-
-func (s *StreamBuffer) Write(buf []byte) (int, error) {
-	n, err := s.buffer.Write(buf)
-	if n > 0 {
-		s.writeSignal <- true
-	}
-	return n, err
-}
-
-func (s *StreamBuffer) Close() error {
-	s.writeSignal <- false
-	return nil
-}
-
-func NewStreamBuffer() *StreamBuffer {
-	return &StreamBuffer{
-		buffer:      bytes.NewBuffer([]byte{}),
-		writeSignal: make(chan bool, 10),
-	}
-}
-
 // The NoopToxic passes all data through without any toxic effects.
 type NoopToxic struct {
 	BaseToxic
 }
 
 func (t *NoopToxic) Pipe() {
-	bytes, err := copy(&t.BaseToxic, nil)
+	bytes, err := toxicCopy(&t.BaseToxic, nil)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"toxic":    "NoopToxic",
@@ -113,7 +73,6 @@ func (t *NoopToxic) Pipe() {
 			"err":      err,
 		}).Warn("Client or source terminated")
 	}
-	t.output.Close()
 }
 
 // The LatencyToxic passes data through with the specified latency and jitter added.
@@ -137,7 +96,7 @@ func (t *LatencyToxic) Pipe() {
 			latency <- delay
 		}
 	}()
-	bytes, err := copy(&t.BaseToxic, latency)
+	bytes, err := toxicCopy(&t.BaseToxic, latency)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"toxic":    "LatencyToxic",
@@ -147,7 +106,6 @@ func (t *LatencyToxic) Pipe() {
 			"err":      err,
 		}).Warn("Client or source terminated")
 	}
-	t.output.Close()
 	running = false
 	select {
 	case <-latency: // Optionally read from latency to unblock the go routine
@@ -155,12 +113,12 @@ func (t *LatencyToxic) Pipe() {
 	}
 }
 
-// Copy breaks up the input stream into random packets of size 1-32k bytes. Each
+// toxicCopy() breaks up the input stream into random packets of size 1-32k bytes. Each
 // packet is then delayed for a time specified by the latency channel.
 // At any time the stream can be interrupted, and the function will return.
 // The stream can be paused without interrupting the latency state as well.
 // This copy function is a modified version of io.Copy()
-func copy(toxic *BaseToxic, latency <-chan time.Duration) (written int64, err error) {
+func toxicCopy(toxic *BaseToxic, latency <-chan time.Duration) (written int64, err error) {
 	buf := make([]byte, 32*1024)
 	for {
 		if latency != nil {
@@ -179,7 +137,7 @@ func copy(toxic *BaseToxic, latency <-chan time.Duration) (written int64, err er
 			default:
 			}
 		}
-		nr, er := toxic.input.Read(buf[0:rand.Intn(32*1024)]) // Read a random packet size
+		nr, er := toxic.input.Read(buf[0:1024]) // Read a random packet size
 		if nr > 0 {
 			select {
 			case pause := <-toxic.pauseOut:
@@ -209,5 +167,6 @@ func copy(toxic *BaseToxic, latency <-chan time.Duration) (written int64, err er
 			break
 		}
 	}
+	toxic.output.Close()
 	return written, err
 }
