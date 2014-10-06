@@ -1,11 +1,8 @@
 package main
 
 import (
-	"io"
 	"net"
 	"time"
-
-	"github.com/Sirupsen/logrus"
 )
 
 // Link is the TCP link between a client and an upstream.
@@ -35,32 +32,22 @@ func (link *link) Open() (err error) {
 		return err
 	}
 
-	go link.pipe(link.client, link.upstream)
-	go link.pipe(link.upstream, link.client)
+	link.pipe(link.client, link.upstream)
+	link.pipe(link.upstream, link.client)
 
 	return nil
 }
 
 func (link *link) pipe(src, dst net.Conn) {
-	pipe := NewPipe(link.proxy, src)
-	pipe2 := NewPipe(link.proxy, pipe)
-
+	buf := NewStreamBuffer()
+	noop := new(NoopToxic)
+	noop.Init(link.proxy, src, buf)
 	latency := new(LatencyToxic)
+	latency.Init(link.proxy, buf, dst)
 	latency.Latency = time.Millisecond * 300
-	pipe.Start(latency)
-	pipe2.Start(new(NoopToxic))
 
-	bytes, err := io.Copy(dst, pipe2)
-	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"name":     link.proxy.Name,
-			"upstream": link.proxy.Upstream,
-			"bytes":    bytes,
-			"err":      err,
-		}).Warn("Client or source terminated")
-	}
-
-	link.Close()
+	go noop.Pipe()
+	go latency.Pipe()
 }
 
 func (link *link) Close() {
