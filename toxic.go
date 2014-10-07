@@ -21,8 +21,6 @@ type Toxic interface {
 	Init(*Proxy, io.Reader, io.WriteCloser)
 	Pipe()
 	Interrupt()
-	Pause()
-	Resume()
 }
 
 // BaseToxic is to allow for common fields between all toxics.
@@ -32,7 +30,6 @@ type BaseToxic struct {
 	input     io.Reader
 	output    io.WriteCloser
 	interrupt chan struct{}
-	pauseOut  chan bool // true: stop output, false: resume output
 }
 
 func (t *BaseToxic) Init(proxy *Proxy, input io.Reader, output io.WriteCloser) {
@@ -46,15 +43,6 @@ func (t *BaseToxic) Init(proxy *Proxy, input io.Reader, output io.WriteCloser) {
 // can be replaced or removed.
 func (t *BaseToxic) Interrupt() {
 	t.interrupt <- struct{}{}
-}
-
-// Pause any calls to the toxic's output writer so it can be changed.
-func (t *BaseToxic) Pause() {
-	t.pauseOut <- true
-}
-
-func (t *BaseToxic) Resume() {
-	t.pauseOut <- false
 }
 
 // The NoopToxic passes all data through without any toxic effects.
@@ -73,6 +61,7 @@ func (t *NoopToxic) Pipe() {
 			"err":      err,
 		}).Warn("Client or source terminated")
 	}
+	t.output.Close()
 }
 
 // The LatencyToxic passes data through with the specified latency and jitter added.
@@ -106,6 +95,7 @@ func (t *LatencyToxic) Pipe() {
 			"err":      err,
 		}).Warn("Client or source terminated")
 	}
+	t.output.Close()
 	running = false
 	select {
 	case <-latency: // Optionally read from latency to unblock the go routine
@@ -116,7 +106,6 @@ func (t *LatencyToxic) Pipe() {
 // toxicCopy() breaks up the input stream into random packets of size 1-32k bytes. Each
 // packet is then delayed for a time specified by the latency channel.
 // At any time the stream can be interrupted, and the function will return.
-// The stream can be paused without interrupting the latency state as well.
 // This copy function is a modified version of io.Copy()
 func toxicCopy(toxic *BaseToxic, latency <-chan time.Duration) (written int64, err error) {
 	buf := make([]byte, 32*1024)
@@ -139,13 +128,6 @@ func toxicCopy(toxic *BaseToxic, latency <-chan time.Duration) (written int64, e
 		}
 		nr, er := toxic.input.Read(buf[0:1024]) // Read a random packet size
 		if nr > 0 {
-			select {
-			case pause := <-toxic.pauseOut:
-				for pause {
-					pause = <-toxic.pauseOut
-				}
-			default:
-			}
 			nw, ew := toxic.output.Write(buf[0:nr])
 			if nw > 0 {
 				written += int64(nw)
@@ -167,6 +149,5 @@ func toxicCopy(toxic *BaseToxic, latency <-chan time.Duration) (written int64, e
 			break
 		}
 	}
-	toxic.output.Close()
 	return written, err
 }
