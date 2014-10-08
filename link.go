@@ -13,49 +13,61 @@ type link struct {
 
 	client   net.Conn
 	upstream net.Conn
+
+	upToxics    []*ToxicStub
+	downToxics  []*ToxicStub
+	upBuffers   []*StreamBuffer
+	downBuffers []*StreamBuffer
 }
 
-func NewLink(proxy *Proxy, client net.Conn) *link {
-	return &link{
-		proxy:    proxy,
-		client:   client,
-		upstream: &net.TCPConn{},
+func NewLink(proxy *Proxy, client net.Conn, upstream net.Conn) *link {
+	link := &link{
+		proxy:       proxy,
+		client:      client,
+		upstream:    upstream,
+		upToxics:    make([]*ToxicStub, MaxToxics),
+		downToxics:  make([]*ToxicStub, MaxToxics),
+		upBuffers:   make([]*StreamBuffer, MaxToxics-1),
+		downBuffers: make([]*StreamBuffer, MaxToxics-1),
 	}
-}
 
-func (link *link) Open() (err error) {
-	link.upstream, err = net.Dial("tcp", link.proxy.Upstream)
-	if err != nil {
-		return err
+	for i := 0; i < MaxToxics-1; i++ {
+		link.upBuffers[i] = NewStreamBuffer()
+		link.downBuffers[i] = NewStreamBuffer()
+		if i > 0 {
+			// Initialize all toxics that only connect through the buffers
+			link.upToxics[i] = NewToxicStub(proxy, link.upBuffers[i-1], link.upBuffers[i])
+			link.downToxics[i] = NewToxicStub(proxy, link.downBuffers[i-1], link.downBuffers[i])
+		}
+	}
+	// Initialize the first and last toxics with the client and upstream
+	if MaxToxics > 1 {
+		link.upToxics[0] = NewToxicStub(proxy, client, link.upBuffers[0])
+		link.downToxics[0] = NewToxicStub(proxy, upstream, link.downBuffers[0])
+		last := MaxToxics - 1 // To stop compile errors from MaxToxics-2 if MaxToxics == 1
+		link.upToxics[last] = NewToxicStub(proxy, link.upBuffers[last-1], upstream)
+		link.downToxics[last] = NewToxicStub(proxy, link.downBuffers[last-1], client)
+	} else {
+		link.upToxics[0] = NewToxicStub(proxy, client, upstream)
+		link.downToxics[0] = NewToxicStub(proxy, upstream, client)
 	}
 
-	link.pipe(link.client, link.upstream)
-	link.pipe(link.upstream, link.client)
-
-	return nil
+	// Start all the toxics with a NoopToxic
+	for i := 0; i < MaxToxics; i++ {
+		go link.proxy.toxics.noop.Pipe(link.upToxics[i])
+		go link.proxy.toxics.noop.Pipe(link.downToxics[i])
+	}
+	return link
 }
 
-func (link *link) pipe(src, dst net.Conn) {
-	buf1 := NewStreamBuffer()
-	buf2 := NewStreamBuffer()
-	buf3 := NewStreamBuffer()
-	buf4 := NewStreamBuffer()
-	noop1 := new(NoopToxic)
-	noop2 := new(NoopToxic)
-	noop3 := new(NoopToxic)
-	noop4 := new(NoopToxic)
-	noop5 := new(NoopToxic)
-	noop1.Init(link.proxy, src, buf1)
-	noop2.Init(link.proxy, buf1, buf2)
-	noop3.Init(link.proxy, buf2, buf3)
-	noop4.Init(link.proxy, buf3, buf4)
-	noop5.Init(link.proxy, buf4, dst)
+func (link *link) SetUpstreamToxic(toxic Toxic, index int) {
+	link.upToxics[index].Interrupt()
+	go toxic.Pipe(link.upToxics[index])
+}
 
-	go noop1.Pipe()
-	go noop2.Pipe()
-	go noop3.Pipe()
-	go noop4.Pipe()
-	go noop5.Pipe()
+func (link *link) SetDownstreamToxic(toxic Toxic, index int) {
+	link.downToxics[index].Interrupt()
+	go toxic.Pipe(link.downToxics[index])
 }
 
 func (link *link) Close() {

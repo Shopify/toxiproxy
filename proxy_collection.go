@@ -41,11 +41,25 @@ func (collection *ProxyCollection) Proxies() map[string]*Proxy {
 	return collection.proxies
 }
 
+func (collection *ProxyCollection) Get(name string) (*Proxy, error) {
+	collection.Lock()
+	defer collection.Unlock()
+
+	return collection.getByName(name)
+}
+
 func (collection *ProxyCollection) Remove(name string) error {
 	collection.Lock()
 	defer collection.Unlock()
 
-	return collection.removeByName(name)
+	proxy, err := collection.getByName(name)
+	if err != nil {
+		return err
+	}
+	proxy.Stop()
+
+	delete(collection.proxies, proxy.Name)
+	return nil
 }
 
 func (collection *ProxyCollection) Clear() error {
@@ -53,26 +67,20 @@ func (collection *ProxyCollection) Clear() error {
 	defer collection.Unlock()
 
 	for _, proxy := range collection.proxies {
-		err := collection.removeByName(proxy.Name)
-		if err != nil {
-			return err
-		}
+		proxy.Stop()
+
+		delete(collection.proxies, proxy.Name)
 	}
 
 	return nil
 }
 
-// removeByName removes a proxy by its name. Its used from both #clear and
-// #remove. It assumes the lock has already been acquired.
-func (collection *ProxyCollection) removeByName(name string) error {
+// getByName returns a proxy by its name. Its used from #remove and #get.
+// It assumes the lock has already been acquired.
+func (collection *ProxyCollection) getByName(name string) (*Proxy, error) {
 	proxy, exists := collection.proxies[name]
 	if !exists {
-		return fmt.Errorf("Proxy with name %s doesn't exist", name)
+		return nil, fmt.Errorf("Proxy with name %s doesn't exist", name)
 	}
-
-	proxy.Stop()
-
-	delete(collection.proxies, name)
-
-	return nil
+	return proxy, nil
 }

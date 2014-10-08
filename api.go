@@ -26,10 +26,8 @@ func (server *server) Listen() {
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE")
-	// r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicIndex).Methods("GET")
-	// r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicCreate).Methods("POST")
-	// r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicModify).Methods("POST")
-	// r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE")
+	r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicIndex).Methods("GET")
+	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicModify).Methods("POST")
 
 	r.HandleFunc("/version", server.Version).Methods("GET")
 	http.Handle("/", r)
@@ -107,6 +105,48 @@ func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Re
 	_, err = response.Write(nil)
 	if err != nil {
 		logrus.Warn("ProxyIndex: Failed to write headers to client", err)
+	}
+}
+
+func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Request) {
+	vars := mux.Vars(request)
+
+	proxy, err := server.collection.Get(vars["proxy"])
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	data, err := json.Marshal(proxy.toxics)
+	if err != nil {
+		http.Error(response, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
+	response.Header().Set("Content-Type", "application/json")
+	response.WriteHeader(http.StatusOK)
+	_, err = response.Write(data)
+	if err != nil {
+		logrus.Warn("ToxicIndex: Failed to write response to client", err)
+	}
+}
+
+func (server *server) ToxicModify(response http.ResponseWriter, request *http.Request) {
+	vars := mux.Vars(request)
+
+	_, err := server.collection.Get(vars["proxy"])
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	// TODO: Do some stuff with vars["toxic"]
+
+	response.Header().Set("Content-Type", "text/plain")
+	response.WriteHeader(http.StatusNotImplemented)
+	_, err = response.Write([]byte("Not implemented"))
+	if err != nil {
+		logrus.Warn("ToxicModify: Failed to write response to client", err)
 	}
 }
 

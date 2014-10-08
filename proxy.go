@@ -17,8 +17,9 @@ type Proxy struct {
 
 	started chan error
 
-	tomb  tomb.Tomb
-	links []*link
+	tomb   tomb.Tomb
+	links  []*link
+	toxics *ToxicCollection
 }
 
 func NewProxy() *Proxy {
@@ -32,6 +33,7 @@ func NewProxy() *Proxy {
 // `allocate()` on them, sharing this with `NewProxy()`.
 func (proxy *Proxy) allocate() {
 	proxy.started = make(chan error)
+	proxy.toxics = NewToxicCollection()
 }
 
 func (proxy *Proxy) Start() error {
@@ -108,10 +110,8 @@ func (proxy *Proxy) server() {
 			"upstream": proxy.Upstream,
 		}).Info("Accepted client")
 
-		link := NewLink(proxy, client)
-		proxy.links = append(proxy.links, link)
-
-		if err := link.Open(); err != nil {
+		upstream, err := net.Dial("tcp", proxy.Upstream)
+		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"name":     proxy.Name,
 				"client":   client.RemoteAddr(),
@@ -119,6 +119,9 @@ func (proxy *Proxy) server() {
 				"upstream": proxy.Upstream,
 			}).Error("Unable to open connection to upstream")
 		}
+
+		link := NewLink(proxy, client, upstream)
+		proxy.links = append(proxy.links, link)
 	}
 }
 
