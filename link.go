@@ -8,7 +8,7 @@ import "net"
 //
 // Its responsibility is to shove from each side to the other. Clients don't
 // need to know they are talking to the upsream through toxiproxy.
-type link struct {
+type ProxyLink struct {
 	proxy *Proxy
 
 	client   net.Conn
@@ -20,8 +20,8 @@ type link struct {
 	downBuffers []*StreamBuffer
 }
 
-func NewLink(proxy *Proxy, client net.Conn, upstream net.Conn) *link {
-	link := &link{
+func NewLink(proxy *Proxy, client net.Conn, upstream net.Conn) *ProxyLink {
+	link := &ProxyLink{
 		proxy:       proxy,
 		client:      client,
 		upstream:    upstream,
@@ -52,25 +52,25 @@ func NewLink(proxy *Proxy, client net.Conn, upstream net.Conn) *link {
 		link.downToxics[0] = NewToxicStub(proxy, upstream, client)
 	}
 
-	// Start all the toxics with a NoopToxic
+	// Start all the toxics with the current configuration
 	for i := 0; i < MaxToxics; i++ {
-		go link.proxy.toxics.noop.Pipe(link.upToxics[i])
-		go link.proxy.toxics.noop.Pipe(link.downToxics[i])
+		go proxy.toxics.uplink[i].Pipe(link.upToxics[i])
+		go proxy.toxics.downlink[i].Pipe(link.downToxics[i])
 	}
 	return link
 }
 
-func (link *link) SetUpstreamToxic(toxic Toxic, index int) {
+func (link *ProxyLink) SetUpstreamToxic(toxic Toxic, index int) {
 	link.upToxics[index].Interrupt()
 	go toxic.Pipe(link.upToxics[index])
 }
 
-func (link *link) SetDownstreamToxic(toxic Toxic, index int) {
+func (link *ProxyLink) SetDownstreamToxic(toxic Toxic, index int) {
 	link.downToxics[index].Interrupt()
 	go toxic.Pipe(link.downToxics[index])
 }
 
-func (link *link) Close() {
+func (link *ProxyLink) Close() {
 	link.client.Close()
 	link.upstream.Close()
 }

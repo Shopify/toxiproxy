@@ -1,6 +1,8 @@
 package main
 
 import (
+	"sync"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/Sirupsen/tomb"
 
@@ -11,6 +13,8 @@ import (
 // responsibility of Proxy is to accept new client and create Links between the
 // client and upstream.
 type Proxy struct {
+	sync.Mutex
+
 	Name     string
 	Listen   string
 	Upstream string
@@ -18,7 +22,7 @@ type Proxy struct {
 	started chan error
 
 	tomb   tomb.Tomb
-	links  []*link
+	links  []*ProxyLink
 	toxics *ToxicCollection
 }
 
@@ -33,7 +37,7 @@ func NewProxy() *Proxy {
 // `allocate()` on them, sharing this with `NewProxy()`.
 func (proxy *Proxy) allocate() {
 	proxy.started = make(chan error)
-	proxy.toxics = NewToxicCollection()
+	proxy.toxics = NewToxicCollection(proxy)
 }
 
 func (proxy *Proxy) Start() error {
@@ -120,8 +124,10 @@ func (proxy *Proxy) server() {
 			}).Error("Unable to open connection to upstream")
 		}
 
+		proxy.Lock()
 		link := NewLink(proxy, client, upstream)
 		proxy.links = append(proxy.links, link)
+		proxy.Unlock()
 	}
 }
 

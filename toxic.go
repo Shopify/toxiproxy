@@ -22,6 +22,7 @@ import (
 // for multiple connections.
 
 type Toxic interface {
+	IsEnabled() bool
 	Pipe(*ToxicStub)
 }
 
@@ -50,6 +51,10 @@ func (s *ToxicStub) Interrupt() {
 // The NoopToxic passes all data through without any toxic effects.
 type NoopToxic struct{}
 
+func (t *NoopToxic) IsEnabled() bool {
+	return true
+}
+
 func (t *NoopToxic) Pipe(stub *ToxicStub) {
 	bytes, err := toxicCopy(stub, nil)
 	if err != nil {
@@ -65,9 +70,14 @@ func (t *NoopToxic) Pipe(stub *ToxicStub) {
 
 // The LatencyToxic passes data through with the specified latency and jitter added.
 type LatencyToxic struct {
-	Enabled bool          `json:"enabled"`
-	Latency time.Duration `json:"latency"`
-	Jitter  time.Duration `json:"jitter"`
+	Enabled bool `json:"enabled"`
+	// Times in milliseconds
+	Latency int64 `json:"latency"`
+	Jitter  int64 `json:"jitter"`
+}
+
+func (t *LatencyToxic) IsEnabled() bool {
+	return t.Enabled
 }
 
 func (t *LatencyToxic) Pipe(stub *ToxicStub) {
@@ -79,10 +89,10 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 			delay := t.Latency
 			jitter := int64(t.Jitter)
 			if jitter > 0 {
-				delay += time.Duration(rand.Int63n(jitter*2) - jitter)
+				delay += rand.Int63n(jitter*2) - jitter
 			}
 			select {
-			case latency <- delay:
+			case latency <- time.Duration(delay) * time.Millisecond:
 			case <-done:
 				return
 			}
