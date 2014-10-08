@@ -61,7 +61,6 @@ func (t *NoopToxic) Pipe(stub *ToxicStub) {
 			"err":      err,
 		}).Warn("Client or source terminated")
 	}
-	stub.output.Close()
 }
 
 // The LatencyToxic passes data through with the specified latency and jitter added.
@@ -72,17 +71,21 @@ type LatencyToxic struct {
 }
 
 func (t *LatencyToxic) Pipe(stub *ToxicStub) {
-	running := true
 	latency := make(chan time.Duration)
+	done := make(chan struct{})
 	go func() {
-		for running {
+		for {
 			// Delay = t.Latency +/- t.Jitter
 			delay := t.Latency
 			jitter := int64(t.Jitter)
 			if jitter > 0 {
 				delay += time.Duration(rand.Int63n(jitter*2) - jitter)
 			}
-			latency <- delay
+			select {
+			case latency <- delay:
+			case <-done:
+				return
+			}
 		}
 	}()
 	bytes, err := toxicCopy(stub, latency)
@@ -95,12 +98,7 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 			"err":      err,
 		}).Warn("Client or source terminated")
 	}
-	stub.output.Close()
-	running = false
-	select {
-	case <-latency: // Optionally read from latency to unblock the go routine
-	default:
-	}
+	close(done) // Stop latency goroutine
 }
 
 // toxicCopy() breaks up the input stream into random packets of size 1-32k bytes. Each
@@ -113,16 +111,15 @@ func toxicCopy(stub *ToxicStub, latency <-chan time.Duration) (written int64, er
 		if latency != nil {
 			// Delay the packet for a duration specified by the latency channel.
 			sleep := <-latency
-			wait := time.After(sleep)
 			select {
-			case <-wait:
+			case <-time.After(sleep):
 			case <-stub.interrupt:
-				break
+				return written, err
 			}
 		} else {
 			select {
 			case <-stub.interrupt:
-				break
+				return written, err
 			default:
 			}
 		}
@@ -149,5 +146,6 @@ func toxicCopy(stub *ToxicStub, latency <-chan time.Duration) (written int64, er
 			break
 		}
 	}
+	stub.output.Close()
 	return written, err
 }

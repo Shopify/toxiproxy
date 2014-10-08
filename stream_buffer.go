@@ -16,6 +16,13 @@ type StreamBuffer struct {
 	buffer []byte
 }
 
+func NewStreamBuffer() *StreamBuffer {
+	return &StreamBuffer{
+		input:  make(chan []byte),
+		buffer: []byte{},
+	}
+}
+
 func (s *StreamBuffer) Read(out []byte) (int, error) {
 	if s.buffer == nil {
 		return 0, io.EOF
@@ -52,7 +59,10 @@ func (s *StreamBuffer) Read(out []byte) (int, error) {
 
 func (s *StreamBuffer) Write(buf []byte) (int, error) {
 	buf2 := make([]byte, len(buf))
-	copy(buf2, buf) // Because it's a pointer, and things like HTTP clients reuse buffers
+	// Some stream sources such as HTTP clients reuse buffers. This means
+	// that the buffer may change before it is read out again, causing
+	// either missing or duplicate data on the output.
+	copy(buf2, buf)
 	s.input <- buf2
 	return len(buf), nil
 }
@@ -60,11 +70,4 @@ func (s *StreamBuffer) Write(buf []byte) (int, error) {
 func (s *StreamBuffer) Close() error {
 	close(s.input)
 	return nil
-}
-
-func NewStreamBuffer() *StreamBuffer {
-	return &StreamBuffer{
-		input:  make(chan []byte),
-		buffer: []byte{},
-	}
 }
