@@ -141,33 +141,23 @@ func (server *server) ToxicSet(response http.ResponseWriter, request *http.Reque
 		return
 	}
 
-	var result interface{}
-
-	switch vars["toxic"] {
-	case "latency_upstream", "latency_downstream":
-		toxic := new(LatencyToxic)
-		err = json.NewDecoder(request.Body).Decode(&toxic)
-		if err != nil {
-			http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
-			return
-		}
-
-		proxy.Lock()
-		if strings.HasSuffix(vars["toxic"], "upstream") {
-			proxy.toxics.LatencyUpstream = toxic
-			proxy.toxics.SetUpstreamToxic(toxic, LatencyIndex)
-		} else {
-			proxy.toxics.LatencyDownstream = toxic
-			proxy.toxics.SetDownstreamToxic(toxic, LatencyIndex)
-		}
-		proxy.Unlock()
-		result = toxic
-	default:
-		http.Error(response, server.apiError(fmt.Errorf("Bad toxic type: %s", vars["toxic"]), http.StatusNotFound), http.StatusNotFound)
+	toxic, err := NewToxicFromJson(vars["toxic"], request.Body)
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	data, err := json.Marshal(&result)
+	if strings.HasSuffix(vars["toxic"], "upstream") {
+		err = proxy.toxics.SetUpstreamToxic(toxic)
+	} else {
+		err = proxy.toxics.SetDownstreamToxic(toxic)
+	}
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	data, err := json.Marshal(toxic)
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
 		return

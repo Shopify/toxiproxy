@@ -1,8 +1,6 @@
 package main
 
 import (
-	"sync"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/Sirupsen/tomb"
 
@@ -13,17 +11,16 @@ import (
 // responsibility of Proxy is to accept new client and create Links between the
 // client and upstream.
 type Proxy struct {
-	sync.Mutex
-
 	Name     string
 	Listen   string
 	Upstream string
 
 	started chan error
 
-	tomb   tomb.Tomb
-	links  []*ProxyLink
-	toxics *ToxicCollection
+	tomb      tomb.Tomb
+	uplinks   []*ProxyLink
+	downlinks []*ProxyLink
+	toxics    *ToxicCollection
 }
 
 func NewProxy() *Proxy {
@@ -124,10 +121,14 @@ func (proxy *Proxy) server() {
 			}).Error("Unable to open connection to upstream")
 		}
 
-		proxy.Lock()
-		link := NewLink(proxy, client, upstream)
-		proxy.links = append(proxy.links, link)
-		proxy.Unlock()
+		proxy.toxics.Lock()
+		uplink := NewLink(proxy, client, upstream)
+		downlink := NewLink(proxy, upstream, client)
+		uplink.Start(proxy.toxics.upToxics)
+		downlink.Start(proxy.toxics.downToxics)
+		proxy.uplinks = append(proxy.uplinks, uplink)
+		proxy.downlinks = append(proxy.downlinks, downlink)
+		proxy.toxics.Unlock()
 	}
 }
 
@@ -135,7 +136,9 @@ func (proxy *Proxy) Stop() {
 	proxy.tomb.Killf("Shutting down from stop()")
 	proxy.tomb.Wait() // Wait until we stop accepting new connections
 
-	for _, link := range proxy.links {
+	// link.Close() closes both sides of the connection, so we only have
+	// to iterate over one set of links.
+	for _, link := range proxy.downlinks {
 		link.Close()
 	}
 

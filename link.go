@@ -5,85 +5,58 @@ import (
 	"net"
 )
 
-// Link is the TCP link between a client and an upstream.
+// ProxyLink is a TCP link between a client and an upstream.
+// It is for a single direction only, so 2 ProxyLinks exist per TCP connection.
 //
 // Client <-> toxiproxy <-> Upstream
 //
-// Its responsibility is to shove from each side to the other. Clients don't
+// Its responsibility is to shove from one side to the other. Clients don't
 // need to know they are talking to the upsream through toxiproxy.
 type ProxyLink struct {
 	proxy *Proxy
 
-	client   net.Conn
-	upstream net.Conn
+	input  net.Conn
+	output net.Conn
 
-	upToxics    []*ToxicStub
-	downToxics  []*ToxicStub
-	upBuffers   []*Pipe
-	downBuffers []*Pipe
+	stream []*ToxicStub
 }
 
-type Pipe struct {
-	io.Reader
-	io.WriteCloser
-}
-
-func NewPipe() *Pipe {
-	r, w := io.Pipe()
-	return &Pipe{r, w}
-}
-
-func NewLink(proxy *Proxy, client net.Conn, upstream net.Conn) *ProxyLink {
+func NewLink(proxy *Proxy, input net.Conn, output net.Conn) *ProxyLink {
 	link := &ProxyLink{
-		proxy:       proxy,
-		client:      client,
-		upstream:    upstream,
-		upToxics:    make([]*ToxicStub, MaxToxics),
-		downToxics:  make([]*ToxicStub, MaxToxics),
-		upBuffers:   make([]*Pipe, MaxToxics-1),
-		downBuffers: make([]*Pipe, MaxToxics-1),
+		proxy:  proxy,
+		input:  input,
+		output: output,
+		stream: make([]*ToxicStub, MaxToxics),
 	}
 
-	for i := 0; i < MaxToxics-1; i++ {
-		link.upBuffers[i] = NewPipe()
-		link.downBuffers[i] = NewPipe()
-		if i > 0 {
-			// Initialize all toxics that only connect through the buffers
-			link.upToxics[i] = NewToxicStub(proxy, link.upBuffers[i-1], link.upBuffers[i])
-			link.downToxics[i] = NewToxicStub(proxy, link.downBuffers[i-1], link.downBuffers[i])
-		}
-	}
-	// Initialize the first and last toxics with the client and upstream
-	if MaxToxics > 1 {
-		link.upToxics[0] = NewToxicStub(proxy, client, link.upBuffers[0])
-		link.downToxics[0] = NewToxicStub(proxy, upstream, link.downBuffers[0])
-		last := MaxToxics - 1 // To stop compile errors from MaxToxics-2 if MaxToxics == 1
-		link.upToxics[last] = NewToxicStub(proxy, link.upBuffers[last-1], upstream)
-		link.downToxics[last] = NewToxicStub(proxy, link.downBuffers[last-1], client)
-	} else {
-		link.upToxics[0] = NewToxicStub(proxy, client, upstream)
-		link.downToxics[0] = NewToxicStub(proxy, upstream, client)
-	}
-
-	// Start all the toxics with the current configuration
+	// Initialize the stream with ToxicStubs
+	var last io.Reader = input
 	for i := 0; i < MaxToxics; i++ {
-		go proxy.toxics.uplink[i].Pipe(link.upToxics[i])
-		go proxy.toxics.downlink[i].Pipe(link.downToxics[i])
+		if i == MaxToxics-1 {
+			link.stream[i] = NewToxicStub(proxy, last, output)
+		} else {
+			r, w := io.Pipe()
+			link.stream[i] = NewToxicStub(proxy, last, w)
+			last = r
+		}
 	}
 	return link
 }
 
-func (link *ProxyLink) SetUpstreamToxic(toxic Toxic, index int) {
-	link.upToxics[index].Interrupt()
-	go toxic.Pipe(link.upToxics[index])
+// Start the stream with the specified toxics
+func (link *ProxyLink) Start(toxics []Toxic) {
+	for i, toxic := range toxics {
+		go toxic.Pipe(link.stream[i])
+	}
 }
 
-func (link *ProxyLink) SetDownstreamToxic(toxic Toxic, index int) {
-	link.downToxics[index].Interrupt()
-	go toxic.Pipe(link.downToxics[index])
+// Replace the toxic at the specified index
+func (link *ProxyLink) SetToxic(toxic Toxic, index int) {
+	link.stream[index].Interrupt()
+	go toxic.Pipe(link.stream[index])
 }
 
 func (link *ProxyLink) Close() {
-	link.client.Close()
-	link.upstream.Close()
+	link.input.Close()
+	link.output.Close()
 }
