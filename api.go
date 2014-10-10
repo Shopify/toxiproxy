@@ -52,7 +52,6 @@ func (server *server) ProxyIndex(response http.ResponseWriter, request *http.Req
 	}
 
 	response.Header().Set("Content-Type", "application/json")
-	response.WriteHeader(http.StatusOK)
 	_, err = response.Write(data)
 	if err != nil {
 		logrus.Warn("ProxyIndex: Failed to write response to client", err)
@@ -60,6 +59,7 @@ func (server *server) ProxyIndex(response http.ResponseWriter, request *http.Req
 }
 
 func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
 	proxy := NewProxy()
 	err := json.NewDecoder(request.Body).Decode(&proxy)
 	if err != nil {
@@ -85,7 +85,6 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 		return
 	}
 
-	response.Header().Set("Content-Type", "application/json")
 	response.WriteHeader(http.StatusCreated)
 	_, err = response.Write(data)
 	if err != nil {
@@ -94,6 +93,7 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 }
 
 func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
 	err := server.collection.Remove(vars["proxy"])
@@ -110,6 +110,7 @@ func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Re
 }
 
 func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
 	proxy, err := server.collection.Get(vars["proxy"])
@@ -124,8 +125,6 @@ func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Req
 		return
 	}
 
-	response.Header().Set("Content-Type", "application/json")
-	response.WriteHeader(http.StatusOK)
 	_, err = response.Write(data)
 	if err != nil {
 		logrus.Warn("ToxicIndex: Failed to write response to client", err)
@@ -133,6 +132,7 @@ func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Req
 }
 
 func (server *server) ToxicSet(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
 	proxy, err := server.collection.Get(vars["proxy"])
@@ -163,8 +163,6 @@ func (server *server) ToxicSet(response http.ResponseWriter, request *http.Reque
 		return
 	}
 
-	response.Header().Set("Content-Type", "application/json")
-	response.WriteHeader(http.StatusOK)
 	_, err = response.Write(data)
 	if err != nil {
 		logrus.Warn("ToxicSet: Failed to write response to client", err)
@@ -172,6 +170,7 @@ func (server *server) ToxicSet(response http.ResponseWriter, request *http.Reque
 }
 
 func (server *server) Version(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "text/plain")
 	_, err := response.Write([]byte(Version))
 	if err != nil {
 		logrus.Warn("Version: Failed to write response to client", err)
@@ -179,10 +178,5 @@ func (server *server) Version(response http.ResponseWriter, request *http.Reques
 }
 
 func (server *server) apiError(err error, code int) string {
-	return fmt.Sprintf(`
-{
-	"title": "%s",
-	"status": %d
-}
-	`, err.Error(), code)
+	return fmt.Sprintf(`{"title": "%s","status": %d}`, err.Error(), code)
 }
