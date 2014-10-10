@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"io"
+	"net"
+)
 
 // Link is the TCP link between a client and an upstream.
 //
@@ -16,8 +19,18 @@ type ProxyLink struct {
 
 	upToxics    []*ToxicStub
 	downToxics  []*ToxicStub
-	upBuffers   []*StreamBuffer
-	downBuffers []*StreamBuffer
+	upBuffers   []*Pipe
+	downBuffers []*Pipe
+}
+
+type Pipe struct {
+	io.Reader
+	io.WriteCloser
+}
+
+func NewPipe() *Pipe {
+	r, w := io.Pipe()
+	return &Pipe{r, w}
 }
 
 func NewLink(proxy *Proxy, client net.Conn, upstream net.Conn) *ProxyLink {
@@ -27,13 +40,13 @@ func NewLink(proxy *Proxy, client net.Conn, upstream net.Conn) *ProxyLink {
 		upstream:    upstream,
 		upToxics:    make([]*ToxicStub, MaxToxics),
 		downToxics:  make([]*ToxicStub, MaxToxics),
-		upBuffers:   make([]*StreamBuffer, MaxToxics-1),
-		downBuffers: make([]*StreamBuffer, MaxToxics-1),
+		upBuffers:   make([]*Pipe, MaxToxics-1),
+		downBuffers: make([]*Pipe, MaxToxics-1),
 	}
 
 	for i := 0; i < MaxToxics-1; i++ {
-		link.upBuffers[i] = NewStreamBuffer()
-		link.downBuffers[i] = NewStreamBuffer()
+		link.upBuffers[i] = NewPipe()
+		link.downBuffers[i] = NewPipe()
 		if i > 0 {
 			// Initialize all toxics that only connect through the buffers
 			link.upToxics[i] = NewToxicStub(proxy, link.upBuffers[i-1], link.upBuffers[i])
