@@ -26,17 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// The tomb package helps with clean goroutine termination.
+// The tomb package offers a conventional API for clean goroutine termination.
 //
-// See the Tomb type for details.
-package tomb
-
-import (
-	"errors"
-	"fmt"
-	"sync"
-)
-
 // A Tomb tracks the lifecycle of a goroutine as alive, dying or dead,
 // and the reason for its death.
 //
@@ -67,6 +58,18 @@ import (
 //
 //   http://play.golang.org/p/Xh7qWsDPZP
 //
+package tomb
+
+import (
+	"errors"
+	"fmt"
+	"sync"
+)
+
+// A Tomb tracks the lifecycle of a goroutine as alive, dying or dead,
+// and the reason for its death.
+//
+// See the package documentation for details.
 type Tomb struct {
 	m      sync.Mutex
 	dying  chan struct{}

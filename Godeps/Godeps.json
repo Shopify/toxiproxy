@@ -8,16 +8,16 @@
 			"Rev": "d70cdce21e9aef489bfc77581685712a22d71dd8"
 		},
 		{
-			"ImportPath": "github.com/Sirupsen/tomb",
-			"Rev": "4c3d33e5387a593cf76f9b93ca2a6069176f4b11"
-		},
-		{
 			"ImportPath": "github.com/gorilla/context",
 			"Rev": "14f550f51af52180c2eefed15e5fd18d63c0a64a"
 		},
 		{
 			"ImportPath": "github.com/gorilla/mux",
 			"Rev": "4b8fbc56f3b2400a7c7ea3dba9b3539787c486b6"
+		},
+		{
+			"ImportPath": "gopkg.in/tomb.v1",
+			"Rev": "c131134a1947e9afd9cecfe11f4c6dff0732ae58"
 		}
 	]
 }
