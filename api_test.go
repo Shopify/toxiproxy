@@ -17,13 +17,13 @@ func WithServer(t *testing.T, f func(string)) {
 	// way to shut it down between each test run.
 	if testServer == nil {
 		testServer = NewServer(NewProxyCollection())
-		go testServer.Listen()
+		go testServer.Listen("localhost", "8475")
 
 		// Allow server to start. There's no clean way to know when it listens.
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	f("http://localhost:8474")
+	f("http://localhost:8475")
 
 	err := testServer.collection.Clear()
 	if err != nil {

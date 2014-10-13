@@ -23,5 +23,5 @@ func init() {
 func main() {
 	proxies := NewProxyCollection()
 	server := NewServer(proxies)
-	server.Listen()
+	server.Listen(apiHost, apiPort)
 }

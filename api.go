@@ -21,7 +21,7 @@ func NewServer(collection *ProxyCollection) *server {
 	}
 }
 
-func (server *server) Listen() {
+func (server *server) Listen(apiHost string, apiPort string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
