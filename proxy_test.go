@@ -6,7 +6,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/Sirupsen/tomb"
+	"gopkg.in/tomb.v1"
 )
 
 func NewTestProxy(name, upstream string) *Proxy {

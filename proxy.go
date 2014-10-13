@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/Sirupsen/logrus"
-	"github.com/Sirupsen/tomb"
+	"gopkg.in/tomb.v1"
 
 	"net"
 )

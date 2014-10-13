@@ -2,7 +2,7 @@ package tomb_test
 
 import (
 	"errors"
-	"launchpad.net/tomb"
+	"gopkg.in/tomb.v1"
 	"reflect"
 	"testing"
 )
