@@ -1,62 +1,43 @@
 package main
 
-import (
-	"io"
-	"net"
-)
+import "io"
 
-// ProxyLink is a TCP link between a client and an upstream.
-// It is for a single direction only, so 2 ProxyLinks exist per TCP connection.
+// ProxyLink is a single direction pipeline that connects an input and output via
+// a chain of toxics. There is a fixed number of toxics in the chain, and they are
+// so any disabled toxics are replaced with NoopToxics.
 //
-// Client <-> toxiproxy <-> Upstream
+//         NoopToxic LatencyToxic  NoopToxic
+//             v           v           v
+// Input > ToxicStub > ToxicStub > ToxicStub > Output
 //
-// Its responsibility is to shove from one side to the other. Clients don't
-// need to know they are talking to the upsream through toxiproxy.
-type ProxyLink struct {
-	proxy *Proxy
+type ProxyLink []*ToxicStub
 
-	input  net.Conn
-	output net.Conn
+func NewProxyLink(proxy *Proxy, input io.Reader, output io.WriteCloser) ProxyLink {
+	link := ProxyLink(make([]*ToxicStub, MaxToxics))
 
-	stream []*ToxicStub
-}
-
-func NewLink(proxy *Proxy, input net.Conn, output net.Conn) *ProxyLink {
-	link := &ProxyLink{
-		proxy:  proxy,
-		input:  input,
-		output: output,
-		stream: make([]*ToxicStub, MaxToxics),
-	}
-
-	// Initialize the stream with ToxicStubs
+	// Initialize the link with ToxicStubs
 	var last io.Reader = input
 	for i := 0; i < MaxToxics; i++ {
 		if i == MaxToxics-1 {
-			link.stream[i] = NewToxicStub(proxy, last, output)
+			link[i] = NewToxicStub(proxy, last, output)
 		} else {
 			r, w := io.Pipe()
-			link.stream[i] = NewToxicStub(proxy, last, w)
+			link[i] = NewToxicStub(proxy, last, w)
 			last = r
 		}
 	}
 	return link
 }
 
-// Start the stream with the specified toxics
-func (link *ProxyLink) Start(toxics []Toxic) {
+// Start the link with the specified toxics
+func (link ProxyLink) Start(toxics []Toxic) {
 	for i, toxic := range toxics {
-		go toxic.Pipe(link.stream[i])
+		go toxic.Pipe(link[i])
 	}
 }
 
 // Replace the toxic at the specified index
-func (link *ProxyLink) SetToxic(toxic Toxic, index int) {
-	link.stream[index].Interrupt()
-	go toxic.Pipe(link.stream[index])
-}
-
-func (link *ProxyLink) Close() {
-	link.input.Close()
-	link.output.Close()
+func (link ProxyLink) SetToxic(toxic Toxic, index int) {
+	link[index].Interrupt()
+	go toxic.Pipe(link[index])
 }

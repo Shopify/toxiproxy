@@ -178,5 +178,12 @@ func (server *server) Version(response http.ResponseWriter, request *http.Reques
 }
 
 func (server *server) apiError(err error, code int) string {
-	return fmt.Sprintf(`{"title": "%s","status": %d}`, err.Error(), code)
+	data, err2 := json.Marshal(struct {
+		Title  string `json:"title"`
+		Status int    `json:"status"`
+	}{err.Error(), code})
+	if err2 != nil {
+		return fmt.Sprintf("Error json encoding error (╯°□°）╯︵ ┻━┻: %v", err2)
+	}
+	return string(data)
 }

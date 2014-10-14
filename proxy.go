@@ -10,17 +10,21 @@ import (
 // Proxy represents the proxy in its entirity with all its links. The main
 // responsibility of Proxy is to accept new client and create Links between the
 // client and upstream.
+//
+// Client <-> toxiproxy <-> Upstream
+//
 type Proxy struct {
-	Name     string
-	Listen   string
-	Upstream string
+	Name     string `json:"name"`
+	Listen   string `json:"listen"`
+	Upstream string `json:"upstream"`
 
 	started chan error
 
-	tomb      tomb.Tomb
-	uplinks   []*ProxyLink
-	downlinks []*ProxyLink
-	toxics    *ToxicCollection
+	tomb        tomb.Tomb
+	connections []net.Conn
+	uplinks     []ProxyLink
+	downlinks   []ProxyLink
+	toxics      *ToxicCollection
 }
 
 func NewProxy() *Proxy {
@@ -122,12 +126,13 @@ func (proxy *Proxy) server() {
 		}
 
 		proxy.toxics.Lock()
-		uplink := NewLink(proxy, client, upstream)
-		downlink := NewLink(proxy, upstream, client)
+		uplink := NewProxyLink(proxy, client, upstream)
+		downlink := NewProxyLink(proxy, upstream, client)
 		uplink.Start(proxy.toxics.upToxics)
 		downlink.Start(proxy.toxics.downToxics)
 		proxy.uplinks = append(proxy.uplinks, uplink)
 		proxy.downlinks = append(proxy.downlinks, downlink)
+		proxy.connections = append(proxy.connections, client, upstream)
 		proxy.toxics.Unlock()
 	}
 }
@@ -136,10 +141,8 @@ func (proxy *Proxy) Stop() {
 	proxy.tomb.Killf("Shutting down from stop()")
 	proxy.tomb.Wait() // Wait until we stop accepting new connections
 
-	// link.Close() closes both sides of the connection, so we only have
-	// to iterate over one set of links.
-	for _, link := range proxy.downlinks {
-		link.Close()
+	for _, conn := range proxy.connections {
+		conn.Close()
 	}
 
 	logrus.WithFields(logrus.Fields{

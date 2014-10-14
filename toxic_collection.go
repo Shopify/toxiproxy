@@ -74,8 +74,8 @@ func (c *ToxicCollection) SetUpstreamToxic(toxic Toxic) error {
 	// Asynchronously update the toxic in each link
 	group := sync.WaitGroup{}
 	for _, link := range c.proxy.uplinks {
-		go func(link *ProxyLink) {
-			group.Add(1)
+		group.Add(1)
+		go func(link ProxyLink) {
 			defer group.Done()
 			link.SetToxic(toxic, index)
 		}(link)
@@ -105,8 +105,8 @@ func (c *ToxicCollection) SetDownstreamToxic(toxic Toxic) error {
 	// Asynchronously update the toxic in each link
 	group := sync.WaitGroup{}
 	for _, link := range c.proxy.downlinks {
-		go func(link *ProxyLink) {
-			group.Add(1)
+		group.Add(1)
+		go func(link ProxyLink) {
 			defer group.Done()
 			link.SetToxic(toxic, index)
 		}(link)
