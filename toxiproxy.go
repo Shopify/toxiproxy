@@ -8,20 +8,19 @@ import (
 
 var Version = "0.0.1"
 
-var apiHost string
-var apiPort string
+var host string
+var port string
 
 func init() {
-	var seed int64
-	flag.StringVar(&apiHost, "host", "localhost", "Host for toxiproxy's API to listen on")
-	flag.StringVar(&apiPort, "port", "8474", "Port for toxiproxy's API to listen on")
-	flag.Int64Var(&seed, "seed", time.Now().UTC().UnixNano(), "Seed for randomizing toxics with")
+	flag.StringVar(&host, "host", "localhost", "Host for toxiproxy's API to listen on")
+	flag.StringVar(&port, "port", "8474", "Port for toxiproxy's API to listen on")
+	seed := flag.Int64("seed", time.Now().UTC().UnixNano(), "Seed for randomizing toxics with")
 	flag.Parse()
-	rand.Seed(seed)
+	rand.Seed(*seed)
 }
 
 func main() {
 	proxies := NewProxyCollection()
 	server := NewServer(proxies)
-	server.Listen(apiHost, apiPort)
+	server.Listen(host, port)
 }

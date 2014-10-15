@@ -21,7 +21,7 @@ func NewServer(collection *ProxyCollection) *server {
 	}
 }
 
-func (server *server) Listen(apiHost string, apiPort string) {
+func (server *server) Listen(host string, port string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
@@ -35,11 +35,11 @@ func (server *server) Listen(apiHost string, apiPort string) {
 	http.Handle("/", r)
 
 	logrus.WithFields(logrus.Fields{
-		"host": apiHost,
-		"port": apiPort,
+		"host": host,
+		"port": port,
 	}).Info("API HTTP server starting")
 
-	err := http.ListenAndServe(net.JoinHostPort(apiHost, apiPort), nil)
+	err := http.ListenAndServe(net.JoinHostPort(host, port), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
