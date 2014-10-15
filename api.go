@@ -183,7 +183,8 @@ func (server *server) apiError(err error, code int) string {
 		Status int    `json:"status"`
 	}{err.Error(), code})
 	if err2 != nil {
-		return fmt.Sprintf("Error json encoding error (╯°□°）╯︵ ┻━┻: %v", err2)
+		logrus.Warn("Error json encoding error (╯°□°）╯︵ ┻━┻", err2)
+		return ""
 	}
 	return string(data)
 }
