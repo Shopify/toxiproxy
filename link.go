@@ -1,68 +1,44 @@
 package main
 
-import (
-	"io"
-	"net"
-	"sync"
+import "io"
 
-	"github.com/Sirupsen/logrus"
-)
-
-// Link is the TCP link between a client and an upstream.
+// ToxicLinks are single direction pipelines that connects an input and output via
+// a chain of toxics. There is a fixed number of toxics in the chain, such that a
+// toxic always maps to the same toxic stub. Toxics are replaced with noops when
+// disabled.
 //
-// Client <-> toxiproxy <-> Upstream
+//         NoopToxic LatencyToxic  NoopToxic
+//             v           v           v
+// Input > ToxicStub > ToxicStub > ToxicStub > Output
 //
-// Its responsibility is to shove from each side to the other. Clients don't
-// need to know they are talking to the upsream through toxiproxy.
-type link struct {
-	sync.Mutex
-	proxy *Proxy
+type ToxicLink []*ToxicStub
 
-	client   net.Conn
-	upstream net.Conn
+func NewToxicLink(proxy *Proxy, input io.Reader, output io.WriteCloser) ToxicLink {
+	link := ToxicLink(make([]*ToxicStub, MaxToxics))
+
+	// Initialize the link with ToxicStubs
+	var last io.Reader = input
+	for i := 0; i < MaxToxics; i++ {
+		if i == MaxToxics-1 {
+			link[i] = NewToxicStub(proxy, last, output)
+		} else {
+			r, w := io.Pipe()
+			link[i] = NewToxicStub(proxy, last, w)
+			last = r
+		}
+	}
+	return link
 }
 
-func NewLink(proxy *Proxy, client net.Conn) *link {
-	return &link{
-		proxy:    proxy,
-		client:   client,
-		upstream: &net.TCPConn{},
+// Start the link with the specified toxics
+func (link ToxicLink) Start(toxics []Toxic) {
+	for i, toxic := range toxics {
+		go toxic.Pipe(link[i])
 	}
 }
 
-func (link *link) Open() (err error) {
-	link.Lock()
-	defer link.Unlock()
-
-	link.upstream, err = net.Dial("tcp", link.proxy.Upstream)
-	if err != nil {
-		return err
-	}
-
-	go link.pipe(link.client, link.upstream)
-	go link.pipe(link.upstream, link.client)
-
-	return nil
-}
-
-func (link *link) pipe(src, dst net.Conn) {
-	bytes, err := io.Copy(dst, src)
-	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"name":     link.proxy.Name,
-			"upstream": link.proxy.Upstream,
-			"bytes":    bytes,
-			"err":      err,
-		}).Warn("Client or source terminated")
-	}
-
-	link.Close()
-}
-
-func (link *link) Close() {
-	link.Lock()
-	defer link.Unlock()
-
-	link.client.Close()
-	link.upstream.Close()
+// Replace the toxic at the specified index
+func (link ToxicLink) SetToxic(toxic Toxic, index int) {
+	link[index].Interrupt()
+	go toxic.Pipe(link[index])
 }

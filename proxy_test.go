@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"io/ioutil"
 	"net"
 	"testing"
@@ -106,6 +107,29 @@ func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, pro
 func TestProxySimpleMessage(t *testing.T) {
 	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
 		msg := []byte("hello world")
+
+		_, err := conn.Write(msg)
+		if err != nil {
+			t.Error("Failed writing to TCP server", err)
+		}
+
+		err = conn.Close()
+		if err != nil {
+			t.Error("Failed to close TCP connection", err)
+		}
+
+		resp := <-response
+		if !bytes.Equal(resp, msg) {
+			t.Error("Server didn't read correct bytes from client", resp)
+		}
+	})
+}
+
+func TestProxyBigMessage(t *testing.T) {
+	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
+		buf := make([]byte, 32*1024)
+		msg := make([]byte, len(buf)*2)
+		hex.Encode(msg, buf)
 
 		_, err := conn.Write(msg)
 		if err != nil {

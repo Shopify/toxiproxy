@@ -1,5 +1,7 @@
 toxiproxy
 toxiproxy.test
+testing
+testing.test
 cpu.out
 cover*.out
 coverage.html

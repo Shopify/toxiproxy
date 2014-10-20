@@ -10,15 +10,20 @@ import (
 // Proxy represents the proxy in its entirity with all its links. The main
 // responsibility of Proxy is to accept new client and create Links between the
 // client and upstream.
+//
+// Client <-> toxiproxy <-> Upstream
+//
 type Proxy struct {
-	Name     string
-	Listen   string
-	Upstream string
+	Name     string `json:"name"`
+	Listen   string `json:"listen"`
+	Upstream string `json:"upstream"`
 
 	started chan error
 
-	tomb  tomb.Tomb
-	links []*link
+	tomb        tomb.Tomb
+	connections []net.Conn
+	upToxics    *ToxicCollection
+	downToxics  *ToxicCollection
 }
 
 func NewProxy() *Proxy {
@@ -32,6 +37,8 @@ func NewProxy() *Proxy {
 // `allocate()` on them, sharing this with `NewProxy()`.
 func (proxy *Proxy) allocate() {
 	proxy.started = make(chan error)
+	proxy.upToxics = NewToxicCollection(proxy)
+	proxy.downToxics = NewToxicCollection(proxy)
 }
 
 func (proxy *Proxy) Start() error {
@@ -108,10 +115,8 @@ func (proxy *Proxy) server() {
 			"upstream": proxy.Upstream,
 		}).Info("Accepted client")
 
-		link := NewLink(proxy, client)
-		proxy.links = append(proxy.links, link)
-
-		if err := link.Open(); err != nil {
+		upstream, err := net.Dial("tcp", proxy.Upstream)
+		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"name":     proxy.Name,
 				"client":   client.RemoteAddr(),
@@ -119,6 +124,10 @@ func (proxy *Proxy) server() {
 				"upstream": proxy.Upstream,
 			}).Error("Unable to open connection to upstream")
 		}
+
+		proxy.upToxics.StartLink(client, upstream)
+		proxy.downToxics.StartLink(upstream, client)
+		proxy.connections = append(proxy.connections, client, upstream)
 	}
 }
 
@@ -126,8 +135,8 @@ func (proxy *Proxy) Stop() {
 	proxy.tomb.Killf("Shutting down from stop()")
 	proxy.tomb.Wait() // Wait until we stop accepting new connections
 
-	for _, link := range proxy.links {
-		link.Close()
+	for _, conn := range proxy.connections {
+		conn.Close()
 	}
 
 	logrus.WithFields(logrus.Fields{
