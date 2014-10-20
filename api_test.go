@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -30,10 +31,10 @@ func WithServer(t *testing.T, f func(string)) {
 	}
 }
 
-func CreateProxy(t *testing.T, addr string) *http.Response {
+func CreateProxy(t *testing.T, addr string, name string) *http.Response {
 	body := `
 	{
-		"Name": "mysql_master",
+		"Name": "` + name + `",
 		"Listen": "localhost:3310",
 		"Upstream": "localhost:20001"
 	}`
@@ -61,7 +62,7 @@ func ListProxies(t *testing.T, addr string) map[string]Proxy {
 	return proxies
 }
 
-func DeleteProxy(t *testing.T, addr string, name string) *http.Response {
+func DeleteProxy(t *testing.T, addr, name string) *http.Response {
 	client := &http.Client{}
 	req, err := http.NewRequest("DELETE", addr+"/proxies/"+name, nil)
 	if err != nil {
@@ -76,6 +77,41 @@ func DeleteProxy(t *testing.T, addr string, name string) *http.Response {
 	return resp
 }
 
+func ListToxics(t *testing.T, addr, proxy, direction string) map[string]interface{} {
+	resp, err := http.Get(addr + "/proxies/" + proxy + "/" + direction + "/toxics")
+	if err != nil {
+		t.Fatal("Failed to get index", err)
+	}
+
+	toxics := make(map[string]interface{})
+	err = json.NewDecoder(resp.Body).Decode(&toxics)
+	if err != nil {
+		t.Fatal("Failed to parse JSON response from index")
+	}
+
+	return toxics
+}
+
+func SetToxic(t *testing.T, addr, proxy, direction, name string, toxic Toxic) map[string]interface{} {
+	body, err := json.Marshal(toxic)
+	if err != nil {
+		t.Fatal("Failed to marshal JSON post data for toxic")
+	}
+
+	resp, err := http.Post(addr+"/proxies/"+proxy+"/"+direction+"/toxics/"+name, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		t.Fatal("Failed to get index", err)
+	}
+
+	toxics := make(map[string]interface{})
+	err = json.NewDecoder(resp.Body).Decode(&toxics)
+	if err != nil {
+		t.Fatal("Failed to parse JSON response from index")
+	}
+
+	return toxics
+}
+
 func TestIndexWithNoProxies(t *testing.T) {
 	WithServer(t, func(addr string) {
 		if len(ListProxies(t, addr)) > 0 {
@@ -86,7 +122,7 @@ func TestIndexWithNoProxies(t *testing.T) {
 
 func TestCreateProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 	})
@@ -94,7 +130,7 @@ func TestCreateProxy(t *testing.T) {
 
 func TestIndexWithProxies(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 
@@ -107,7 +143,7 @@ func TestIndexWithProxies(t *testing.T) {
 
 func TestDeleteProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 
@@ -129,11 +165,11 @@ func TestDeleteProxy(t *testing.T) {
 
 func TestCreateProxyTwice(t *testing.T) {
 	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusCreated {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
 			t.Fatal("Unable to create proxy")
 		}
 
-		if resp := CreateProxy(t, addr); resp.StatusCode != http.StatusConflict {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusConflict {
 			t.Fatal("Expected http.StatusConflict Conflict back from API")
 		}
 	})
@@ -143,6 +179,69 @@ func TestDeleteNonExistantProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
 		if resp := DeleteProxy(t, addr, "non_existant"); resp.StatusCode != http.StatusNotFound {
 			t.Fatal("Expected http.StatusNotFound Not found when deleting non existant proxy")
+		}
+	})
+}
+
+func TestListToxics(t *testing.T) {
+	WithServer(t, func(addr string) {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
+			t.Fatal("Unable to create proxy")
+		}
+
+		toxics := ListToxics(t, addr, "mysql_master", "upstream")
+		toxic, ok := toxics["latency"]
+		if !ok {
+			t.Fatal("Expected to see latency toxic in list")
+		}
+		latency, ok := toxic.(map[string]interface{})
+		if !ok {
+			t.Fatal("Couldn't read toxic as a latency toxic")
+		}
+		if latency["enabled"] != false {
+			t.Fatal("Latency toxic did not start up as disabled")
+		}
+	})
+}
+
+func TestSetToxics(t *testing.T) {
+	WithServer(t, func(addr string) {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
+			t.Fatal("Unable to create proxy")
+		}
+
+		latency := SetToxic(t, addr, "mysql_master", "downstream", "latency", &LatencyToxic{Enabled: true, Latency: 100, Jitter: 10})
+		if latency["enabled"] != true {
+			t.Fatal("Latency toxic did not start up")
+		}
+		if latency["latency"] != 100.0 || latency["jitter"] != 10.0 {
+			t.Fatal("Latency toxic did not start up with correct settings")
+		}
+
+		toxics := ListToxics(t, addr, "mysql_master", "downstream")
+		toxic, ok := toxics["latency"]
+		if !ok {
+			t.Fatal("Expected to see latency toxic in list")
+		}
+		latency, ok = toxic.(map[string]interface{})
+		if !ok {
+			t.Fatal("Couldn't read toxic as a latency toxic")
+		}
+		if latency["enabled"] != true {
+			t.Fatal("Latency toxic did not stay enabled")
+		}
+
+		toxics = ListToxics(t, addr, "mysql_master", "upstream")
+		toxic, ok = toxics["latency"]
+		if !ok {
+			t.Fatal("Expected to see latency toxic in list")
+		}
+		latency, ok = toxic.(map[string]interface{})
+		if !ok {
+			t.Fatal("Couldn't read toxic as a latency toxic")
+		}
+		if latency["enabled"] != false {
+			t.Fatal("Upstream toxic should not have been enabled")
 		}
 	})
 }
