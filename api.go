@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -27,8 +26,10 @@ func (server *server) Listen() {
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE")
-	r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicIndex).Methods("GET")
-	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicSet).Methods("POST")
+	r.HandleFunc("/proxies/{proxy}/upstream/toxics", server.ToxicIndexUpstream).Methods("GET")
+	r.HandleFunc("/proxies/{proxy}/downstream/toxics", server.ToxicIndexDownstream).Methods("GET")
+	r.HandleFunc("/proxies/{proxy}/upstream/toxics/{toxic}", server.ToxicSetUpstream).Methods("POST")
+	r.HandleFunc("/proxies/{proxy}/downstream/toxics/{toxic}", server.ToxicSetDownstream).Methods("POST")
 
 	r.HandleFunc("/version", server.Version).Methods("GET")
 	http.Handle("/", r)
@@ -109,7 +110,7 @@ func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Re
 	}
 }
 
-func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Request) {
+func (server *server) ToxicIndexUpstream(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
@@ -119,7 +120,7 @@ func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Req
 		return
 	}
 
-	data, err := json.Marshal(proxy.toxics)
+	data, err := json.Marshal(proxy.upToxics)
 	if err != nil {
 		http.Error(response, fmt.Sprint(err), http.StatusInternalServerError)
 		return
@@ -131,7 +132,29 @@ func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Req
 	}
 }
 
-func (server *server) ToxicSet(response http.ResponseWriter, request *http.Request) {
+func (server *server) ToxicIndexDownstream(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(request)
+
+	proxy, err := server.collection.Get(vars["proxy"])
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	data, err := json.Marshal(proxy.downToxics)
+	if err != nil {
+		http.Error(response, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = response.Write(data)
+	if err != nil {
+		logrus.Warn("ToxicIndex: Failed to write response to client", err)
+	}
+}
+
+func (server *server) ToxicSetUpstream(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
@@ -147,11 +170,41 @@ func (server *server) ToxicSet(response http.ResponseWriter, request *http.Reque
 		return
 	}
 
-	if strings.HasSuffix(vars["toxic"], "upstream") {
-		err = proxy.toxics.SetUpstreamToxic(toxic)
-	} else {
-		err = proxy.toxics.SetDownstreamToxic(toxic)
+	err = proxy.upToxics.SetToxic(toxic)
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
+
+	data, err := json.Marshal(toxic)
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = response.Write(data)
+	if err != nil {
+		logrus.Warn("ToxicSet: Failed to write response to client", err)
+	}
+}
+
+func (server *server) ToxicSetDownstream(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(request)
+
+	proxy, err := server.collection.Get(vars["proxy"])
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	toxic, err := NewToxicFromJson(vars["toxic"], request.Body)
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	err = proxy.downToxics.SetToxic(toxic)
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
 		return

@@ -22,9 +22,8 @@ type Proxy struct {
 
 	tomb        tomb.Tomb
 	connections []net.Conn
-	uplinks     []ProxyLink
-	downlinks   []ProxyLink
-	toxics      *ToxicCollection
+	upToxics    *ToxicCollection
+	downToxics  *ToxicCollection
 }
 
 func NewProxy() *Proxy {
@@ -38,7 +37,8 @@ func NewProxy() *Proxy {
 // `allocate()` on them, sharing this with `NewProxy()`.
 func (proxy *Proxy) allocate() {
 	proxy.started = make(chan error)
-	proxy.toxics = NewToxicCollection(proxy)
+	proxy.upToxics = NewToxicCollection(proxy)
+	proxy.downToxics = NewToxicCollection(proxy)
 }
 
 func (proxy *Proxy) Start() error {
@@ -125,15 +125,9 @@ func (proxy *Proxy) server() {
 			}).Error("Unable to open connection to upstream")
 		}
 
-		proxy.toxics.Lock()
-		uplink := NewProxyLink(proxy, client, upstream)
-		downlink := NewProxyLink(proxy, upstream, client)
-		uplink.Start(proxy.toxics.upToxics)
-		downlink.Start(proxy.toxics.downToxics)
-		proxy.uplinks = append(proxy.uplinks, uplink)
-		proxy.downlinks = append(proxy.downlinks, downlink)
+		proxy.upToxics.StartLink(client, upstream)
+		proxy.downToxics.StartLink(upstream, client)
 		proxy.connections = append(proxy.connections, client, upstream)
-		proxy.toxics.Unlock()
 	}
 }
 

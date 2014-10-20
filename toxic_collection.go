@@ -10,13 +10,12 @@ import (
 type ToxicCollection struct {
 	sync.Mutex
 
-	noop              *NoopToxic
-	LatencyUpstream   *LatencyToxic `json:"latency_upstream"`
-	LatencyDownstream *LatencyToxic `json:"latency_downstream"`
+	noop    *NoopToxic
+	Latency *LatencyToxic `json:"latency"`
 
-	proxy      *Proxy
-	upToxics   []Toxic
-	downToxics []Toxic
+	proxy  *Proxy
+	toxics []Toxic
+	links  []ToxicLink
 }
 
 // Constants used to define which order toxics are chained in.
@@ -27,16 +26,13 @@ const (
 
 func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 	collection := &ToxicCollection{
-		noop:              new(NoopToxic),
-		LatencyUpstream:   new(LatencyToxic),
-		LatencyDownstream: new(LatencyToxic),
-		proxy:             proxy,
-		upToxics:          make([]Toxic, MaxToxics),
-		downToxics:        make([]Toxic, MaxToxics),
+		noop:    new(NoopToxic),
+		Latency: new(LatencyToxic),
+		proxy:   proxy,
+		toxics:  make([]Toxic, MaxToxics),
 	}
 	for i := 0; i < MaxToxics; i++ {
-		collection.upToxics[i] = new(NoopToxic)
-		collection.downToxics[i] = new(NoopToxic)
+		collection.toxics[i] = collection.noop
 	}
 	return collection
 }
@@ -44,7 +40,7 @@ func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 func NewToxicFromJson(name string, data io.Reader) (Toxic, error) {
 	var toxic Toxic
 	switch name {
-	case "latency_upstream", "latency_downstream":
+	case "latency":
 		toxic = new(LatencyToxic)
 	default:
 		return nil, fmt.Errorf("Bad toxic type: %s", name)
@@ -53,14 +49,14 @@ func NewToxicFromJson(name string, data io.Reader) (Toxic, error) {
 	return toxic, err
 }
 
-func (c *ToxicCollection) SetUpstreamToxic(toxic Toxic) error {
+func (c *ToxicCollection) SetToxic(toxic Toxic) error {
 	c.Lock()
 	defer c.Unlock()
 
 	var index int
 	switch v := toxic.(type) {
 	case *LatencyToxic:
-		c.LatencyUpstream = v
+		c.Latency = v
 		index = LatencyIndex
 	default:
 		return fmt.Errorf("Unknown toxic type: %v", toxic)
@@ -69,13 +65,13 @@ func (c *ToxicCollection) SetUpstreamToxic(toxic Toxic) error {
 	if !toxic.IsEnabled() {
 		toxic = c.noop
 	}
-	c.upToxics[index] = toxic
+	c.toxics[index] = toxic
 
 	// Asynchronously update the toxic in each link
 	group := sync.WaitGroup{}
-	for _, link := range c.proxy.uplinks {
+	for _, link := range c.links {
 		group.Add(1)
-		go func(link ProxyLink) {
+		go func(link ToxicLink) {
 			defer group.Done()
 			link.SetToxic(toxic, index)
 		}(link)
@@ -84,33 +80,11 @@ func (c *ToxicCollection) SetUpstreamToxic(toxic Toxic) error {
 	return nil
 }
 
-func (c *ToxicCollection) SetDownstreamToxic(toxic Toxic) error {
+func (c *ToxicCollection) StartLink(input io.Reader, output io.WriteCloser) {
 	c.Lock()
 	defer c.Unlock()
 
-	var index int
-	switch v := toxic.(type) {
-	case *LatencyToxic:
-		c.LatencyDownstream = v
-		index = LatencyIndex
-	default:
-		return fmt.Errorf("Unknown toxic type: %v", toxic)
-	}
-
-	if !toxic.IsEnabled() {
-		toxic = c.noop
-	}
-	c.downToxics[index] = toxic
-
-	// Asynchronously update the toxic in each link
-	group := sync.WaitGroup{}
-	for _, link := range c.proxy.downlinks {
-		group.Add(1)
-		go func(link ProxyLink) {
-			defer group.Done()
-			link.SetToxic(toxic, index)
-		}(link)
-	}
-	group.Wait()
-	return nil
+	link := NewToxicLink(c.proxy, input, output)
+	link.Start(c.toxics)
+	c.links = append(c.links, link)
 }

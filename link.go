@@ -2,18 +2,19 @@ package main
 
 import "io"
 
-// ProxyLink is a single direction pipeline that connects an input and output via
-// a chain of toxics. There is a fixed number of toxics in the chain, and they are
-// so any disabled toxics are replaced with NoopToxics.
+// ToxicLinks are single direction pipelines that connects an input and output via
+// a chain of toxics. There is a fixed number of toxics in the chain, such that a
+// toxic always maps to the same toxic stub. Toxics are replaced with noops when
+// disabled.
 //
 //         NoopToxic LatencyToxic  NoopToxic
 //             v           v           v
 // Input > ToxicStub > ToxicStub > ToxicStub > Output
 //
-type ProxyLink []*ToxicStub
+type ToxicLink []*ToxicStub
 
-func NewProxyLink(proxy *Proxy, input io.Reader, output io.WriteCloser) ProxyLink {
-	link := ProxyLink(make([]*ToxicStub, MaxToxics))
+func NewToxicLink(proxy *Proxy, input io.Reader, output io.WriteCloser) ToxicLink {
+	link := ToxicLink(make([]*ToxicStub, MaxToxics))
 
 	// Initialize the link with ToxicStubs
 	var last io.Reader = input
@@ -30,14 +31,14 @@ func NewProxyLink(proxy *Proxy, input io.Reader, output io.WriteCloser) ProxyLin
 }
 
 // Start the link with the specified toxics
-func (link ProxyLink) Start(toxics []Toxic) {
+func (link ToxicLink) Start(toxics []Toxic) {
 	for i, toxic := range toxics {
 		go toxic.Pipe(link[i])
 	}
 }
 
 // Replace the toxic at the specified index
-func (link ProxyLink) SetToxic(toxic Toxic, index int) {
+func (link ToxicLink) SetToxic(toxic Toxic, index int) {
 	link[index].Interrupt()
 	go toxic.Pipe(link[index])
 }
