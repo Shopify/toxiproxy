@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"math/rand"
 	"time"
@@ -116,7 +117,7 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 // At any time the stream can be interrupted, and the function will return.
 // This copy function is a modified version of io.Copy()
 func toxicCopy(stub *ToxicStub, latency <-chan time.Duration) (written int64, err error) {
-	buf := make([]byte, 32*1024)
+	var buf []byte
 	for {
 		if latency != nil {
 			// Delay the packet for a duration specified by the latency channel.
@@ -126,21 +127,25 @@ func toxicCopy(stub *ToxicStub, latency <-chan time.Duration) (written int64, er
 			case <-stub.interrupt:
 				return written, err
 			}
+			// Read a random packet size
+			// If size == 0, net.TCPConn.Read() will return EOF, so this must be >= 1
+			buf = make([]byte, rand.Intn(32*1024)+1)
 		} else {
 			select {
 			case <-stub.interrupt:
 				return written, err
 			default:
 			}
+			buf = make([]byte, 32*1024)
 		}
-		nr, er := stub.input.Read(buf[0:rand.Intn(len(buf))]) // Read a random packet size
+		nr, er := stub.input.Read(buf)
 		if nr > 0 {
 			nw, ew := stub.output.Write(buf[0:nr])
 			if nw > 0 {
 				written += int64(nw)
 			}
 			if ew != nil {
-				err = ew
+				err = fmt.Errorf("Write error: %v", ew)
 				break
 			}
 			if nr != nw {
@@ -152,7 +157,7 @@ func toxicCopy(stub *ToxicStub, latency <-chan time.Duration) (written int64, er
 			break
 		}
 		if er != nil {
-			err = er
+			err = fmt.Errorf("Read error: %v", er)
 			break
 		}
 	}
