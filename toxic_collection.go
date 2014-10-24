@@ -41,7 +41,8 @@ func (c *ToxicCollection) NewToxicFromJson(name string, data io.Reader) (Toxic, 
 	var toxic Toxic
 	switch name {
 	case "latency":
-		toxic = &LatencyToxic{c.Latency.Enabled, c.Latency.Latency, c.Latency.Jitter}
+		temp := *c.Latency
+		toxic = &temp
 	default:
 		return nil, fmt.Errorf("Bad toxic type: %s", name)
 	}
