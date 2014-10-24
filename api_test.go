@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -92,13 +91,8 @@ func ListToxics(t *testing.T, addr, proxy, direction string) map[string]interfac
 	return toxics
 }
 
-func SetToxic(t *testing.T, addr, proxy, direction, name string, toxic Toxic) map[string]interface{} {
-	body, err := json.Marshal(toxic)
-	if err != nil {
-		t.Fatal("Failed to marshal JSON post data for toxic")
-	}
-
-	resp, err := http.Post(addr+"/proxies/"+proxy+"/"+direction+"/toxics/"+name, "application/json", bytes.NewBuffer(body))
+func SetToxic(t *testing.T, addr, proxy, direction, name string, toxic string) map[string]interface{} {
+	resp, err := http.Post(addr+"/proxies/"+proxy+"/"+direction+"/toxics/"+name, "application/json", strings.NewReader(toxic))
 	if err != nil {
 		t.Fatal("Failed to get index", err)
 	}
@@ -210,7 +204,7 @@ func TestSetToxics(t *testing.T) {
 			t.Fatal("Unable to create proxy")
 		}
 
-		latency := SetToxic(t, addr, "mysql_master", "downstream", "latency", &LatencyToxic{Enabled: true, Latency: 100, Jitter: 10})
+		latency := SetToxic(t, addr, "mysql_master", "downstream", "latency", `{"enabled": true, "latency": 100, "jitter": 10}`)
 		if latency["enabled"] != true {
 			t.Fatal("Latency toxic did not start up")
 		}
@@ -242,6 +236,30 @@ func TestSetToxics(t *testing.T) {
 		}
 		if latency["enabled"] != false {
 			t.Fatal("Upstream toxic should not have been enabled")
+		}
+	})
+}
+
+func TestUpdateToxics(t *testing.T) {
+	WithServer(t, func(addr string) {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
+			t.Fatal("Unable to create proxy")
+		}
+
+		latency := SetToxic(t, addr, "mysql_master", "downstream", "latency", `{"enabled": true, "latency": 100, "jitter": 10}`)
+		if latency["enabled"] != true {
+			t.Fatal("Latency toxic did not start up")
+		}
+		if latency["latency"] != 100.0 || latency["jitter"] != 10.0 {
+			t.Fatal("Latency toxic did not start up with correct settings")
+		}
+
+		latency = SetToxic(t, addr, "mysql_master", "downstream", "latency", `{"latency": 1000}`)
+		if latency["enabled"] != true {
+			t.Fatal("Latency toxic did not stay enabled")
+		}
+		if latency["latency"] != 1000.0 || latency["jitter"] != 10.0 {
+			t.Fatal("Latency toxic did not get updated with the correct settings")
 		}
 	})
 }

@@ -37,11 +37,11 @@ func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 	return collection
 }
 
-func NewToxicFromJson(name string, data io.Reader) (Toxic, error) {
+func (c *ToxicCollection) NewToxicFromJson(name string, data io.Reader) (Toxic, error) {
 	var toxic Toxic
 	switch name {
 	case "latency":
-		toxic = new(LatencyToxic)
+		toxic = c.Latency
 	default:
 		return nil, fmt.Errorf("Bad toxic type: %s", name)
 	}
