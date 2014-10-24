@@ -164,7 +164,7 @@ func (server *server) ToxicSetUpstream(response http.ResponseWriter, request *ht
 		return
 	}
 
-	toxic, err := NewToxicFromJson(vars["toxic"], request.Body)
+	toxic, err := proxy.upToxics.NewToxicFromJson(vars["toxic"], request.Body)
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
 		return
@@ -198,7 +198,7 @@ func (server *server) ToxicSetDownstream(response http.ResponseWriter, request *
 		return
 	}
 
-	toxic, err := NewToxicFromJson(vars["toxic"], request.Body)
+	toxic, err := proxy.downToxics.NewToxicFromJson(vars["toxic"], request.Body)
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
 		return
