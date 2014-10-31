@@ -123,6 +123,11 @@ func (proxy *Proxy) server() {
 				"proxy":    proxy.Listen,
 				"upstream": proxy.Upstream,
 			}).Error("Unable to open connection to upstream")
+			client.Close()
+			if upstream != nil {
+				upstream.Close()
+			}
+			continue
 		}
 
 		proxy.upToxics.StartLink(client, upstream)
