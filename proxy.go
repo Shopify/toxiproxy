@@ -124,9 +124,6 @@ func (proxy *Proxy) server() {
 				"upstream": proxy.Upstream,
 			}).Error("Unable to open connection to upstream")
 			client.Close()
-			if upstream != nil {
-				upstream.Close()
-			}
 			continue
 		}
 
