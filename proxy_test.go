@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"io"
 	"io/ioutil"
 	"net"
 	"testing"
+	"time"
 
 	"gopkg.in/tomb.v1"
 )
@@ -123,6 +125,25 @@ func TestProxySimpleMessage(t *testing.T) {
 			t.Error("Server didn't read correct bytes from client", resp)
 		}
 	})
+}
+
+func TestProxyToDownUpstream(t *testing.T) {
+	proxy := NewTestProxy("test", "localhost:20009")
+	proxy.Start()
+
+	conn, err := net.Dial("tcp", "localhost:20000")
+	if err != nil {
+		t.Error("Unable to dial TCP server", err)
+	}
+
+	// Check to make sure the connection is closed
+	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	_, err = conn.Read(make([]byte, 1))
+	if err != io.EOF {
+		t.Error("Proxy did not close connection when upstream down", err)
+	}
+
+	proxy.Stop()
 }
 
 func TestProxyBigMessage(t *testing.T) {
