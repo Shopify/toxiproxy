@@ -13,7 +13,7 @@ import (
 // Client <-> ToxicStub <-> Upstream
 //
 // Toxic's work in a pipeline fashion, and can be chained together
-// with StreamBuffers. The toxic itself only defines the settings and
+// with channels. The toxic itself only defines the settings and
 // Pipe() function definition, and uses the ToxicStub struct to store
 // per-connection information. This allows the same toxic to be used
 // for multiple connections.
@@ -79,7 +79,7 @@ func (t *LatencyToxic) IsEnabled() bool {
 	return t.Enabled
 }
 
-func (t *LatencyToxic) getDelay() time.Duration {
+func (t *LatencyToxic) delay() time.Duration {
 	// Delay = t.Latency +/- t.Jitter
 	delay := t.Latency
 	jitter := int64(t.Jitter)
@@ -99,7 +99,7 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 				close(stub.output)
 				return
 			}
-			sleep := t.getDelay()
+			sleep := t.delay()
 			select {
 			case <-time.After(sleep):
 				stub.output <- buf

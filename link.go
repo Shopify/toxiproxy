@@ -38,9 +38,9 @@ func NewToxicLink(proxy *Proxy) *ToxicLink {
 }
 
 // Start the link with the specified toxics
-func (link *ToxicLink) Start(toxics []Toxic, input io.Reader, output io.WriteCloser) {
+func (link *ToxicLink) Start(toxics []Toxic, source io.Reader, dest io.WriteCloser) {
 	go func() {
-		bytes, err := io.Copy(link.input, input)
+		bytes, err := io.Copy(link.input, source)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"name":     link.proxy.Name,
@@ -55,7 +55,7 @@ func (link *ToxicLink) Start(toxics []Toxic, input io.Reader, output io.WriteClo
 		go toxic.Pipe(link.stubs[i])
 	}
 	go func() {
-		bytes, err := io.Copy(output, link.output)
+		bytes, err := io.Copy(dest, link.output)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"name":     link.proxy.Name,
@@ -64,7 +64,7 @@ func (link *ToxicLink) Start(toxics []Toxic, input io.Reader, output io.WriteClo
 				"err":      err,
 			}).Warn("Destination terminated")
 		}
-		output.Close()
+		dest.Close()
 	}()
 }
 
