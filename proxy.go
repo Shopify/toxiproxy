@@ -1,6 +1,8 @@
 package main
 
 import (
+	"sync"
+
 	"github.com/Sirupsen/logrus"
 	"gopkg.in/tomb.v1"
 
@@ -14,6 +16,8 @@ import (
 // Client <-> toxiproxy <-> Upstream
 //
 type Proxy struct {
+	sync.Mutex
+
 	Name     string `json:"name"`
 	Listen   string `json:"listen"`
 	Upstream string `json:"upstream"`
@@ -21,7 +25,7 @@ type Proxy struct {
 	started chan error
 
 	tomb        tomb.Tomb
-	connections []net.Conn
+	connections map[string]net.Conn
 	upToxics    *ToxicCollection
 	downToxics  *ToxicCollection
 }
@@ -37,6 +41,7 @@ func NewProxy() *Proxy {
 // `allocate()` on them, sharing this with `NewProxy()`.
 func (proxy *Proxy) allocate() {
 	proxy.started = make(chan error)
+	proxy.connections = make(map[string]net.Conn)
 	proxy.upToxics = NewToxicCollection(proxy)
 	proxy.downToxics = NewToxicCollection(proxy)
 }
@@ -128,10 +133,20 @@ func (proxy *Proxy) server() {
 			continue
 		}
 
-		proxy.upToxics.StartLink(client, upstream)
-		proxy.downToxics.StartLink(upstream, client)
-		proxy.connections = append(proxy.connections, client, upstream)
+		name := client.RemoteAddr().String()
+		proxy.Lock()
+		proxy.connections[name+"client"] = client
+		proxy.connections[name+"upstream"] = upstream
+		proxy.Unlock()
+		proxy.upToxics.StartLink(name+"client", client, upstream)
+		proxy.downToxics.StartLink(name+"upstream", upstream, client)
 	}
+}
+
+func (proxy *Proxy) RemoveConnection(name string) {
+	proxy.Lock()
+	defer proxy.Unlock()
+	delete(proxy.connections, name)
 }
 
 func (proxy *Proxy) Stop() {

@@ -18,12 +18,19 @@ import (
 type ToxicLink struct {
 	stubs  []*ToxicStub
 	proxy  *Proxy
+	toxics *ToxicCollection
 	input  *ChanWriter
 	output *ChanReader
+	closed chan struct{}
 }
 
-func NewToxicLink(proxy *Proxy) *ToxicLink {
-	link := &ToxicLink{stubs: make([]*ToxicStub, MaxToxics), proxy: proxy}
+func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
+	link := &ToxicLink{
+		stubs:  make([]*ToxicStub, MaxToxics),
+		proxy:  proxy,
+		toxics: toxics,
+		closed: make(chan struct{}),
+	}
 
 	// Initialize the link with ToxicStubs
 	last := make(chan []byte)
@@ -38,7 +45,7 @@ func NewToxicLink(proxy *Proxy) *ToxicLink {
 }
 
 // Start the link with the specified toxics
-func (link *ToxicLink) Start(toxics []Toxic, source io.Reader, dest io.WriteCloser) {
+func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser) {
 	go func() {
 		bytes, err := io.Copy(link.input, source)
 		if err != nil {
@@ -51,10 +58,11 @@ func (link *ToxicLink) Start(toxics []Toxic, source io.Reader, dest io.WriteClos
 		}
 		link.input.Close()
 	}()
-	for i, toxic := range toxics {
-		go toxic.Pipe(link.stubs[i])
+	for i, toxic := range link.toxics.toxics {
+		go link.pipe(toxic, link.stubs[i])
 	}
 	go func() {
+		defer close(link.closed)
 		bytes, err := io.Copy(dest, link.output)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
@@ -65,11 +73,27 @@ func (link *ToxicLink) Start(toxics []Toxic, source io.Reader, dest io.WriteClos
 			}).Warn("Destination terminated")
 		}
 		dest.Close()
+		link.toxics.RemoveLink(name)
+		link.proxy.RemoveConnection(name)
 	}()
+}
+
+func (link *ToxicLink) pipe(toxic Toxic, stub *ToxicStub) {
+	if !toxic.Pipe(stub) {
+		// If the toxic will not be restarted, unblock all writes to stub.interrupt
+		// until the link is removed from the list.
+		for {
+			select {
+			case <-stub.interrupt:
+			case <-link.closed:
+				return
+			}
+		}
+	}
 }
 
 // Replace the toxic at the specified index
 func (link *ToxicLink) SetToxic(toxic Toxic, index int) {
 	link.stubs[index].Interrupt()
-	go toxic.Pipe(link.stubs[index])
+	go link.pipe(toxic, link.stubs[index])
 }
