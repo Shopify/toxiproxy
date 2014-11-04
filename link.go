@@ -30,14 +30,10 @@ func NewToxicLink(proxy *Proxy) *ToxicLink {
 	link.input = NewChanWriter(last)
 	for i := 0; i < MaxToxics; i++ {
 		next := make(chan []byte)
-		if i == MaxToxics-1 {
-			link.stubs[i] = NewToxicStub(proxy, last, next)
-			link.output = NewChanReader(next)
-		} else {
-			link.stubs[i] = NewToxicStub(proxy, last, next)
-			last = next
-		}
+		link.stubs[i] = NewToxicStub(proxy, last, next)
+		last = next
 	}
+	link.output = NewChanReader(last)
 	return link
 }
 
