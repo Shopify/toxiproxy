@@ -20,7 +20,9 @@ import (
 
 type Toxic interface {
 	IsEnabled() bool
-	Pipe(*ToxicStub)
+
+	// Returns true if interrupted, false if closed
+	Pipe(*ToxicStub) bool
 }
 
 type ToxicStub struct {
@@ -52,15 +54,15 @@ func (t *NoopToxic) IsEnabled() bool {
 	return true
 }
 
-func (t *NoopToxic) Pipe(stub *ToxicStub) {
+func (t *NoopToxic) Pipe(stub *ToxicStub) bool {
 	for {
 		select {
 		case <-stub.interrupt:
-			return
+			return true
 		case buf := <-stub.input:
 			if buf == nil {
 				close(stub.output)
-				return
+				return false
 			}
 			stub.output <- buf
 		}
@@ -89,15 +91,15 @@ func (t *LatencyToxic) delay() time.Duration {
 	return time.Duration(delay) * time.Millisecond
 }
 
-func (t *LatencyToxic) Pipe(stub *ToxicStub) {
+func (t *LatencyToxic) Pipe(stub *ToxicStub) bool {
 	for {
 		select {
 		case <-stub.interrupt:
-			return
+			return true
 		case buf := <-stub.input:
 			if buf == nil {
 				close(stub.output)
-				return
+				return false
 			}
 			sleep := t.delay()
 			select {
@@ -105,7 +107,7 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 				stub.output <- buf
 			case <-stub.interrupt:
 				stub.output <- buf // Don't drop any data on the floor
-				return
+				return true
 			}
 		}
 	}

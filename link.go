@@ -54,11 +54,11 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		}
 		link.input.Close()
 	}()
+	link.group.Add(1)
 	for i, toxic := range link.toxics.toxics {
 		go link.pipe(toxic, link.stubs[i])
 	}
 	go func() {
-		link.group.Add(1)
 		defer link.group.Done()
 		bytes, err := io.Copy(dest, link.output)
 		if err != nil {
@@ -76,21 +76,22 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 }
 
 func (link *ToxicLink) pipe(toxic Toxic, stub *ToxicStub) {
-	link.group.Add(1)
-	toxic.Pipe(stub)
-	link.group.Done()
-	done := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-stub.interrupt:
-			case <-done:
-				return
+	if !toxic.Pipe(stub) {
+		// If the toxic will not be restarted, unblock all writes to stub.interrupt
+		// until the link is removed from the list.
+		done := make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-stub.interrupt:
+				case <-done:
+					return
+				}
 			}
-		}
-	}()
-	link.group.Wait()
-	close(done)
+		}()
+		link.group.Wait()
+		close(done)
+	}
 }
 
 // Replace the toxic at the specified index
