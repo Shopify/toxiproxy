@@ -15,7 +15,7 @@ type ToxicCollection struct {
 
 	proxy  *Proxy
 	toxics []Toxic
-	links  []ToxicLink
+	links  []*ToxicLink
 }
 
 // Constants used to define which order toxics are chained in.
@@ -72,7 +72,7 @@ func (c *ToxicCollection) SetToxic(toxic Toxic) error {
 	group := sync.WaitGroup{}
 	for _, link := range c.links {
 		group.Add(1)
-		go func(link ToxicLink) {
+		go func(link *ToxicLink) {
 			defer group.Done()
 			link.SetToxic(toxic, index)
 		}(link)
@@ -85,7 +85,7 @@ func (c *ToxicCollection) StartLink(input io.Reader, output io.WriteCloser) {
 	c.Lock()
 	defer c.Unlock()
 
-	link := NewToxicLink(c.proxy, input, output)
-	link.Start(c.toxics)
+	link := NewToxicLink(c.proxy)
+	link.Start(c.toxics, input, output)
 	c.links = append(c.links, link)
 }

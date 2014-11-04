@@ -1,12 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"io"
 	"math/rand"
 	"time"
-
-	"github.com/Sirupsen/logrus"
 )
 
 // A Toxic is something that can be attatched to a link to modify the way
@@ -29,12 +25,12 @@ type Toxic interface {
 
 type ToxicStub struct {
 	proxy     *Proxy
-	input     io.Reader
-	output    io.WriteCloser
+	input     <-chan []byte
+	output    chan<- []byte
 	interrupt chan struct{}
 }
 
-func NewToxicStub(proxy *Proxy, input io.Reader, output io.WriteCloser) *ToxicStub {
+func NewToxicStub(proxy *Proxy, input <-chan []byte, output chan<- []byte) *ToxicStub {
 	return &ToxicStub{
 		proxy:     proxy,
 		interrupt: make(chan struct{}),
@@ -57,15 +53,17 @@ func (t *NoopToxic) IsEnabled() bool {
 }
 
 func (t *NoopToxic) Pipe(stub *ToxicStub) {
-	bytes, err := toxicCopy(stub, nil)
-	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"toxic":    "NoopToxic",
-			"name":     stub.proxy.Name,
-			"upstream": stub.proxy.Upstream,
-			"bytes":    bytes,
-			"err":      err,
-		}).Warn("Client or source terminated")
+	for {
+		select {
+		case <-stub.interrupt:
+			return
+		case buf := <-stub.input:
+			if buf == nil {
+				close(stub.output)
+				return
+			}
+			stub.output <- buf
+		}
 	}
 }
 
@@ -81,86 +79,34 @@ func (t *LatencyToxic) IsEnabled() bool {
 	return t.Enabled
 }
 
+func (t *LatencyToxic) getDelay() time.Duration {
+	// Delay = t.Latency +/- t.Jitter
+	delay := t.Latency
+	jitter := int64(t.Jitter)
+	if jitter > 0 {
+		delay += rand.Int63n(jitter*2) - jitter
+	}
+	return time.Duration(delay) * time.Millisecond
+}
+
 func (t *LatencyToxic) Pipe(stub *ToxicStub) {
-	latency := make(chan time.Duration)
-	done := make(chan struct{})
-	go func() {
-		for {
-			// Delay = t.Latency +/- t.Jitter
-			delay := t.Latency
-			jitter := int64(t.Jitter)
-			if jitter > 0 {
-				delay += rand.Int63n(jitter*2) - jitter
+	for {
+		select {
+		case <-stub.interrupt:
+			return
+		case buf := <-stub.input:
+			if buf == nil {
+				close(stub.output)
+				return
 			}
+			sleep := t.getDelay()
 			select {
-			case latency <- time.Duration(delay) * time.Millisecond:
-			case <-done:
+			case <-time.After(sleep):
+				stub.output <- buf
+			case <-stub.interrupt:
+				stub.output <- buf // Don't drop any data on the floor
 				return
 			}
 		}
-	}()
-	bytes, err := toxicCopy(stub, latency)
-	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"toxic":    "LatencyToxic",
-			"name":     stub.proxy.Name,
-			"upstream": stub.proxy.Upstream,
-			"bytes":    bytes,
-			"err":      err,
-		}).Warn("Client or source terminated")
 	}
-	close(done) // Stop latency goroutine
-}
-
-// toxicCopy() breaks up the input stream into random packets of size 1-32k bytes. Each
-// packet is then delayed for a time specified by the latency channel.
-// At any time the stream can be interrupted, and the function will return.
-// This copy function is a modified version of io.Copy()
-func toxicCopy(stub *ToxicStub, latency <-chan time.Duration) (written int64, err error) {
-	var buf []byte
-	for {
-		if latency != nil {
-			// Delay the packet for a duration specified by the latency channel.
-			sleep := <-latency
-			select {
-			case <-time.After(sleep):
-			case <-stub.interrupt:
-				return written, err
-			}
-			// Read a random packet size
-			// If size == 0, net.TCPConn.Read() will return EOF, so this must be >= 1
-			buf = make([]byte, rand.Intn(32*1024)+1)
-		} else {
-			select {
-			case <-stub.interrupt:
-				return written, err
-			default:
-			}
-			buf = make([]byte, 32*1024)
-		}
-		nr, er := stub.input.Read(buf)
-		if nr > 0 {
-			nw, ew := stub.output.Write(buf[0:nr])
-			if nw > 0 {
-				written += int64(nw)
-			}
-			if ew != nil {
-				err = fmt.Errorf("Write error: %v", ew)
-				break
-			}
-			if nr != nw {
-				err = io.ErrShortWrite
-				break
-			}
-		}
-		if er == io.EOF {
-			break
-		}
-		if er != nil {
-			err = fmt.Errorf("Read error: %v", er)
-			break
-		}
-	}
-	stub.output.Close()
-	return written, err
 }

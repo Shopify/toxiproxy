@@ -76,11 +76,14 @@ func AssertDeltaTime(t *testing.T, message string, actual, expected, delta time.
 	}
 	if diff > delta {
 		t.Errorf("[%s] Time was more than %v off: got %v expected %v", message, delta, actual, expected)
+	} else {
+		t.Logf("[%s] Time was correct: %v (expected %v)", message, actual, expected)
 	}
 }
 
 func DoLatencyTest(t *testing.T, upLatency, downLatency *LatencyToxic) {
 	WithEchoProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
+		t.Logf("Using latency: Up: %dms +/- %dms, Down: %dms +/- %dms", upLatency.Latency, upLatency.Jitter, downLatency.Latency, downLatency.Jitter)
 		proxy.upToxics.SetToxic(upLatency)
 		proxy.downToxics.SetToxic(downLatency)
 
