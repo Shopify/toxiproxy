@@ -11,7 +11,7 @@ import (
 )
 
 func WithEchoServer(t *testing.T, f func(string, chan []byte)) {
-	ln, err := net.Listen("tcp", "localhost:20002")
+	ln, err := net.Listen("tcp", "localhost:")
 	if err != nil {
 		t.Fatal("Failed to create TCP server", err)
 	}
@@ -58,7 +58,7 @@ func WithEchoProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, pr
 		proxy := NewTestProxy("test", upstream)
 		proxy.Start()
 
-		conn, err := net.Dial("tcp", "localhost:20000")
+		conn, err := net.Dial("tcp", proxy.Listen)
 		if err != nil {
 			t.Error("Unable to dial TCP server", err)
 		}

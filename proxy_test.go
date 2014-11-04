@@ -16,14 +16,14 @@ func NewTestProxy(name, upstream string) *Proxy {
 	proxy := NewProxy()
 
 	proxy.Name = name
-	proxy.Listen = "localhost:20000"
+	proxy.Listen = "localhost:"
 	proxy.Upstream = upstream
 
 	return proxy
 }
 
 func WithTCPServer(t *testing.T, f func(string, chan []byte)) {
-	ln, err := net.Listen("tcp", "localhost:20002")
+	ln, err := net.Listen("tcp", "localhost:")
 	if err != nil {
 		t.Fatal("Failed to create TCP server", err)
 	}
@@ -95,7 +95,7 @@ func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, pro
 		proxy := NewTestProxy("test", upstream)
 		proxy.Start()
 
-		conn, err := net.Dial("tcp", "localhost:20000")
+		conn, err := net.Dial("tcp", proxy.Listen)
 		if err != nil {
 			t.Error("Unable to dial TCP server", err)
 		}
@@ -131,7 +131,7 @@ func TestProxyToDownUpstream(t *testing.T) {
 	proxy := NewTestProxy("test", "localhost:20009")
 	proxy.Start()
 
-	conn, err := net.Dial("tcp", "localhost:20000")
+	conn, err := net.Dial("tcp", proxy.Listen)
 	if err != nil {
 		t.Error("Unable to dial TCP server", err)
 	}
@@ -209,6 +209,7 @@ func TestClosingProxyMultipleTimes(t *testing.T) {
 func TestStartTwoProxiesOnSameAddress(t *testing.T) {
 	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
 		proxy2 := NewTestProxy("proxy_2", "localhost:3306")
+		proxy2.Listen = proxy.Listen
 		if err := proxy2.Start(); err == nil {
 			t.Fatal("Expected an err back from start")
 		}
