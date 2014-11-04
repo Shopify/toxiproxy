@@ -15,7 +15,7 @@ type ToxicCollection struct {
 
 	proxy  *Proxy
 	toxics []Toxic
-	links  []*ToxicLink
+	links  map[string]*ToxicLink
 }
 
 // Constants used to define which order toxics are chained in.
@@ -30,6 +30,7 @@ func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 		Latency: new(LatencyToxic),
 		proxy:   proxy,
 		toxics:  make([]Toxic, MaxToxics),
+		links:   make(map[string]*ToxicLink),
 	}
 	for i := 0; i < MaxToxics; i++ {
 		collection.toxics[i] = collection.noop
@@ -81,11 +82,17 @@ func (c *ToxicCollection) SetToxic(toxic Toxic) error {
 	return nil
 }
 
-func (c *ToxicCollection) StartLink(input io.Reader, output io.WriteCloser) {
+func (c *ToxicCollection) StartLink(name string, input io.Reader, output io.WriteCloser) {
 	c.Lock()
 	defer c.Unlock()
 
-	link := NewToxicLink(c.proxy)
-	link.Start(c.toxics, input, output)
-	c.links = append(c.links, link)
+	link := NewToxicLink(c.proxy, c)
+	link.Start(name, input, output)
+	c.links[name] = link
+}
+
+func (c *ToxicCollection) RemoveLink(name string) {
+	c.Lock()
+	defer c.Unlock()
+	delete(c.links, name)
 }

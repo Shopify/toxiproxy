@@ -127,6 +127,9 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *LatencyToxic) {
 			time.Duration(upLatency.Jitter+downLatency.Jitter+10)*time.Millisecond,
 		)
 
+		proxy.upToxics.SetToxic(&LatencyToxic{Enabled: false})
+		proxy.downToxics.SetToxic(&LatencyToxic{Enabled: false})
+
 		err = conn.Close()
 		if err != nil {
 			t.Error("Failed to close TCP connection", err)
