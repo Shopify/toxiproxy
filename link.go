@@ -18,8 +18,8 @@ import (
 type ToxicLink struct {
 	stubs  []*ToxicStub
 	proxy  *Proxy
-	input  ChanWriter
-	output ChanReader
+	input  *ChanWriter
+	output *ChanReader
 }
 
 func NewToxicLink(proxy *Proxy) *ToxicLink {
@@ -40,7 +40,7 @@ func NewToxicLink(proxy *Proxy) *ToxicLink {
 // Start the link with the specified toxics
 func (link *ToxicLink) Start(toxics []Toxic, input io.Reader, output io.WriteCloser) {
 	go func() {
-		bytes, err := PacketizeCopy(link.input, input)
+		bytes, err := io.Copy(link.input, input)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"name":     link.proxy.Name,
