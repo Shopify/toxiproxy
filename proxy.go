@@ -55,6 +55,7 @@ func (proxy *Proxy) server() {
 		return
 	}
 
+	proxy.Listen = ln.Addr().String()
 	proxy.started <- nil
 
 	logrus.WithFields(logrus.Fields{

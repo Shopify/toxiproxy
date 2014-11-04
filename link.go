@@ -1,6 +1,10 @@
 package main
 
-import "io"
+import (
+	"io"
+
+	"github.com/Sirupsen/logrus"
+)
 
 // ToxicLinks are single direction pipelines that connects an input and output via
 // a chain of toxics. There is a fixed number of toxics in the chain, such that a
@@ -11,34 +15,61 @@ import "io"
 //             v           v           v
 // Input > ToxicStub > ToxicStub > ToxicStub > Output
 //
-type ToxicLink []*ToxicStub
+type ToxicLink struct {
+	stubs  []*ToxicStub
+	proxy  *Proxy
+	input  *ChanWriter
+	output *ChanReader
+}
 
-func NewToxicLink(proxy *Proxy, input io.Reader, output io.WriteCloser) ToxicLink {
-	link := ToxicLink(make([]*ToxicStub, MaxToxics))
+func NewToxicLink(proxy *Proxy) *ToxicLink {
+	link := &ToxicLink{stubs: make([]*ToxicStub, MaxToxics), proxy: proxy}
 
 	// Initialize the link with ToxicStubs
-	var last io.Reader = input
+	last := make(chan []byte)
+	link.input = NewChanWriter(last)
 	for i := 0; i < MaxToxics; i++ {
-		if i == MaxToxics-1 {
-			link[i] = NewToxicStub(proxy, last, output)
-		} else {
-			r, w := io.Pipe()
-			link[i] = NewToxicStub(proxy, last, w)
-			last = r
-		}
+		next := make(chan []byte)
+		link.stubs[i] = NewToxicStub(proxy, last, next)
+		last = next
 	}
+	link.output = NewChanReader(last)
 	return link
 }
 
 // Start the link with the specified toxics
-func (link ToxicLink) Start(toxics []Toxic) {
+func (link *ToxicLink) Start(toxics []Toxic, source io.Reader, dest io.WriteCloser) {
+	go func() {
+		bytes, err := io.Copy(link.input, source)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"name":     link.proxy.Name,
+				"upstream": link.proxy.Upstream,
+				"bytes":    bytes,
+				"err":      err,
+			}).Warn("Source terminated")
+		}
+		link.input.Close()
+	}()
 	for i, toxic := range toxics {
-		go toxic.Pipe(link[i])
+		go toxic.Pipe(link.stubs[i])
 	}
+	go func() {
+		bytes, err := io.Copy(dest, link.output)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"name":     link.proxy.Name,
+				"upstream": link.proxy.Upstream,
+				"bytes":    bytes,
+				"err":      err,
+			}).Warn("Destination terminated")
+		}
+		dest.Close()
+	}()
 }
 
 // Replace the toxic at the specified index
-func (link ToxicLink) SetToxic(toxic Toxic, index int) {
-	link[index].Interrupt()
-	go toxic.Pipe(link[index])
+func (link *ToxicLink) SetToxic(toxic Toxic, index int) {
+	link.stubs[index].Interrupt()
+	go toxic.Pipe(link.stubs[index])
 }
