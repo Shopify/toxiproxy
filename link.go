@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-	"sync"
 
 	"github.com/Sirupsen/logrus"
 )
@@ -22,7 +21,7 @@ type ToxicLink struct {
 	toxics *ToxicCollection
 	input  *ChanWriter
 	output *ChanReader
-	group  sync.WaitGroup
+	closed chan struct{}
 }
 
 func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
@@ -54,12 +53,11 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		}
 		link.input.Close()
 	}()
-	link.group.Add(1)
 	for i, toxic := range link.toxics.toxics {
 		go link.pipe(toxic, link.stubs[i])
 	}
 	go func() {
-		defer link.group.Done()
+		defer close(link.closed)
 		bytes, err := io.Copy(dest, link.output)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
@@ -79,18 +77,15 @@ func (link *ToxicLink) pipe(toxic Toxic, stub *ToxicStub) {
 	if !toxic.Pipe(stub) {
 		// If the toxic will not be restarted, unblock all writes to stub.interrupt
 		// until the link is removed from the list.
-		done := make(chan struct{})
 		go func() {
 			for {
 				select {
 				case <-stub.interrupt:
-				case <-done:
+				case <-link.closed:
 					return
 				}
 			}
 		}()
-		link.group.Wait()
-		close(done)
 	}
 }
 
