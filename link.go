@@ -25,7 +25,12 @@ type ToxicLink struct {
 }
 
 func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
-	link := &ToxicLink{stubs: make([]*ToxicStub, MaxToxics), proxy: proxy, toxics: toxics}
+	link := &ToxicLink{
+		stubs:  make([]*ToxicStub, MaxToxics),
+		proxy:  proxy,
+		toxics: toxics,
+		closed: make(chan struct{}),
+	}
 
 	// Initialize the link with ToxicStubs
 	last := make(chan []byte)
