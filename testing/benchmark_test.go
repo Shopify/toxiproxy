@@ -8,17 +8,17 @@ import (
 
 // Benchmark numbers:
 //
-// 1x NoopToxic:
-//     BenchmarkDirect             5000            686886 ns/op
-//     BenchmarkProxy              1000           2520665 ns/op
-//     BenchmarkDirectSmall        5000            442163 ns/op
-//     BenchmarkProxySmall         2000            836634 ns/op
+// 1x Toxics:
+//     BenchmarkDirect             2000            694467 ns/op
+//     BenchmarkProxy              2000           1136668 ns/op
+//     BenchmarkDirectSmall        5000            423319 ns/op
+//     BenchmarkProxySmall         2000            769262 ns/op
 //
-// 5x NoopToxic:
-//     BenchmarkDirect             5000            698202 ns/op
-//     BenchmarkProxy               500           3058915 ns/op
-//     BenchmarkDirectSmall        5000            454142 ns/op
-//     BenchmarkProxySmall         2000            816412 ns/op
+// 5x Toxics:
+//     BenchmarkDirect             5000            695102 ns/op
+//     BenchmarkProxy              2000           1232454 ns/op
+//     BenchmarkDirectSmall        5000            424712 ns/op
+//     BenchmarkProxySmall         2000            798016 ns/op
 
 // Test the backend server directly, use 64k random endpoint
 func BenchmarkDirect(b *testing.B) {
