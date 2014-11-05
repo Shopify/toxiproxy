@@ -14,6 +14,7 @@ package main
 // for multiple connections.
 
 type Toxic interface {
+	Name() string
 	IsEnabled() bool
 
 	// Returns true if interrupted, false if closed

@@ -9,6 +9,10 @@ type SlowCloseToxic struct {
 	Delay int64 `json:"delay"`
 }
 
+func (t *SlowCloseToxic) Name() string {
+	return "slow_close"
+}
+
 func (t *SlowCloseToxic) IsEnabled() bool {
 	return t.Enabled
 }

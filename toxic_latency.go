@@ -13,6 +13,10 @@ type LatencyToxic struct {
 	Jitter  int64 `json:"jitter"`
 }
 
+func (t *LatencyToxic) Name() string {
+	return "latency"
+}
+
 func (t *LatencyToxic) IsEnabled() bool {
 	return t.Enabled
 }

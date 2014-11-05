@@ -120,7 +120,7 @@ func (server *server) ToxicIndexUpstream(response http.ResponseWriter, request *
 		return
 	}
 
-	data, err := json.Marshal(proxy.upToxics)
+	data, err := json.Marshal(proxy.upToxics.GetToxicMap())
 	if err != nil {
 		http.Error(response, fmt.Sprint(err), http.StatusInternalServerError)
 		return
@@ -142,7 +142,7 @@ func (server *server) ToxicIndexDownstream(response http.ResponseWriter, request
 		return
 	}
 
-	data, err := json.Marshal(proxy.downToxics)
+	data, err := json.Marshal(proxy.downToxics.GetToxicMap())
 	if err != nil {
 		http.Error(response, fmt.Sprint(err), http.StatusInternalServerError)
 		return
@@ -164,15 +164,9 @@ func (server *server) ToxicSetUpstream(response http.ResponseWriter, request *ht
 		return
 	}
 
-	toxic, err := proxy.upToxics.NewToxicFromJson(vars["toxic"], request.Body)
+	toxic, err := proxy.upToxics.SetToxicJson(vars["toxic"], request.Body)
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
-	err = proxy.upToxics.SetToxic(toxic)
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -198,15 +192,9 @@ func (server *server) ToxicSetDownstream(response http.ResponseWriter, request *
 		return
 	}
 
-	toxic, err := proxy.downToxics.NewToxicFromJson(vars["toxic"], request.Body)
+	toxic, err := proxy.downToxics.SetToxicJson(vars["toxic"], request.Body)
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
-	err = proxy.downToxics.SetToxic(toxic)
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 

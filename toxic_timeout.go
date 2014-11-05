@@ -10,6 +10,10 @@ type TimeoutToxic struct {
 	Timeout int64 `json:"timeout"`
 }
 
+func (t *TimeoutToxic) Name() string {
+	return "timeout"
+}
+
 func (t *TimeoutToxic) IsEnabled() bool {
 	return t.Enabled
 }
