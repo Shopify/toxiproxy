@@ -6,7 +6,6 @@ import (
 	"net"
 	"testing"
 	"time"
-
 	"gopkg.in/tomb.v1"
 )
 
@@ -127,8 +126,10 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *LatencyToxic) {
 			time.Duration(upLatency.Jitter+downLatency.Jitter+10)*time.Millisecond,
 		)
 
-		proxy.upToxics.SetToxic(&LatencyToxic{Enabled: false})
-		proxy.downToxics.SetToxic(&LatencyToxic{Enabled: false})
+		upLatency.Enabled = false
+		downLatency.Enabled = false
+		proxy.upToxics.SetToxic(upLatency)
+		proxy.downToxics.SetToxic(downLatency)
 
 		err = conn.Close()
 		if err != nil {

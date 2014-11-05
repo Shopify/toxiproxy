@@ -10,8 +10,10 @@ import (
 type ToxicCollection struct {
 	sync.Mutex
 
-	noop    *NoopToxic
-	Latency *LatencyToxic `json:"latency"`
+	noop      *NoopToxic
+	SlowClose *SlowCloseToxic `json:"slow_close"`
+	Latency   *LatencyToxic   `json:"latency"`
+	Timeout   *TimeoutToxic   `json:"timeout"`
 
 	proxy  *Proxy
 	toxics []Toxic
@@ -20,17 +22,21 @@ type ToxicCollection struct {
 
 // Constants used to define which order toxics are chained in.
 const (
-	LatencyIndex = iota
+	TimeoutIndex = iota
+	LatencyIndex
+	SlowCloseIndex
 	MaxToxics
 )
 
 func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 	collection := &ToxicCollection{
-		noop:    new(NoopToxic),
-		Latency: new(LatencyToxic),
-		proxy:   proxy,
-		toxics:  make([]Toxic, MaxToxics),
-		links:   make(map[string]*ToxicLink),
+		noop:      new(NoopToxic),
+		SlowClose: new(SlowCloseToxic),
+		Latency:   new(LatencyToxic),
+		Timeout:   new(TimeoutToxic),
+		proxy:     proxy,
+		toxics:    make([]Toxic, MaxToxics),
+		links:     make(map[string]*ToxicLink),
 	}
 	for i := 0; i < MaxToxics; i++ {
 		collection.toxics[i] = collection.noop
@@ -41,8 +47,14 @@ func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 func (c *ToxicCollection) NewToxicFromJson(name string, data io.Reader) (Toxic, error) {
 	var toxic Toxic
 	switch name {
+	case "slow_close":
+		temp := *c.SlowClose
+		toxic = &temp
 	case "latency":
 		temp := *c.Latency
+		toxic = &temp
+	case "timeout":
+		temp := *c.Timeout
 		toxic = &temp
 	default:
 		return nil, fmt.Errorf("Bad toxic type: %s", name)
@@ -57,9 +69,15 @@ func (c *ToxicCollection) SetToxic(toxic Toxic) error {
 
 	var index int
 	switch v := toxic.(type) {
+	case *SlowCloseToxic:
+		c.SlowClose = v
+		index = SlowCloseIndex
 	case *LatencyToxic:
 		c.Latency = v
 		index = LatencyIndex
+	case *TimeoutToxic:
+		c.Timeout = v
+		index = TimeoutIndex
 	default:
 		return fmt.Errorf("Unknown toxic type: %v", toxic)
 	}

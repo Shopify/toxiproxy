@@ -37,7 +37,7 @@ func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
 	link.input = NewChanWriter(last)
 	for i := 0; i < MaxToxics; i++ {
 		next := make(chan []byte)
-		link.stubs[i] = NewToxicStub(proxy, last, next)
+		link.stubs[i] = NewToxicStub(last, next)
 		last = next
 	}
 	link.output = NewChanReader(last)

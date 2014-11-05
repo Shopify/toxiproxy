@@ -1,10 +1,5 @@
 package main
 
-import (
-	"math/rand"
-	"time"
-)
-
 // A Toxic is something that can be attatched to a link to modify the way
 // data can be passed through (for example, by adding latency)
 //
@@ -26,15 +21,13 @@ type Toxic interface {
 }
 
 type ToxicStub struct {
-	proxy     *Proxy
 	input     <-chan []byte
 	output    chan<- []byte
 	interrupt chan struct{}
 }
 
-func NewToxicStub(proxy *Proxy, input <-chan []byte, output chan<- []byte) *ToxicStub {
+func NewToxicStub(input <-chan []byte, output chan<- []byte) *ToxicStub {
 	return &ToxicStub{
-		proxy:     proxy,
 		interrupt: make(chan struct{}),
 		input:     input,
 		output:    output,
@@ -45,70 +38,4 @@ func NewToxicStub(proxy *Proxy, input <-chan []byte, output chan<- []byte) *Toxi
 // can be replaced or removed.
 func (s *ToxicStub) Interrupt() {
 	s.interrupt <- struct{}{}
-}
-
-// The NoopToxic passes all data through without any toxic effects.
-type NoopToxic struct{}
-
-func (t *NoopToxic) IsEnabled() bool {
-	return true
-}
-
-func (t *NoopToxic) Pipe(stub *ToxicStub) bool {
-	for {
-		select {
-		case <-stub.interrupt:
-			return true
-		case buf := <-stub.input:
-			if buf == nil {
-				close(stub.output)
-				return false
-			}
-			stub.output <- buf
-		}
-	}
-}
-
-// The LatencyToxic passes data through with the specified latency and jitter added.
-type LatencyToxic struct {
-	Enabled bool `json:"enabled"`
-	// Times in milliseconds
-	Latency int64 `json:"latency"`
-	Jitter  int64 `json:"jitter"`
-}
-
-func (t *LatencyToxic) IsEnabled() bool {
-	return t.Enabled
-}
-
-func (t *LatencyToxic) delay() time.Duration {
-	// Delay = t.Latency +/- t.Jitter
-	delay := t.Latency
-	jitter := int64(t.Jitter)
-	if jitter > 0 {
-		delay += rand.Int63n(jitter*2) - jitter
-	}
-	return time.Duration(delay) * time.Millisecond
-}
-
-func (t *LatencyToxic) Pipe(stub *ToxicStub) bool {
-	for {
-		select {
-		case <-stub.interrupt:
-			return true
-		case buf := <-stub.input:
-			if buf == nil {
-				close(stub.output)
-				return false
-			}
-			sleep := t.delay()
-			select {
-			case <-time.After(sleep):
-				stub.output <- buf
-			case <-stub.interrupt:
-				stub.output <- buf // Don't drop any data on the floor
-				return true
-			}
-		}
-	}
 }
