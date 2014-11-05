@@ -2,8 +2,6 @@ package main
 
 import (
 	"io"
-
-	t "github.com/Shopify/toxiproxy/toxics"
 	"github.com/Sirupsen/logrus"
 )
 
@@ -17,7 +15,7 @@ import (
 // Input > ToxicStub > ToxicStub > ToxicStub > Output
 //
 type ToxicLink struct {
-	stubs  []*t.ToxicStub
+	stubs  []*ToxicStub
 	proxy  *Proxy
 	toxics *ToxicCollection
 	input  *ChanWriter
@@ -27,7 +25,7 @@ type ToxicLink struct {
 
 func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
 	link := &ToxicLink{
-		stubs:  make([]*t.ToxicStub, t.MaxToxics),
+		stubs:  make([]*ToxicStub, MaxToxics),
 		proxy:  proxy,
 		toxics: toxics,
 		closed: make(chan struct{}),
@@ -36,9 +34,9 @@ func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
 	// Initialize the link with ToxicStubs
 	last := make(chan []byte)
 	link.input = NewChanWriter(last)
-	for i := 0; i < t.MaxToxics; i++ {
+	for i := 0; i < MaxToxics; i++ {
 		next := make(chan []byte)
-		link.stubs[i] = t.NewToxicStub(last, next)
+		link.stubs[i] = NewToxicStub(last, next)
 		last = next
 	}
 	link.output = NewChanReader(last)
@@ -79,7 +77,7 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 	}()
 }
 
-func (link *ToxicLink) pipe(toxic t.Toxic, stub *t.ToxicStub) {
+func (link *ToxicLink) pipe(toxic Toxic, stub *ToxicStub) {
 	if !toxic.Pipe(stub) {
 		// If the toxic will not be restarted, unblock all writes to stub.interrupt
 		// until the link is removed from the list.
@@ -88,7 +86,7 @@ func (link *ToxicLink) pipe(toxic t.Toxic, stub *t.ToxicStub) {
 }
 
 // Replace the toxic at the specified index
-func (link *ToxicLink) SetToxic(toxic t.Toxic, index int) {
+func (link *ToxicLink) SetToxic(toxic Toxic, index int) {
 	link.stubs[index].Interrupt()
 	go link.pipe(toxic, link.stubs[index])
 }

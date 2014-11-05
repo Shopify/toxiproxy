@@ -5,41 +5,47 @@ import (
 	"fmt"
 	"io"
 	"sync"
-
-	t "github.com/Shopify/toxiproxy/toxics"
 )
 
 type ToxicCollection struct {
 	sync.Mutex
 
-	noop      *t.NoopToxic
-	SlowClose *t.SlowCloseToxic `json:"slow_close"`
-	Latency   *t.LatencyToxic   `json:"latency"`
-	Timeout   *t.TimeoutToxic   `json:"timeout"`
+	noop      *NoopToxic
+	SlowClose *SlowCloseToxic `json:"slow_close"`
+	Latency   *LatencyToxic   `json:"latency"`
+	Timeout   *TimeoutToxic   `json:"timeout"`
 
 	proxy  *Proxy
-	toxics []t.Toxic
+	toxics []Toxic
 	links  map[string]*ToxicLink
 }
 
+// Constants used to define which order toxics are chained in.
+const (
+	TimeoutIndex = iota
+	LatencyIndex
+	SlowCloseIndex
+	MaxToxics
+)
+
 func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 	collection := &ToxicCollection{
-		noop:      new(t.NoopToxic),
-		SlowClose: new(t.SlowCloseToxic),
-		Latency:   new(t.LatencyToxic),
-		Timeout:   new(t.TimeoutToxic),
+		noop:      new(NoopToxic),
+		SlowClose: new(SlowCloseToxic),
+		Latency:   new(LatencyToxic),
+		Timeout:   new(TimeoutToxic),
 		proxy:     proxy,
-		toxics:    make([]t.Toxic, t.MaxToxics),
+		toxics:    make([]Toxic, MaxToxics),
 		links:     make(map[string]*ToxicLink),
 	}
-	for i := 0; i < t.MaxToxics; i++ {
+	for i := 0; i < MaxToxics; i++ {
 		collection.toxics[i] = collection.noop
 	}
 	return collection
 }
 
-func (c *ToxicCollection) NewToxicFromJson(name string, data io.Reader) (t.Toxic, error) {
-	var toxic t.Toxic
+func (c *ToxicCollection) NewToxicFromJson(name string, data io.Reader) (Toxic, error) {
+	var toxic Toxic
 	switch name {
 	case "slow_close":
 		temp := *c.SlowClose
@@ -57,21 +63,21 @@ func (c *ToxicCollection) NewToxicFromJson(name string, data io.Reader) (t.Toxic
 	return toxic, err
 }
 
-func (c *ToxicCollection) SetToxic(toxic t.Toxic) error {
+func (c *ToxicCollection) SetToxic(toxic Toxic) error {
 	c.Lock()
 	defer c.Unlock()
 
 	var index int
 	switch v := toxic.(type) {
-	case *t.SlowCloseToxic:
+	case *SlowCloseToxic:
 		c.SlowClose = v
-		index = t.SlowCloseIndex
-	case *t.LatencyToxic:
+		index = SlowCloseIndex
+	case *LatencyToxic:
 		c.Latency = v
-		index = t.LatencyIndex
-	case *t.TimeoutToxic:
+		index = LatencyIndex
+	case *TimeoutToxic:
 		c.Timeout = v
-		index = t.TimeoutIndex
+		index = TimeoutIndex
 	default:
 		return fmt.Errorf("Unknown toxic type: %v", toxic)
 	}

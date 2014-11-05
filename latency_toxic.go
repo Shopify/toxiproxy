@@ -1,4 +1,4 @@
-package toxics
+package main
 
 import (
 	"math/rand"

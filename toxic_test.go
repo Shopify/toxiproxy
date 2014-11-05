@@ -6,8 +6,6 @@ import (
 	"net"
 	"testing"
 	"time"
-
-	"github.com/Shopify/toxiproxy/toxics"
 	"gopkg.in/tomb.v1"
 )
 
@@ -82,7 +80,7 @@ func AssertDeltaTime(t *testing.T, message string, actual, expected, delta time.
 	}
 }
 
-func DoLatencyTest(t *testing.T, upLatency, downLatency *toxics.LatencyToxic) {
+func DoLatencyTest(t *testing.T, upLatency, downLatency *LatencyToxic) {
 	WithEchoProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
 		t.Logf("Using latency: Up: %dms +/- %dms, Down: %dms +/- %dms", upLatency.Latency, upLatency.Jitter, downLatency.Latency, downLatency.Jitter)
 		proxy.upToxics.SetToxic(upLatency)
@@ -141,21 +139,21 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *toxics.LatencyToxic) {
 }
 
 func TestUpstreamLatency(t *testing.T) {
-	DoLatencyTest(t, &toxics.LatencyToxic{Enabled: true, Latency: 100}, &toxics.LatencyToxic{Enabled: false})
+	DoLatencyTest(t, &LatencyToxic{Enabled: true, Latency: 100}, &LatencyToxic{Enabled: false})
 }
 
 func TestDownstreamLatency(t *testing.T) {
-	DoLatencyTest(t, &toxics.LatencyToxic{Enabled: false}, &toxics.LatencyToxic{Enabled: true, Latency: 100})
+	DoLatencyTest(t, &LatencyToxic{Enabled: false}, &LatencyToxic{Enabled: true, Latency: 100})
 }
 
 func TestFullstreamLatencyEven(t *testing.T) {
-	DoLatencyTest(t, &toxics.LatencyToxic{Enabled: true, Latency: 100}, &toxics.LatencyToxic{Enabled: true, Latency: 100})
+	DoLatencyTest(t, &LatencyToxic{Enabled: true, Latency: 100}, &LatencyToxic{Enabled: true, Latency: 100})
 }
 
 func TestFullstreamLatencyBiasUp(t *testing.T) {
-	DoLatencyTest(t, &toxics.LatencyToxic{Enabled: true, Latency: 1000}, &toxics.LatencyToxic{Enabled: true, Latency: 100})
+	DoLatencyTest(t, &LatencyToxic{Enabled: true, Latency: 1000}, &LatencyToxic{Enabled: true, Latency: 100})
 }
 
 func TestFullstreamLatencyBiasDown(t *testing.T) {
-	DoLatencyTest(t, &toxics.LatencyToxic{Enabled: true, Latency: 100}, &toxics.LatencyToxic{Enabled: true, Latency: 1000})
+	DoLatencyTest(t, &LatencyToxic{Enabled: true, Latency: 100}, &LatencyToxic{Enabled: true, Latency: 1000})
 }

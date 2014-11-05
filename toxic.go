@@ -1,4 +1,4 @@
-package toxics
+package main
 
 // A Toxic is something that can be attatched to a link to modify the way
 // data can be passed through (for example, by adding latency)
@@ -19,14 +19,6 @@ type Toxic interface {
 	// Returns true if interrupted, false if closed
 	Pipe(*ToxicStub) bool
 }
-
-// Constants used to define which order toxics are chained in.
-const (
-	TimeoutIndex = iota
-	LatencyIndex
-	SlowCloseIndex
-	MaxToxics
-)
 
 type ToxicStub struct {
 	input     <-chan []byte

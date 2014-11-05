@@ -1,4 +1,4 @@
-package toxics
+package main
 
 // The NoopToxic passes all data through without any toxic effects.
 type NoopToxic struct{}
