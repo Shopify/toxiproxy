@@ -39,14 +39,3 @@ func NewToxicStub(input <-chan []byte, output chan<- []byte) *ToxicStub {
 func (s *ToxicStub) Interrupt() {
 	s.interrupt <- struct{}{}
 }
-
-// Unblocks writes to the interrupt channel until the specified channel is written to.
-func (s *ToxicStub) Unblock(until <-chan struct{}) {
-	for {
-		select {
-		case <-s.interrupt:
-		case <-until:
-			return
-		}
-	}
-}

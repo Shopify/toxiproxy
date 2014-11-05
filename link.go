@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+
 	"github.com/Sirupsen/logrus"
 )
 
@@ -81,7 +82,13 @@ func (link *ToxicLink) pipe(toxic Toxic, stub *ToxicStub) {
 	if !toxic.Pipe(stub) {
 		// If the toxic will not be restarted, unblock all writes to stub.interrupt
 		// until the link is removed from the list.
-		stub.Unblock(link.closed)
+		for {
+			select {
+			case <-stub.interrupt:
+			case <-link.closed:
+				return
+			}
+		}
 	}
 }
 
