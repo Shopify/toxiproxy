@@ -3,6 +3,10 @@ package main
 // The NoopToxic passes all data through without any toxic effects.
 type NoopToxic struct{}
 
+func (t *NoopToxic) Name() string {
+	return "noop"
+}
+
 func (t *NoopToxic) IsEnabled() bool {
 	return true
 }

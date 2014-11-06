@@ -6,6 +6,7 @@ import (
 	"net"
 	"testing"
 	"time"
+
 	"gopkg.in/tomb.v1"
 )
 
@@ -83,8 +84,8 @@ func AssertDeltaTime(t *testing.T, message string, actual, expected, delta time.
 func DoLatencyTest(t *testing.T, upLatency, downLatency *LatencyToxic) {
 	WithEchoProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
 		t.Logf("Using latency: Up: %dms +/- %dms, Down: %dms +/- %dms", upLatency.Latency, upLatency.Jitter, downLatency.Latency, downLatency.Jitter)
-		proxy.upToxics.SetToxic(upLatency)
-		proxy.downToxics.SetToxic(downLatency)
+		proxy.upToxics.SetToxicValue(upLatency)
+		proxy.downToxics.SetToxicValue(downLatency)
 
 		msg := []byte("hello world\n")
 
@@ -128,8 +129,8 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *LatencyToxic) {
 
 		upLatency.Enabled = false
 		downLatency.Enabled = false
-		proxy.upToxics.SetToxic(upLatency)
-		proxy.downToxics.SetToxic(downLatency)
+		proxy.upToxics.SetToxicValue(upLatency)
+		proxy.downToxics.SetToxicValue(downLatency)
 
 		err = conn.Close()
 		if err != nil {

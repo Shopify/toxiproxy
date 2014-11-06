@@ -10,82 +10,79 @@ import (
 type ToxicCollection struct {
 	sync.Mutex
 
-	noop      *NoopToxic
-	SlowClose *SlowCloseToxic `json:"slow_close"`
-	Latency   *LatencyToxic   `json:"latency"`
-	Timeout   *TimeoutToxic   `json:"timeout"`
-
+	noop   *NoopToxic
 	proxy  *Proxy
+	chain  []Toxic
 	toxics []Toxic
 	links  map[string]*ToxicLink
 }
 
-// Constants used to define which order toxics are chained in.
-const (
-	TimeoutIndex = iota
-	LatencyIndex
-	SlowCloseIndex
-	MaxToxics
-)
-
 func NewToxicCollection(proxy *Proxy) *ToxicCollection {
-	collection := &ToxicCollection{
-		noop:      new(NoopToxic),
-		SlowClose: new(SlowCloseToxic),
-		Latency:   new(LatencyToxic),
-		Timeout:   new(TimeoutToxic),
-		proxy:     proxy,
-		toxics:    make([]Toxic, MaxToxics),
-		links:     make(map[string]*ToxicLink),
+	toxicOrder := []Toxic{
+		new(SlowCloseToxic),
+		new(LatencyToxic),
+		new(TimeoutToxic),
 	}
-	for i := 0; i < MaxToxics; i++ {
-		collection.toxics[i] = collection.noop
+
+	collection := &ToxicCollection{
+		noop:   new(NoopToxic),
+		proxy:  proxy,
+		chain:  make([]Toxic, len(toxicOrder)),
+		toxics: toxicOrder,
+		links:  make(map[string]*ToxicLink),
+	}
+	for i := 0; i < len(collection.chain); i++ {
+		collection.chain[i] = collection.noop
 	}
 	return collection
 }
 
-func (c *ToxicCollection) NewToxicFromJson(name string, data io.Reader) (Toxic, error) {
-	var toxic Toxic
-	switch name {
-	case "slow_close":
-		temp := *c.SlowClose
-		toxic = &temp
-	case "latency":
-		temp := *c.Latency
-		toxic = &temp
-	case "timeout":
-		temp := *c.Timeout
-		toxic = &temp
-	default:
-		return nil, fmt.Errorf("Bad toxic type: %s", name)
+func (c *ToxicCollection) GetToxicMap() map[string]Toxic {
+	result := make(map[string]Toxic)
+	for _, toxic := range c.toxics {
+		result[toxic.Name()] = toxic
 	}
-	err := json.NewDecoder(data).Decode(&toxic)
-	return toxic, err
+	return result
 }
 
-func (c *ToxicCollection) SetToxic(toxic Toxic) error {
+func (c *ToxicCollection) SetToxicJson(name string, data io.Reader) (Toxic, error) {
 	c.Lock()
 	defer c.Unlock()
 
-	var index int
-	switch v := toxic.(type) {
-	case *SlowCloseToxic:
-		c.SlowClose = v
-		index = SlowCloseIndex
-	case *LatencyToxic:
-		c.Latency = v
-		index = LatencyIndex
-	case *TimeoutToxic:
-		c.Timeout = v
-		index = TimeoutIndex
-	default:
-		return fmt.Errorf("Unknown toxic type: %v", toxic)
-	}
+	for index, toxic := range c.toxics {
+		if toxic.Name() == name {
+			err := json.NewDecoder(data).Decode(toxic)
+			if err != nil {
+				return nil, err
+			}
 
-	if !toxic.IsEnabled() {
-		toxic = c.noop
+			c.setToxic(toxic, index)
+			return toxic, nil
+		}
 	}
-	c.toxics[index] = toxic
+	return nil, fmt.Errorf("Bad toxic type: %s", name)
+}
+
+func (c *ToxicCollection) SetToxicValue(toxic Toxic) error {
+	c.Lock()
+	defer c.Unlock()
+
+	for index, toxic2 := range c.toxics {
+		if toxic2.Name() == toxic.Name() {
+			c.setToxic(toxic, index)
+			return nil
+		}
+	}
+	return fmt.Errorf("Bad toxic type: %v", toxic)
+}
+
+// Assumes lock has already been grabbed
+func (c *ToxicCollection) setToxic(toxic Toxic, index int) {
+	if !toxic.IsEnabled() {
+		c.chain[index] = c.noop
+	} else {
+		c.chain[index] = toxic
+	}
 
 	// Asynchronously update the toxic in each link
 	group := sync.WaitGroup{}
@@ -97,7 +94,6 @@ func (c *ToxicCollection) SetToxic(toxic Toxic) error {
 		}(link)
 	}
 	group.Wait()
-	return nil
 }
 
 func (c *ToxicCollection) StartLink(name string, input io.Reader, output io.WriteCloser) {

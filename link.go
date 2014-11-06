@@ -26,7 +26,7 @@ type ToxicLink struct {
 
 func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
 	link := &ToxicLink{
-		stubs:  make([]*ToxicStub, MaxToxics),
+		stubs:  make([]*ToxicStub, len(toxics.chain)),
 		proxy:  proxy,
 		toxics: toxics,
 		closed: make(chan struct{}),
@@ -35,7 +35,7 @@ func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
 	// Initialize the link with ToxicStubs
 	last := make(chan []byte)
 	link.input = NewChanWriter(last)
-	for i := 0; i < MaxToxics; i++ {
+	for i := 0; i < len(link.stubs); i++ {
 		next := make(chan []byte)
 		link.stubs[i] = NewToxicStub(last, next)
 		last = next
@@ -58,7 +58,7 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		}
 		link.input.Close()
 	}()
-	for i, toxic := range link.toxics.toxics {
+	for i, toxic := range link.toxics.chain {
 		go link.pipe(toxic, link.stubs[i])
 	}
 	go func() {

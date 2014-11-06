@@ -14,6 +14,10 @@ package main
 // for multiple connections.
 
 type Toxic interface {
+	// Return the unique name of the toxic, as used by the json api.
+	Name() string
+
+	// Returns true if the toxic is enabled. Disabled toxics are not used and are replaced with NoopToxics.
 	IsEnabled() bool
 
 	// Returns true if interrupted, false if closed
