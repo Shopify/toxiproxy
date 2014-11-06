@@ -16,14 +16,14 @@ func NewTestProxy(name, upstream string) *Proxy {
 	proxy := NewProxy()
 
 	proxy.Name = name
-	proxy.Listen = "localhost:"
+	proxy.Listen = "localhost:0"
 	proxy.Upstream = upstream
 
 	return proxy
 }
 
 func WithTCPServer(t *testing.T, f func(string, chan []byte)) {
-	ln, err := net.Listen("tcp", "localhost:")
+	ln, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatal("Failed to create TCP server", err)
 	}
