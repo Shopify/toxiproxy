@@ -3,7 +3,7 @@
 Toxiproxy is a framework for simulating network conditions. It's made to work in
 testing/CI environments as well as development. It consists of two parts: a Go
 proxy that all network connections go through, as well as client libraries that
-can apply toxics (such as latency) to the link.
+can apply toxic conditions (toxics) to the link.
 
 ### Ruby Example
 See ruby gem here: [toxiproxy-ruby](https://github.com/Shopify/toxiproxy-ruby)
