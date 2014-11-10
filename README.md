@@ -2,42 +2,59 @@
 
 Toxiproxy is a framework for simulating network conditions. It's made to work in
 testing/CI environments as well as development. It consists of two parts: a Go
-proxy that all network connections go through, as well as a client library that
-can apply a condition to the link. The client library controls Toxiproxy through
-an HTTP interface:
+proxy that all network connections go through, as well as client libraries that
+can apply toxics (such as latency) to the link.
+
+### Ruby Example
+See ruby gem here: [toxiproxy-ruby](https://github.com/Shopify/toxiproxy-ruby)
+
+Adding 1000ms of latency to the mysql server's response:
+```ruby
+Toxiproxy[:mysql_master].downstream(:latency, latency: 1000) do
+  Shop.first # this takes at least 1s
+end
+```
+
+### Types of Toxics
+
+ - Latency
+ - Slow Close
+ - Timeout
+
+### HTTP Interface
 
 ```bash
-$ curl -i -d '{"Name": "redis", "Upstream": "localhost:6379"}'
+$ curl -i -d '{"name": "redis", "upstream": "localhost:6379", "listen": "localhost:26379"}'
 localhost:8474/proxies
 HTTP/1.1 201 Created
 Content-Type: application/json
-Date: Sun, 07 Sep 2014 23:38:53 GMT
+Date: Mon, 10 Nov 2014 16:05:39 GMT
 Content-Length: 71
 
-{"Name":"redis","Listen":"localhost:40736","Upstream":"localhost:6379"}
+{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379"}
 
-$ redis-cli -p 40736
-127.0.0.1:53646> SET omg pandas
+$ redis-cli -p 26379
+127.0.0.1:26379> SET omg pandas
 OK
-127.0.0.1:53646> GET omg
+127.0.0.1:26379> GET omg
 "pandas"
 
 $ curl -i localhost:8474/proxies
 HTTP/1.1 200 OK
 Content-Type: application/json
-Date: Sun, 07 Sep 2014 23:39:16 GMT
+Date: Mon, 10 Nov 2014 16:06:54 GMT
 Content-Length: 81
 
-{"redis":{"Name":"redis","Listen":"localhost:40736","Upstream":"localhost:6379"}}
+{"redis":{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379"}}
 
 $ curl -i -X DELETE localhost:8474/proxies/redis
 HTTP/1.1 204 No Content
-Date: Sun, 07 Sep 2014 23:40:00 GMT
+Content-Type: application/json
+Date: Mon, 10 Nov 2014 16:07:36 GMT
 
-$ telnet localhost 53646
-Trying 127.0.0.1...
-telnet: Unable to connect to remote host: Connection refused
 
+$ redis-cli -p 26379
+Could not connect to Redis at 127.0.0.1:26379: Connection refused
 ```
 
 ### Building
