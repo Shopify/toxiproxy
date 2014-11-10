@@ -65,13 +65,15 @@ Date: Mon, 10 Nov 2014 16:05:39 GMT
 Content-Length: 71
 
 {"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379"}
-
+```
+```bash
 $ redis-cli -p 26379
 127.0.0.1:26379> SET omg pandas
 OK
 127.0.0.1:26379> GET omg
 "pandas"
-
+```
+```bash
 $ curl -i localhost:8474/proxies
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -79,7 +81,8 @@ Date: Mon, 10 Nov 2014 16:06:54 GMT
 Content-Length: 81
 
 {"redis":{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379"}}
-
+```
+```bash
 $ curl -i -d '{"enabled":true, "latency":1000}' localhost:8474/proxies/redis/downstream/toxics/latency
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -87,7 +90,8 @@ Date: Mon, 10 Nov 2014 16:37:25 GMT
 Content-Length: 42
 
 {"enabled":true,"latency":1000,"jitter":0}
-
+```
+```bash
 $ redis-cli -p 26379
 127.0.0.1:26379> GET "omg"
 "pandas"
@@ -95,7 +99,8 @@ $ redis-cli -p 26379
 127.0.0.1:26379> DEL "omg"
 (integer) 1
 (1.00s)
-
+```
+```bash
 $ curl -i -d '{"enabled":false}' localhost:8474/proxies/redis/downstream/toxics/latency
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -103,16 +108,18 @@ Date: Mon, 10 Nov 2014 16:39:49 GMT
 Content-Length: 43
 
 {"enabled":false,"latency":1000,"jitter":0}
-
+```
+```bash
 $ redis-cli -p 26379
 127.0.0.1:26379> GET "omg"
 (nil)
-
+```
+```bash
 $ curl -i -X DELETE localhost:8474/proxies/redis
 HTTP/1.1 204 No Content
 Date: Mon, 10 Nov 2014 16:07:36 GMT
-
-
+```
+```bash
 $ redis-cli -p 26379
 Could not connect to Redis at 127.0.0.1:26379: Connection refused
 ```
