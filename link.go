@@ -21,7 +21,6 @@ type ToxicLink struct {
 	toxics *ToxicCollection
 	input  *ChanWriter
 	output *ChanReader
-	closed chan struct{}
 }
 
 func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
@@ -29,7 +28,6 @@ func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
 		stubs:  make([]*ToxicStub, len(toxics.chain)),
 		proxy:  proxy,
 		toxics: toxics,
-		closed: make(chan struct{}),
 	}
 
 	// Initialize the link with ToxicStubs
@@ -59,10 +57,9 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		link.input.Close()
 	}()
 	for i, toxic := range link.toxics.chain {
-		go link.pipe(toxic, link.stubs[i])
+		go toxic.Pipe(link.stubs[i])
 	}
 	go func() {
-		defer close(link.closed)
 		bytes, err := io.Copy(dest, link.output)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
@@ -78,22 +75,9 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 	}()
 }
 
-func (link *ToxicLink) pipe(toxic Toxic, stub *ToxicStub) {
-	if !toxic.Pipe(stub) {
-		// If the toxic will not be restarted, unblock all writes to stub.interrupt
-		// until the link is removed from the list.
-		for {
-			select {
-			case <-stub.interrupt:
-			case <-link.closed:
-				return
-			}
-		}
-	}
-}
-
 // Replace the toxic at the specified index
 func (link *ToxicLink) SetToxic(toxic Toxic, index int) {
-	link.stubs[index].Interrupt()
-	go link.pipe(toxic, link.stubs[index])
+	if link.stubs[index].Interrupt() {
+		go toxic.Pipe(link.stubs[index])
+	}
 }

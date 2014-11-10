@@ -20,26 +20,38 @@ type Toxic interface {
 	// Returns true if the toxic is enabled. Disabled toxics are not used and are replaced with NoopToxics.
 	IsEnabled() bool
 
-	// Returns true if interrupted, false if closed
-	Pipe(*ToxicStub) bool
+	// Defines how packets flow through a ToxicStub. Pipe() blocks until the link is closed or interrupted.
+	Pipe(*ToxicStub)
 }
 
 type ToxicStub struct {
 	input     <-chan []byte
 	output    chan<- []byte
 	interrupt chan struct{}
+	closed    chan struct{}
 }
 
 func NewToxicStub(input <-chan []byte, output chan<- []byte) *ToxicStub {
 	return &ToxicStub{
 		interrupt: make(chan struct{}),
+		closed:    make(chan struct{}),
 		input:     input,
 		output:    output,
 	}
 }
 
-// Interrupt the flow of data through the toxic so that the toxic
-// can be replaced or removed.
-func (s *ToxicStub) Interrupt() {
-	s.interrupt <- struct{}{}
+// Interrupt the flow of data so that the toxic controlling the stub can be replaced.
+// Returns true if the stream was successfully interrupted.
+func (s *ToxicStub) Interrupt() bool {
+	select {
+	case <-s.closed:
+		return false
+	case s.interrupt <- struct{}{}:
+		return true
+	}
+}
+
+func (s *ToxicStub) Close() {
+	close(s.output)
+	close(s.closed)
 }

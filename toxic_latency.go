@@ -31,15 +31,15 @@ func (t *LatencyToxic) delay() time.Duration {
 	return time.Duration(delay) * time.Millisecond
 }
 
-func (t *LatencyToxic) Pipe(stub *ToxicStub) bool {
+func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 	for {
 		select {
 		case <-stub.interrupt:
-			return true
+			return
 		case buf := <-stub.input:
 			if buf == nil {
-				close(stub.output)
-				return false
+				stub.Close()
+				return
 			}
 			sleep := t.delay()
 			select {
@@ -47,7 +47,7 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) bool {
 				stub.output <- buf
 			case <-stub.interrupt:
 				stub.output <- buf // Don't drop any data on the floor
-				return true
+				return
 			}
 		}
 	}
