@@ -22,7 +22,7 @@ end
 Add a delay to all data going through the proxy.
 The delay is equal to `latency` +/- `jitter`
 
-Fields:
+*Fields:*
  - `enabled`: true/false
  - `latency`: time in milliseconds
  - `jitter`: time in milliseconds
@@ -31,7 +31,7 @@ Fields:
 
 Delay the TCP socket from closing until `delay` has elapsed.
 
-Fields:
+*Fields:*
  - `enabled`: true/false
  - `delay`: time in milliseconds
 
@@ -40,7 +40,7 @@ Fields:
 Stops all data from getting through, and close the connection after `timeout`
 If `timeout` is 0, the connection won't close, and data will be delayed until the toxic is disabled.
 
-Fields:
+*Fields:*
  - `enabled`: true/false
  - `timeout`: time in milliseconds
 
@@ -48,13 +48,13 @@ Fields:
 
 All endpoints are JSON.
 
- - GET /proxies - List existing proxies
- - POST /proxies - Create a new proxy
- - DELETE /proxies/{proxy} - Delete an existing proxy
- - GET /proxies/{proxy}/upstream/toxics - List upstream toxics
- - GET /proxies/{proxy}/downstream/toxics - List downstream toxics
- - POST /proxies/{proxy}/upstream/toxics/{toxic} - Update upstream toxic
- - POST /proxies/{proxy}/downstream/toxics/{toxic} - Update downstream toxic
+ - *GET /proxies* - List existing proxies
+ - *POST /proxies* - Create a new proxy
+ - *DELETE /proxies/{proxy}* - Delete an existing proxy
+ - *GET /proxies/{proxy}/upstream/toxics* - List upstream toxics
+ - *GET /proxies/{proxy}/downstream/toxics* - List downstream toxics
+ - *POST /proxies/{proxy}/upstream/toxics/{toxic}* - Update upstream toxic
+ - *POST /proxies/{proxy}/downstream/toxics/{toxic}* - Update downstream toxic
 
 ### Curl Example
 ```bash
