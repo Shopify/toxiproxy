@@ -11,15 +11,15 @@ func (t *NoopToxic) IsEnabled() bool {
 	return true
 }
 
-func (t *NoopToxic) Pipe(stub *ToxicStub) bool {
+func (t *NoopToxic) Pipe(stub *ToxicStub) {
 	for {
 		select {
 		case <-stub.interrupt:
-			return true
+			return
 		case buf := <-stub.input:
 			if buf == nil {
-				close(stub.output)
-				return false
+				stub.Close()
+				return
 			}
 			stub.output <- buf
 		}

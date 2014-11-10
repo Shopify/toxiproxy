@@ -17,20 +17,20 @@ func (t *SlowCloseToxic) IsEnabled() bool {
 	return t.Enabled
 }
 
-func (t *SlowCloseToxic) Pipe(stub *ToxicStub) bool {
+func (t *SlowCloseToxic) Pipe(stub *ToxicStub) {
 	for {
 		select {
 		case <-stub.interrupt:
-			return true
+			return
 		case buf := <-stub.input:
 			if buf == nil {
 				delay := time.Duration(t.Delay) * time.Millisecond
 				select {
 				case <-time.After(delay):
-					close(stub.output)
-					return false
+					stub.Close()
+					return
 				case <-stub.interrupt:
-					return true
+					return
 				}
 			}
 			stub.output <- buf

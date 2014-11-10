@@ -18,18 +18,18 @@ func (t *TimeoutToxic) IsEnabled() bool {
 	return t.Enabled
 }
 
-func (t *TimeoutToxic) Pipe(stub *ToxicStub) bool {
+func (t *TimeoutToxic) Pipe(stub *ToxicStub) {
 	timeout := time.Duration(t.Timeout) * time.Millisecond
 	if timeout > 0 {
 		select {
 		case <-time.After(timeout):
-			close(stub.output)
-			return false
+			stub.Close()
+			return
 		case <-stub.interrupt:
-			return true
+			return
 		}
 	} else {
 		<-stub.interrupt
-		return true
+		return
 	}
 }
