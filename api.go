@@ -94,11 +94,11 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 }
 
 func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
 	err := server.collection.Remove(vars["proxy"])
 	if err != nil {
+		response.Header().Set("Content-Type", "application/json")
 		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
 		return
 	}

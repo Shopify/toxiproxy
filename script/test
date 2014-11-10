@@ -4,3 +4,4 @@ script/env
 
 # Run the tests in the sandbox
 godep go test
+godep go test -race
