@@ -153,6 +153,8 @@ func (proxy *Proxy) Stop() {
 	proxy.tomb.Killf("Shutting down from stop()")
 	proxy.tomb.Wait() // Wait until we stop accepting new connections
 
+	proxy.Lock()
+	defer proxy.Unlock()
 	for _, conn := range proxy.connections {
 		conn.Close()
 	}
