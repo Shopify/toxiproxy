@@ -17,15 +17,48 @@ end
 
 ### Types of Toxics
 
- - Latency
- - Slow Close
- - Timeout
+#### latency
+
+Add a delay to all data going through the proxy.
+The delay is equal to `latency` +/- `jitter`
+
+Fields:
+ - `enabled`: true/false
+ - `latency`: time in milliseconds
+ - `jitter`: time in milliseconds
+
+#### slow_close
+
+Delay the TCP socket from closing until `delay` has elapsed.
+
+Fields:
+ - `enabled`: true/false
+ - `delay`: time in milliseconds
+
+#### timeout
+
+Stops all data from getting through, and close the connection after `timeout`
+If `timeout` is 0, the connection won't close, and data will be delayed until the toxic is disabled.
+
+Fields:
+ - `enabled`: true/false
+ - `timeout`: time in milliseconds
 
 ### HTTP Interface
 
+All endpoints are JSON.
+
+ - GET /proxies - List existing proxies
+ - POST /proxies - Create a new proxy
+ - DELETE /proxies/{proxy} - Delete an existing proxy
+ - GET /proxies/{proxy}/upstream/toxics - List upstream toxics
+ - GET /proxies/{proxy}/downstream/toxics - List downstream toxics
+ - POST /proxies/{proxy}/upstream/toxics/{toxic} - Update upstream toxic
+ - POST /proxies/{proxy}/downstream/toxics/{toxic} - Update downstream toxic
+
+### Curl Example
 ```bash
-$ curl -i -d '{"name": "redis", "upstream": "localhost:6379", "listen": "localhost:26379"}'
-localhost:8474/proxies
+$ curl -i -d '{"name": "redis", "upstream": "localhost:6379", "listen": "localhost:26379"}' localhost:8474/proxies
 HTTP/1.1 201 Created
 Content-Type: application/json
 Date: Mon, 10 Nov 2014 16:05:39 GMT
@@ -47,9 +80,36 @@ Content-Length: 81
 
 {"redis":{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379"}}
 
+$ curl -i -d '{"enabled":true, "latency":1000}' localhost:8474/proxies/redis/downstream/toxics/latency
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Mon, 10 Nov 2014 16:37:25 GMT
+Content-Length: 42
+
+{"enabled":true,"latency":1000,"jitter":0}
+
+$ redis-cli -p 26379
+127.0.0.1:26379> GET "omg"
+"pandas"
+(1.00s)
+127.0.0.1:26379> DEL "omg"
+(integer) 1
+(1.00s)
+
+$ curl -i -d '{"enabled":false}' localhost:8474/proxies/redis/downstream/toxics/latency
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Mon, 10 Nov 2014 16:39:49 GMT
+Content-Length: 43
+
+{"enabled":false,"latency":1000,"jitter":0}
+
+$ redis-cli -p 26379
+127.0.0.1:26379> GET "omg"
+(nil)
+
 $ curl -i -X DELETE localhost:8474/proxies/redis
 HTTP/1.1 204 No Content
-Content-Type: application/json
 Date: Mon, 10 Nov 2014 16:07:36 GMT
 
 
