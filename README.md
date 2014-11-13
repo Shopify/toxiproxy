@@ -10,7 +10,7 @@ See ruby gem here: [toxiproxy-ruby](https://github.com/Shopify/toxiproxy-ruby)
 
 Adding 1000ms of latency to the mysql server's response:
 ```ruby
-Toxiproxy[:mysql_master].downstream(:latency, latency: 1000) do
+Toxiproxy[:mysql_master].downstream(:latency, latency: 1000).apply do
   Shop.first # this takes at least 1s
 end
 ```
