@@ -49,7 +49,9 @@ All endpoints are JSON.
 
  - **GET /proxies** - List existing proxies
  - **POST /proxies** - Create a new proxy
+ - **GET /toxics** - List existing proxies with toxics included
  - **DELETE /proxies/{proxy}** - Delete an existing proxy
+ - **GET /proxies/{proxy}/toxics** - List both upstream and downstream toxics
  - **GET /proxies/{proxy}/upstream/toxics** - List upstream toxics
  - **GET /proxies/{proxy}/downstream/toxics** - List downstream toxics
  - **POST /proxies/{proxy}/upstream/toxics/{toxic}** - Update upstream toxic
