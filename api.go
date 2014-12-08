@@ -25,7 +25,9 @@ func (server *server) Listen(host string, port string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
+	r.HandleFunc("/toxics", server.ProxyToxicIndex).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE")
+	r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicIndexDuplex).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}/upstream/toxics", server.ToxicIndexUpstream).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}/downstream/toxics", server.ToxicIndexDownstream).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}/upstream/toxics/{toxic}", server.ToxicSetUpstream).Methods("POST")
@@ -47,6 +49,35 @@ func (server *server) Listen(host string, port string) {
 
 func (server *server) ProxyIndex(response http.ResponseWriter, request *http.Request) {
 	data, err := json.Marshal(server.collection.Proxies())
+	if err != nil {
+		http.Error(response, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
+	response.Header().Set("Content-Type", "application/json")
+	_, err = response.Write(data)
+	if err != nil {
+		logrus.Warn("ProxyIndex: Failed to write response to client", err)
+	}
+}
+
+func (server *server) ProxyToxicIndex(response http.ResponseWriter, request *http.Request) {
+	proxies := server.collection.Proxies()
+	marshalData := make(map[string]struct {
+		*Proxy
+		ToxicsUpstream   map[string]Toxic `json:"upstream_toxics"`
+		ToxicsDownstream map[string]Toxic `json:"downstream_toxics"`
+	}, len(proxies))
+
+	for name, proxy := range proxies {
+		data := marshalData[name]
+		data.Proxy = proxy
+		data.ToxicsUpstream = proxy.upToxics.GetToxicMap()
+		data.ToxicsDownstream = proxy.downToxics.GetToxicMap()
+		marshalData[name] = data
+	}
+
+	data, err := json.Marshal(marshalData)
 	if err != nil {
 		http.Error(response, fmt.Sprint(err), http.StatusInternalServerError)
 		return
@@ -107,6 +138,36 @@ func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Re
 	_, err = response.Write(nil)
 	if err != nil {
 		logrus.Warn("ProxyIndex: Failed to write headers to client", err)
+	}
+}
+
+func (server *server) ToxicIndexDuplex(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(request)
+
+	proxy, err := server.collection.Get(vars["proxy"])
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	data, err := json.Marshal(
+		struct {
+			Upstream   map[string]Toxic `json:"upstream"`
+			Downstream map[string]Toxic `json:"downstream"`
+		}{
+			proxy.upToxics.GetToxicMap(),
+			proxy.downToxics.GetToxicMap(),
+		},
+	)
+	if err != nil {
+		http.Error(response, fmt.Sprint(err), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = response.Write(data)
+	if err != nil {
+		logrus.Warn("ToxicIndex: Failed to write response to client", err)
 	}
 }
 
