@@ -10,7 +10,7 @@ import (
 // to maintain the integrity of the proxy set, by guarding for things such as
 // duplicate names.
 type ProxyCollection struct {
-	sync.Mutex
+	sync.RWMutex
 
 	proxies map[string]*Proxy
 }
@@ -34,16 +34,17 @@ func (collection *ProxyCollection) Add(proxy *Proxy) error {
 	return nil
 }
 
-func (collection *ProxyCollection) Proxies() map[string]*Proxy {
-	collection.Lock()
-	defer collection.Unlock()
+// Because maps aren't thread-safe, the lock is only valid for the duration of the passed in block
+func (collection *ProxyCollection) Proxies(block func(map[string]*Proxy) error) error {
+	collection.RLock()
+	defer collection.RUnlock()
 
-	return collection.proxies
+	return block(collection.proxies)
 }
 
 func (collection *ProxyCollection) Get(name string) (*Proxy, error) {
-	collection.Lock()
-	defer collection.Unlock()
+	collection.RLock()
+	defer collection.RUnlock()
 
 	return collection.getByName(name)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"net"
 	"testing"
 )
@@ -10,7 +11,7 @@ func TestAddProxyToCollection(t *testing.T) {
 	collection := NewProxyCollection()
 	proxy := NewTestProxy("test", "localhost:20000")
 
-	if _, exists := collection.Proxies()[proxy.Name]; exists {
+	if _, err := collection.Get(proxy.Name); err == nil {
 		t.Error("Expected proxies to be empty")
 	}
 
@@ -19,7 +20,7 @@ func TestAddProxyToCollection(t *testing.T) {
 		t.Error("Expected to be able to add first proxy to collection")
 	}
 
-	if _, exists := collection.Proxies()[proxy.Name]; !exists {
+	if _, err := collection.Get(proxy.Name); err != nil {
 		t.Error("Expected proxy to be added to map")
 	}
 }
@@ -39,11 +40,34 @@ func TestAddTwoProxiesToCollection(t *testing.T) {
 	}
 }
 
+func TestListProxiesBlock(t *testing.T) {
+	collection := NewProxyCollection()
+	proxy := NewTestProxy("test", "localhost:20000")
+
+	err := collection.Add(proxy)
+	if err != nil {
+		t.Error("Expected to be able to add first proxy to collection")
+	}
+
+	testErr := errors.New("Test error returns")
+	err = collection.Proxies(
+		func(proxies map[string]*Proxy) error {
+			if _, ok := proxies[proxy.Name]; !ok {
+				t.Error("Expected to be able to see existing proxies inside block")
+			}
+			return testErr
+		},
+	)
+	if err != testErr {
+		t.Error("Expected to see return value from block")
+	}
+}
+
 func TestAddAndRemoveProxyFromCollection(t *testing.T) {
 	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
 		collection := NewProxyCollection()
 
-		if _, exists := collection.Proxies()[proxy.Name]; exists {
+		if _, err := collection.Get(proxy.Name); err == nil {
 			t.Error("Expected proxies to be empty")
 		}
 
@@ -52,7 +76,7 @@ func TestAddAndRemoveProxyFromCollection(t *testing.T) {
 			t.Error("Expected to be able to add first proxy to collection")
 		}
 
-		if _, exists := collection.Proxies()[proxy.Name]; !exists {
+		if _, err := collection.Get(proxy.Name); err != nil {
 			t.Error("Expected proxy to be added to map")
 		}
 
@@ -75,7 +99,7 @@ func TestAddAndRemoveProxyFromCollection(t *testing.T) {
 			t.Error("Expected to remove proxy from collection")
 		}
 
-		if _, exists := collection.Proxies()[proxy.Name]; exists {
+		if _, err := collection.Get(proxy.Name); err == nil {
 			t.Error("Expected proxies to be empty")
 		}
 	})
