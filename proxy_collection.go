@@ -10,7 +10,7 @@ import (
 // to maintain the integrity of the proxy set, by guarding for things such as
 // duplicate names.
 type ProxyCollection struct {
-	sync.Mutex
+	sync.RWMutex
 
 	proxies map[string]*Proxy
 }
@@ -35,15 +35,20 @@ func (collection *ProxyCollection) Add(proxy *Proxy) error {
 }
 
 func (collection *ProxyCollection) Proxies() map[string]*Proxy {
-	collection.Lock()
-	defer collection.Unlock()
+	collection.RLock()
+	defer collection.RUnlock()
 
-	return collection.proxies
+	// Copy the map since using the existing one isn't thread-safe
+	proxies := make(map[string]*Proxy, len(collection.proxies))
+	for k, v := range collection.proxies {
+		proxies[k] = v
+	}
+	return proxies
 }
 
 func (collection *ProxyCollection) Get(name string) (*Proxy, error) {
-	collection.Lock()
-	defer collection.Unlock()
+	collection.RLock()
+	defer collection.RUnlock()
 
 	return collection.getByName(name)
 }
