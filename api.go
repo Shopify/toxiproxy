@@ -48,13 +48,7 @@ func (server *server) Listen(host string, port string) {
 }
 
 func (server *server) ProxyIndex(response http.ResponseWriter, request *http.Request) {
-	var data []byte
-	err := server.collection.Proxies(
-		func(proxies map[string]*Proxy) (err error) {
-			data, err = json.Marshal(proxies)
-			return
-		},
-	)
+	data, err := json.Marshal(server.collection.Proxies())
 	if err != nil {
 		http.Error(response, fmt.Sprint(err), http.StatusInternalServerError)
 		return
@@ -68,24 +62,20 @@ func (server *server) ProxyIndex(response http.ResponseWriter, request *http.Req
 }
 
 func (server *server) ProxyToxicIndex(response http.ResponseWriter, request *http.Request) {
+	proxies := server.collection.Proxies()
 	marshalData := make(map[string]struct {
 		*Proxy
 		ToxicsUpstream   map[string]Toxic `json:"upstream_toxics"`
 		ToxicsDownstream map[string]Toxic `json:"downstream_toxics"`
-	})
+	}, len(proxies))
 
-	server.collection.Proxies(
-		func(proxies map[string]*Proxy) error {
-			for name, proxy := range proxies {
-				data := marshalData[name]
-				data.Proxy = proxy
-				data.ToxicsUpstream = proxy.upToxics.GetToxicMap()
-				data.ToxicsDownstream = proxy.downToxics.GetToxicMap()
-				marshalData[name] = data
-			}
-			return nil
-		},
-	)
+	for name, proxy := range proxies {
+		data := marshalData[name]
+		data.Proxy = proxy
+		data.ToxicsUpstream = proxy.upToxics.GetToxicMap()
+		data.ToxicsDownstream = proxy.downToxics.GetToxicMap()
+		marshalData[name] = data
+	}
 
 	data, err := json.Marshal(marshalData)
 	if err != nil {

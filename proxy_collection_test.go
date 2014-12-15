@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"net"
 	"testing"
 )
@@ -40,7 +39,7 @@ func TestAddTwoProxiesToCollection(t *testing.T) {
 	}
 }
 
-func TestListProxiesBlock(t *testing.T) {
+func TestListProxies(t *testing.T) {
 	collection := NewProxyCollection()
 	proxy := NewTestProxy("test", "localhost:20000")
 
@@ -49,17 +48,9 @@ func TestListProxiesBlock(t *testing.T) {
 		t.Error("Expected to be able to add first proxy to collection")
 	}
 
-	testErr := errors.New("Test error returns")
-	err = collection.Proxies(
-		func(proxies map[string]*Proxy) error {
-			if _, ok := proxies[proxy.Name]; !ok {
-				t.Error("Expected to be able to see existing proxies inside block")
-			}
-			return testErr
-		},
-	)
-	if err != testErr {
-		t.Error("Expected to see return value from block")
+	proxies := collection.Proxies()
+	if _, ok := proxies[proxy.Name]; !ok {
+		t.Error("Expected to be able to see existing proxy")
 	}
 }
 

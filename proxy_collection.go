@@ -34,12 +34,16 @@ func (collection *ProxyCollection) Add(proxy *Proxy) error {
 	return nil
 }
 
-// Because maps aren't thread-safe, the lock is only valid for the duration of the passed in block
-func (collection *ProxyCollection) Proxies(block func(map[string]*Proxy) error) error {
+func (collection *ProxyCollection) Proxies() map[string]*Proxy {
 	collection.RLock()
 	defer collection.RUnlock()
 
-	return block(collection.proxies)
+	// Copy the map since using the existing one isn't thread-safe
+	proxies := make(map[string]*Proxy, len(collection.proxies))
+	for k, v := range collection.proxies {
+		proxies[k] = v
+	}
+	return proxies
 }
 
 func (collection *ProxyCollection) Get(name string) (*Proxy, error) {
