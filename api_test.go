@@ -146,12 +146,27 @@ func ListToxics(t *testing.T, addr, proxy, direction string) map[string]interfac
 }
 
 func ShowProxy(t *testing.T, addr, proxy string) ProxyWithToxics {
-	resp, err := http.Get(addr + "/proxies/" + proxy + "")
+	resp, err := http.Get(addr + "/proxies/" + proxy)
 	if err != nil {
 		t.Fatal("Failed to get index", err)
 	}
 
 	var p ProxyWithToxics
+	err = json.NewDecoder(resp.Body).Decode(&p)
+	if err != nil {
+		t.Fatal("Failed to parse JSON response from index")
+	}
+
+	return p
+}
+
+func ProxyAction(t *testing.T, addr, proxy, action string) Proxy {
+	resp, err := http.Get(addr + "/proxies/" + proxy + "/" + action)
+	if err != nil {
+		t.Fatal("Failed to get index", err)
+	}
+
+	var p Proxy
 	err = json.NewDecoder(resp.Body).Decode(&p)
 	if err != nil {
 		t.Fatal("Failed to parse JSON response from index")
@@ -239,6 +254,29 @@ func TestShowProxy(t *testing.T) {
 
 		AssertToxicEnabled(t, proxy.ToxicsUpstream, "latency", false)
 		AssertToxicEnabled(t, proxy.ToxicsDownstream, "latency", false)
+	})
+}
+
+func TestEnableProxy(t *testing.T) {
+	WithServer(t, func(addr string) {
+		if resp := CreateDisabledProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
+			t.Fatal("Unable to create proxy")
+		}
+
+		proxy := ShowProxy(t, addr, "mysql_master")
+		if proxy.Name != "mysql_master" || proxy.Listen != "localhost:3310" || proxy.Upstream != "localhost:20001" || proxy.Enabled {
+			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
+		}
+
+		proxy2 := ProxyAction(t, addr, "mysql_master", "enable")
+		if proxy2.Name != "mysql_master" || proxy2.Listen != "127.0.0.1:3310" || proxy2.Upstream != "localhost:20001" || !proxy2.Enabled {
+			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy2.Name, proxy2.Listen, proxy2.Upstream, proxy2.Enabled)
+		}
+
+		proxy2 = ProxyAction(t, addr, "mysql_master", "disable")
+		if proxy2.Name != "mysql_master" || proxy2.Listen != "127.0.0.1:3310" || proxy2.Upstream != "localhost:20001" || proxy2.Enabled {
+			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy2.Name, proxy2.Listen, proxy2.Upstream, proxy2.Enabled)
+		}
 	})
 }
 
