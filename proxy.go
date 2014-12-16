@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -21,6 +22,7 @@ type Proxy struct {
 	Name     string `json:"name"`
 	Listen   string `json:"listen"`
 	Upstream string `json:"upstream"`
+	Enabled  bool   `json:"enabled"`
 
 	started chan error
 
@@ -30,25 +32,32 @@ type Proxy struct {
 	downToxics  *ToxicCollection
 }
 
+var ErrProxyAlreadyStarted = errors.New("Proxy already started")
+
 func NewProxy() *Proxy {
-	proxy := &Proxy{}
-	proxy.allocate()
+	proxy := &Proxy{
+		started:     make(chan error),
+		connections: make(map[string]net.Conn),
+	}
+	proxy.upToxics = NewToxicCollection(proxy)
+	proxy.downToxics = NewToxicCollection(proxy)
 	return proxy
 }
 
-// allocate instantiates the necessary dependencies. This is in a seperate
-// method because it allows us to read Proxies from JSON and then call
-// `allocate()` on them, sharing this with `NewProxy()`.
-func (proxy *Proxy) allocate() {
-	proxy.started = make(chan error)
-	proxy.connections = make(map[string]net.Conn)
-	proxy.upToxics = NewToxicCollection(proxy)
-	proxy.downToxics = NewToxicCollection(proxy)
-}
-
 func (proxy *Proxy) Start() error {
+	proxy.Lock()
+	defer proxy.Unlock()
+
+	if proxy.Enabled {
+		return ErrProxyAlreadyStarted
+	}
+	proxy.Enabled = true
+
 	go proxy.server()
-	return <-proxy.started
+	err := <-proxy.started
+	// Disable the proxy again if it failed to start
+	proxy.Enabled = err == nil
+	return err
 }
 
 // server runs the Proxy server, accepting new clients and creating Links to
@@ -150,11 +159,18 @@ func (proxy *Proxy) RemoveConnection(name string) {
 }
 
 func (proxy *Proxy) Stop() {
+	proxy.Lock()
+	defer proxy.Unlock()
+	if !proxy.Enabled {
+		return
+	}
+	proxy.Enabled = false
+	proxy.Unlock()
+
 	proxy.tomb.Killf("Shutting down from stop()")
 	proxy.tomb.Wait() // Wait until we stop accepting new connections
 
 	proxy.Lock()
-	defer proxy.Unlock()
 	for _, conn := range proxy.connections {
 		conn.Close()
 	}

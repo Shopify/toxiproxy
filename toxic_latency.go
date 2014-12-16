@@ -21,6 +21,10 @@ func (t *LatencyToxic) IsEnabled() bool {
 	return t.Enabled
 }
 
+func (t *LatencyToxic) SetEnabled(enabled bool) {
+	t.Enabled = enabled
+}
+
 func (t *LatencyToxic) delay() time.Duration {
 	// Delay = t.Latency +/- t.Jitter
 	delay := t.Latency

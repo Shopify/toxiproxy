@@ -18,6 +18,10 @@ func (t *TimeoutToxic) IsEnabled() bool {
 	return t.Enabled
 }
 
+func (t *TimeoutToxic) SetEnabled(enabled bool) {
+	t.Enabled = enabled
+}
+
 func (t *TimeoutToxic) Pipe(stub *ToxicStub) {
 	timeout := time.Duration(t.Timeout) * time.Millisecond
 	if timeout > 0 {

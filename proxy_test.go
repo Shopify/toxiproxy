@@ -215,3 +215,25 @@ func TestStartTwoProxiesOnSameAddress(t *testing.T) {
 		}
 	})
 }
+
+func TestStopProxyBeforeStarting(t *testing.T) {
+	WithTCPServer(t, func(upstream string, response chan []byte) {
+		proxy := NewTestProxy("test", upstream)
+		proxy.Stop()
+		err := proxy.Start()
+		if err != nil {
+			t.Error("Proxy failed to start", err)
+		}
+		err = proxy.Start()
+		if err != ErrProxyAlreadyStarted {
+			t.Error("Proxy did not fail to start when already started", err)
+		}
+
+		_, err = net.Dial("tcp", proxy.Listen)
+		if err != nil {
+			t.Error("Expected proxy to be up", err)
+		}
+
+		proxy.Stop()
+	})
+}

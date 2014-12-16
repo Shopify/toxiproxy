@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
@@ -15,11 +16,6 @@ type ProxyWithToxics struct {
 	Proxy
 	ToxicsUpstream   map[string]interface{} `json:"upstream_toxics"`
 	ToxicsDownstream map[string]interface{} `json:"downstream_toxics"`
-}
-
-type DuplexToxics struct {
-	Upstream   map[string]interface{} `json:"upstream"`
-	Downstream map[string]interface{} `json:"downstream"`
 }
 
 func WithServer(t *testing.T, f func(string)) {
@@ -44,9 +40,26 @@ func WithServer(t *testing.T, f func(string)) {
 func CreateProxy(t *testing.T, addr string, name string) *http.Response {
 	body := `
 	{
-		"Name": "` + name + `",
-		"Listen": "localhost:3310",
-		"Upstream": "localhost:20001"
+		"name": "` + name + `",
+		"listen": "localhost:3310",
+		"upstream": "localhost:20001"
+	}`
+
+	resp, err := http.Post(addr+"/proxies", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatal("Failed to get index", err)
+	}
+
+	return resp
+}
+
+func CreateDisabledProxy(t *testing.T, addr string, name string) *http.Response {
+	body := `
+	{
+		"name": "` + name + `",
+		"listen": "localhost:3310",
+		"upstream": "localhost:20001",
+		"enabled": false
 	}`
 
 	resp, err := http.Post(addr+"/proxies", "application/json", strings.NewReader(body))
@@ -102,6 +115,21 @@ func DeleteProxy(t *testing.T, addr, name string) *http.Response {
 	return resp
 }
 
+func ResetState(t *testing.T, addr string) *http.Response {
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", addr+"/reset", nil)
+	if err != nil {
+		t.Fatal("Failed to create request", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal("Failed to issue request", err)
+	}
+
+	return resp
+}
+
 func ListToxics(t *testing.T, addr, proxy, direction string) map[string]interface{} {
 	resp, err := http.Get(addr + "/proxies/" + proxy + "/" + direction + "/toxics")
 	if err != nil {
@@ -117,22 +145,19 @@ func ListToxics(t *testing.T, addr, proxy, direction string) map[string]interfac
 	return toxics
 }
 
-func ListDuplexToxics(t *testing.T, addr, proxy string) DuplexToxics {
-	resp, err := http.Get(addr + "/proxies/" + proxy + "/toxics")
+func ShowProxy(t *testing.T, addr, proxy string) ProxyWithToxics {
+	resp, err := http.Get(addr + "/proxies/" + proxy + "")
 	if err != nil {
 		t.Fatal("Failed to get index", err)
 	}
 
-	toxics := DuplexToxics{
-		make(map[string]interface{}),
-		make(map[string]interface{}),
-	}
-	err = json.NewDecoder(resp.Body).Decode(&toxics)
+	var p ProxyWithToxics
+	err = json.NewDecoder(resp.Body).Decode(&p)
 	if err != nil {
 		t.Fatal("Failed to parse JSON response from index")
 	}
 
-	return toxics
+	return p
 }
 
 func SetToxic(t *testing.T, addr, proxy, direction, name string, toxic string) map[string]interface{} {
@@ -201,6 +226,35 @@ func TestIndexWithToxics(t *testing.T) {
 	})
 }
 
+func TestShowProxy(t *testing.T) {
+	WithServer(t, func(addr string) {
+		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
+			t.Fatal("Unable to create proxy")
+		}
+
+		proxy := ShowProxy(t, addr, "mysql_master")
+		if proxy.Name != "mysql_master" || proxy.Listen != "127.0.0.1:3310" || proxy.Upstream != "localhost:20001" || !proxy.Enabled {
+			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
+		}
+
+		AssertToxicEnabled(t, proxy.ToxicsUpstream, "latency", false)
+		AssertToxicEnabled(t, proxy.ToxicsDownstream, "latency", false)
+	})
+}
+
+func TestCreateDisabledProxy(t *testing.T) {
+	WithServer(t, func(addr string) {
+		if resp := CreateDisabledProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
+			t.Fatal("Unable to create proxy")
+		}
+
+		proxy := ShowProxy(t, addr, "mysql_master")
+		if proxy.Name != "mysql_master" || proxy.Listen != "localhost:3310" || proxy.Upstream != "localhost:20001" || proxy.Enabled {
+			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
+		}
+	})
+}
+
 func TestDeleteProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
 		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
@@ -243,6 +297,46 @@ func TestDeleteNonExistantProxy(t *testing.T) {
 	})
 }
 
+func TestResetState(t *testing.T) {
+	WithServer(t, func(addr string) {
+		if resp := CreateDisabledProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
+			t.Fatal("Unable to create proxy")
+		}
+
+		latency := SetToxic(t, addr, "mysql_master", "downstream", "latency", `{"enabled": true, "latency": 100, "jitter": 10}`)
+		if latency["enabled"] != true {
+			t.Fatal("Latency toxic did not start up")
+		}
+		if latency["latency"] != 100.0 || latency["jitter"] != 10.0 {
+			t.Fatal("Latency toxic did not start up with correct settings")
+		}
+
+		if resp := ResetState(t, addr); resp.StatusCode != http.StatusNoContent {
+			t.Fatal("Unable to reset state")
+		}
+
+		proxies := ListProxies(t, addr)
+		proxy, ok := proxies["mysql_master"]
+		if !ok {
+			t.Fatal("Expected proxy to still exist")
+		}
+		if !proxy.Enabled {
+			t.Fatal("Expected proxy to be enabled")
+		}
+
+		toxics := ListToxics(t, addr, "mysql_master", "downstream")
+		latency = AssertToxicEnabled(t, toxics, "latency", false)
+		if latency["latency"] != 100.0 || latency["jitter"] != 10.0 {
+			t.Fatal("Latency toxic did not keep settings on reset")
+		}
+
+		_, err := net.Dial("tcp", proxy.Listen)
+		if err != nil {
+			t.Error("Expected proxy to be up", err)
+		}
+	})
+}
+
 func TestListToxics(t *testing.T) {
 	WithServer(t, func(addr string) {
 		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
@@ -251,18 +345,6 @@ func TestListToxics(t *testing.T) {
 
 		toxics := ListToxics(t, addr, "mysql_master", "upstream")
 		AssertToxicEnabled(t, toxics, "latency", false)
-	})
-}
-
-func TestListDuplexToxics(t *testing.T) {
-	WithServer(t, func(addr string) {
-		if resp := CreateProxy(t, addr, "mysql_master"); resp.StatusCode != http.StatusCreated {
-			t.Fatal("Unable to create proxy")
-		}
-
-		toxics := ListDuplexToxics(t, addr, "mysql_master")
-		AssertToxicEnabled(t, toxics.Upstream, "latency", false)
-		AssertToxicEnabled(t, toxics.Downstream, "latency", false)
 	})
 }
 
@@ -330,16 +412,20 @@ func TestVersionEndpointReturnsVersion(t *testing.T) {
 	})
 }
 
-func AssertToxicEnabled(t *testing.T, toxics map[string]interface{}, name string, enabled bool) {
+func AssertToxicEnabled(t *testing.T, toxics map[string]interface{}, name string, enabled bool) map[string]interface{} {
 	toxic, ok := toxics[name]
 	if !ok {
 		t.Fatalf("Expected to see %s toxic in list", name)
+		return nil
 	}
 	toxicMap, ok := toxic.(map[string]interface{})
 	if !ok {
 		t.Fatal("Couldn't read toxic as a %s toxic", name)
+		return nil
 	}
 	if toxicMap["enabled"] != enabled {
 		t.Fatal("%s toxic should have had enabled = %v", name, enabled)
+		return nil
 	}
+	return toxicMap
 }

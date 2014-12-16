@@ -17,6 +17,10 @@ func (t *SlowCloseToxic) IsEnabled() bool {
 	return t.Enabled
 }
 
+func (t *SlowCloseToxic) SetEnabled(enabled bool) {
+	t.Enabled = enabled
+}
+
 func (t *SlowCloseToxic) Pipe(stub *ToxicStub) {
 	for {
 		select {
