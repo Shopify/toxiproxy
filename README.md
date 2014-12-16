@@ -45,17 +45,26 @@ Fields:
 
 ### HTTP Interface
 
+#### Proxy Fields:
+ - `name`: proxy name (string)
+ - `listen`: listen address (string)
+ - `upstream`: proxy upstream address (string)
+ - `enabled`: true/false (defaults to true on creation)
+
 All endpoints are JSON.
 
  - **GET /proxies** - List existing proxies
  - **POST /proxies** - Create a new proxy
  - **GET /toxics** - List existing proxies with toxics included
+ - **GET /proxies/{proxy}** - Show the proxy with both its upstream and downstream toxics
  - **DELETE /proxies/{proxy}** - Delete an existing proxy
- - **GET /proxies/{proxy}/toxics** - List both upstream and downstream toxics
+ - **GET /proxies/{proxy}/enable** - Enable a proxy and start listening
+ - **GET /proxies/{proxy}/disable** - Disable a proxy so it refuses connections
  - **GET /proxies/{proxy}/upstream/toxics** - List upstream toxics
  - **GET /proxies/{proxy}/downstream/toxics** - List downstream toxics
  - **POST /proxies/{proxy}/upstream/toxics/{toxic}** - Update upstream toxic
  - **POST /proxies/{proxy}/downstream/toxics/{toxic}** - Update downstream toxic
+ - **GET /reset** - Enable all proxies and disable all toxics
 
 ### Curl Example
 ```bash
