@@ -161,7 +161,7 @@ func ShowProxy(t *testing.T, addr, proxy string) ProxyWithToxics {
 }
 
 func ProxyAction(t *testing.T, addr, proxy, action string) Proxy {
-	resp, err := http.Get(addr + "/proxies/" + proxy + "/" + action)
+	resp, err := http.Post(addr+"/proxies/"+proxy+"/"+action, "", nil)
 	if err != nil {
 		t.Fatal("Failed to get index", err)
 	}

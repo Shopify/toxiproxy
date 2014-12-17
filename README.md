@@ -58,8 +58,8 @@ All endpoints are JSON.
  - **GET /toxics** - List existing proxies with toxics included
  - **GET /proxies/{proxy}** - Show the proxy with both its upstream and downstream toxics
  - **DELETE /proxies/{proxy}** - Delete an existing proxy
- - **GET /proxies/{proxy}/enable** - Enable a proxy and start listening
- - **GET /proxies/{proxy}/disable** - Disable a proxy so it refuses connections
+ - **POST /proxies/{proxy}/enable** - Enable a proxy and start listening
+ - **POST /proxies/{proxy}/disable** - Disable a proxy so it refuses connections
  - **GET /proxies/{proxy}/upstream/toxics** - List upstream toxics
  - **GET /proxies/{proxy}/downstream/toxics** - List downstream toxics
  - **POST /proxies/{proxy}/upstream/toxics/{toxic}** - Update upstream toxic

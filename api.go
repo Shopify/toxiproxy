@@ -29,7 +29,7 @@ func (server *server) Listen(host string, port string) {
 	r.HandleFunc("/toxics", server.ProxyToxicIndex).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyShow).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE")
-	r.HandleFunc("/proxies/{proxy}/{action}", server.ProxyAction).Methods("GET")
+	r.HandleFunc("/proxies/{proxy}/{action}", server.ProxyAction).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}/upstream/toxics", server.ToxicIndexUpstream).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}/downstream/toxics", server.ToxicIndexDownstream).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}/upstream/toxics/{toxic}", server.ToxicSetUpstream).Methods("POST")
