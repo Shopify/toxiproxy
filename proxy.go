@@ -160,8 +160,8 @@ func (proxy *Proxy) RemoveConnection(name string) {
 
 func (proxy *Proxy) Stop() {
 	proxy.Lock()
-	defer proxy.Unlock()
 	if !proxy.Enabled {
+		proxy.Unlock()
 		return
 	}
 	proxy.Enabled = false
@@ -171,6 +171,7 @@ func (proxy *Proxy) Stop() {
 	proxy.tomb.Wait() // Wait until we stop accepting new connections
 
 	proxy.Lock()
+	defer proxy.Unlock()
 	for _, conn := range proxy.connections {
 		conn.Close()
 	}
