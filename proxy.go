@@ -109,7 +109,6 @@ func (proxy *Proxy) server() {
 	}).Info("Started proxy")
 
 	acceptTomb := tomb.Tomb{}
-	proxy.tomb = tomb.Tomb{}
 	defer acceptTomb.Done()
 
 	// This channel is to kill the blocking Accept() call below by closing the
@@ -195,6 +194,7 @@ func start(proxy *Proxy) error {
 		return ErrProxyAlreadyStarted
 	}
 
+	proxy.tomb = tomb.Tomb{} // Reset tomb, from previous starts/stops
 	go proxy.server()
 	err := <-proxy.started
 	// Only enable the proxy if it successfully started
