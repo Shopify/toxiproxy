@@ -159,13 +159,13 @@ func ShowProxy(t *testing.T, addr, proxy string) ProxyWithToxics {
 	return p
 }
 
-func ProxyAction(t *testing.T, addr, proxy, action string) Proxy {
-	resp, err := http.Post(addr+"/proxies/"+proxy+"/"+action, "", nil)
+func ProxyUpdate(t *testing.T, addr, proxy, data string) ProxyWithToxics {
+	resp, err := http.Post(addr+"/proxies/"+proxy, "application/json", strings.NewReader(data))
 	if err != nil {
 		t.Fatal("Failed to get index", err)
 	}
 
-	var p Proxy
+	var p ProxyWithToxics
 	err = json.NewDecoder(resp.Body).Decode(&p)
 	if err != nil {
 		t.Fatal("Failed to parse JSON response from index")
@@ -174,7 +174,7 @@ func ProxyAction(t *testing.T, addr, proxy, action string) Proxy {
 	return p
 }
 
-func SetToxic(t *testing.T, addr, proxy, direction, name string, toxic string) map[string]interface{} {
+func SetToxic(t *testing.T, addr, proxy, direction, name, toxic string) map[string]interface{} {
 	resp, err := http.Post(addr+"/proxies/"+proxy+"/"+direction+"/toxics/"+name, "application/json", strings.NewReader(toxic))
 	if err != nil {
 		t.Fatal("Failed to get index", err)
@@ -267,14 +267,14 @@ func TestEnableProxy(t *testing.T) {
 			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
 		}
 
-		proxy2 := ProxyAction(t, addr, "mysql_master", "enable")
-		if proxy2.Name != "mysql_master" || proxy2.Listen != "127.0.0.1:3310" || proxy2.Upstream != "localhost:20001" || !proxy2.Enabled {
-			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy2.Name, proxy2.Listen, proxy2.Upstream, proxy2.Enabled)
+		proxy = ProxyUpdate(t, addr, "mysql_master", `{"enabled": true}`)
+		if proxy.Name != "mysql_master" || proxy.Listen != "127.0.0.1:3310" || proxy.Upstream != "localhost:20001" || !proxy.Enabled {
+			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
 		}
 
-		proxy2 = ProxyAction(t, addr, "mysql_master", "disable")
-		if proxy2.Name != "mysql_master" || proxy2.Listen != "127.0.0.1:3310" || proxy2.Upstream != "localhost:20001" || proxy2.Enabled {
-			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy2.Name, proxy2.Listen, proxy2.Upstream, proxy2.Enabled)
+		proxy = ProxyUpdate(t, addr, "mysql_master", `{"enabled": false}`)
+		if proxy.Name != "mysql_master" || proxy.Listen != "127.0.0.1:3310" || proxy.Upstream != "localhost:20001" || proxy.Enabled {
+			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
 		}
 	})
 }

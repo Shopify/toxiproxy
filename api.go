@@ -28,8 +28,8 @@ func (server *server) Listen(host string, port string) {
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
 	r.HandleFunc("/toxics", server.ProxyToxicIndex).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyShow).Methods("GET")
+	r.HandleFunc("/proxies/{proxy}", server.ProxyUpdate).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE")
-	r.HandleFunc("/proxies/{proxy}/{action}", server.ProxyAction).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}/upstream/toxics", server.ToxicIndexUpstream).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}/downstream/toxics", server.ToxicIndexDownstream).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}/upstream/toxics/{toxic}", server.ToxicSetUpstream).Methods("POST")
@@ -117,20 +117,20 @@ func (server *server) ResetState(response http.ResponseWriter, request *http.Req
 
 func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
-	proxy := NewProxy()
-	// Default functionality is to enable to proxy right away
-	proxy.Enabled = true
 
-	err := json.NewDecoder(request.Body).Decode(&proxy)
+	// Default fields enable to proxy right away
+	input := Proxy{Enabled: true}
+	err := json.NewDecoder(request.Body).Decode(&input)
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	if proxy.Enabled {
-		// The proxy isn't actually started yet, so stop proxy.Start() from erroring out
-		proxy.Enabled = false
-
+	proxy := NewProxy()
+	proxy.Name = input.Name
+	proxy.Listen = input.Listen
+	proxy.Upstream = input.Upstream
+	if input.Enabled {
 		err = proxy.Start()
 		if err != nil {
 			http.Error(response, server.apiError(err, http.StatusConflict), http.StatusConflict)
@@ -144,7 +144,7 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 		return
 	}
 
-	data, err := json.Marshal(&proxy)
+	data, err := json.Marshal(proxyWithToxics(proxy))
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -154,6 +154,42 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 	_, err = response.Write(data)
 	if err != nil {
 		logrus.Warn("ProxyCreate: Failed to write response to client", err)
+	}
+}
+
+func (server *server) ProxyUpdate(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(request)
+
+	proxy, err := server.collection.Get(vars["proxy"])
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	// Default fields are the same as existing proxy
+	input := Proxy{Listen: proxy.Listen, Upstream: proxy.Upstream, Enabled: proxy.Enabled}
+	err = json.NewDecoder(request.Body).Decode(&input)
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	err = proxy.Update(&input)
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	data, err := json.Marshal(proxyWithToxics(proxy))
+	if err != nil {
+		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = response.Write(data)
+	if err != nil {
+		logrus.Warn("ProxyAction: Failed to write response to client", err)
 	}
 }
 
@@ -174,40 +210,6 @@ func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Re
 	}
 }
 
-func (server *server) ProxyAction(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
-	vars := mux.Vars(request)
-	action := vars["action"]
-
-	proxy, err := server.collection.Get(vars["proxy"])
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
-		return
-	}
-
-	switch action {
-	case "enable":
-		err = proxy.Start()
-		if err != nil {
-			http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-	case "disable":
-		proxy.Stop()
-	}
-
-	data, err := json.Marshal(proxy)
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	_, err = response.Write(data)
-	if err != nil {
-		logrus.Warn("ProxyAction: Failed to write response to client", err)
-	}
-}
-
 func (server *server) ProxyShow(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
@@ -218,17 +220,7 @@ func (server *server) ProxyShow(response http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	data, err := json.Marshal(
-		struct {
-			*Proxy
-			Upstream   map[string]Toxic `json:"upstream_toxics"`
-			Downstream map[string]Toxic `json:"downstream_toxics"`
-		}{
-			proxy,
-			proxy.upToxics.GetToxicMap(),
-			proxy.downToxics.GetToxicMap(),
-		},
-	)
+	data, err := json.Marshal(proxyWithToxics(proxy))
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -358,4 +350,15 @@ func (server *server) apiError(err error, code int) string {
 		return ""
 	}
 	return string(data)
+}
+
+func proxyWithToxics(proxy *Proxy) (result struct {
+	*Proxy
+	UpstreamToxics   map[string]Toxic `json:"upstream_toxics"`
+	DownstreamToxics map[string]Toxic `json:"downstream_toxics"`
+}) {
+	result.Proxy = proxy
+	result.UpstreamToxics = proxy.upToxics.GetToxicMap()
+	result.DownstreamToxics = proxy.downToxics.GetToxicMap()
+	return
 }

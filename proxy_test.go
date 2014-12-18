@@ -231,6 +231,43 @@ func TestStopProxyBeforeStarting(t *testing.T) {
 	})
 }
 
+func TestProxyUpdate(t *testing.T) {
+	WithTCPServer(t, func(upstream string, response chan []byte) {
+		proxy := NewTestProxy("test", upstream)
+		err := proxy.Start()
+		if err != nil {
+			t.Error("Proxy failed to start", err)
+		}
+		AssertProxyUp(t, proxy, true)
+
+		before := proxy.Listen
+
+		input := &Proxy{Listen: "localhost:0", Upstream: proxy.Upstream, Enabled: true}
+		err = proxy.Update(input)
+		if err != nil {
+			t.Error("Failed to update proxy", err)
+		}
+		if proxy.Listen == before || proxy.Listen == input.Listen {
+			t.Errorf("Proxy update didn't change listen address: %s to %s", before, proxy.Listen)
+		}
+		AssertProxyUp(t, proxy, true)
+
+		input.Listen = proxy.Listen
+		err = proxy.Update(input)
+		if err != nil {
+			t.Error("Failed to update proxy", err)
+		}
+		AssertProxyUp(t, proxy, true)
+
+		input.Enabled = false
+		err = proxy.Update(input)
+		if err != nil {
+			t.Error("Failed to update proxy", err)
+		}
+		AssertProxyUp(t, proxy, false)
+	})
+}
+
 func TestRestartFailedToStartProxy(t *testing.T) {
 	WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
