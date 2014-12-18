@@ -95,10 +95,7 @@ func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, pro
 		proxy := NewTestProxy("test", upstream)
 		proxy.Start()
 
-		conn, err := net.Dial("tcp", proxy.Listen)
-		if err != nil {
-			t.Error("Unable to dial TCP server", err)
-		}
+		conn := AssertProxyUp(t, proxy, true)
 
 		f(conn, response, proxy)
 
@@ -131,14 +128,10 @@ func TestProxyToDownUpstream(t *testing.T) {
 	proxy := NewTestProxy("test", "localhost:20009")
 	proxy.Start()
 
-	conn, err := net.Dial("tcp", proxy.Listen)
-	if err != nil {
-		t.Error("Unable to dial TCP server", err)
-	}
-
+	conn := AssertProxyUp(t, proxy, true)
 	// Check to make sure the connection is closed
 	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-	_, err = conn.Read(make([]byte, 1))
+	_, err := conn.Read(make([]byte, 1))
 	if err != io.EOF {
 		t.Error("Proxy did not close connection when upstream down", err)
 	}
@@ -219,21 +212,62 @@ func TestStartTwoProxiesOnSameAddress(t *testing.T) {
 func TestStopProxyBeforeStarting(t *testing.T) {
 	WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
+		AssertProxyUp(t, proxy, false)
+
 		proxy.Stop()
 		err := proxy.Start()
 		if err != nil {
 			t.Error("Proxy failed to start", err)
 		}
+
 		err = proxy.Start()
 		if err != ErrProxyAlreadyStarted {
 			t.Error("Proxy did not fail to start when already started", err)
 		}
-
-		_, err = net.Dial("tcp", proxy.Listen)
-		if err != nil {
-			t.Error("Expected proxy to be up", err)
-		}
+		AssertProxyUp(t, proxy, true)
 
 		proxy.Stop()
+		AssertProxyUp(t, proxy, false)
 	})
+}
+
+func TestRestartFailedToStartProxy(t *testing.T) {
+	WithTCPServer(t, func(upstream string, response chan []byte) {
+		proxy := NewTestProxy("test", upstream)
+		conflict := NewTestProxy("test2", upstream)
+
+		err := conflict.Start()
+		if err != nil {
+			t.Error("Proxy failed to start", err)
+		}
+		AssertProxyUp(t, conflict, true)
+
+		proxy.Listen = conflict.Listen
+		err = proxy.Start()
+		if err == nil || err == ErrProxyAlreadyStarted {
+			t.Error("Proxy started when it should have conflicted")
+		}
+
+		conflict.Stop()
+		AssertProxyUp(t, conflict, false)
+
+		err = proxy.Start()
+		if err != nil {
+			t.Error("Proxy failed to start after conflict went away", err)
+		}
+		AssertProxyUp(t, proxy, true)
+
+		proxy.Stop()
+		AssertProxyUp(t, proxy, false)
+	})
+}
+
+func AssertProxyUp(t *testing.T, proxy *Proxy, up bool) net.Conn {
+	conn, err := net.Dial("tcp", proxy.Listen)
+	if err != nil && up {
+		t.Error("Expected proxy to be up", err)
+	} else if err == nil && !up {
+		t.Error("Expected proxy to be down")
+	}
+	return conn
 }

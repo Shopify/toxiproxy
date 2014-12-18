@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"strings"
 	"testing"
@@ -70,13 +69,13 @@ func CreateDisabledProxy(t *testing.T, addr string, name string) *http.Response 
 	return resp
 }
 
-func ListProxies(t *testing.T, addr string) map[string]Proxy {
+func ListProxies(t *testing.T, addr string) map[string]*Proxy {
 	resp, err := http.Get(addr + "/proxies")
 	if err != nil {
 		t.Fatal("Failed to get index", err)
 	}
 
-	proxies := make(map[string]Proxy)
+	proxies := make(map[string]*Proxy)
 	err = json.NewDecoder(resp.Body).Decode(&proxies)
 	if err != nil {
 		t.Fatal("Failed to parse JSON response from index")
@@ -85,13 +84,13 @@ func ListProxies(t *testing.T, addr string) map[string]Proxy {
 	return proxies
 }
 
-func ListProxiesWithToxics(t *testing.T, addr string) map[string]ProxyWithToxics {
+func ListProxiesWithToxics(t *testing.T, addr string) map[string]*ProxyWithToxics {
 	resp, err := http.Get(addr + "/toxics")
 	if err != nil {
 		t.Fatal("Failed to get index", err)
 	}
 
-	proxies := make(map[string]ProxyWithToxics)
+	proxies := make(map[string]*ProxyWithToxics)
 	err = json.NewDecoder(resp.Body).Decode(&proxies)
 	if err != nil {
 		t.Fatal("Failed to parse JSON response from index")
@@ -368,10 +367,7 @@ func TestResetState(t *testing.T) {
 			t.Fatal("Latency toxic did not keep settings on reset")
 		}
 
-		_, err := net.Dial("tcp", proxy.Listen)
-		if err != nil {
-			t.Error("Expected proxy to be up", err)
-		}
+		AssertProxyUp(t, proxy, true)
 	})
 }
 

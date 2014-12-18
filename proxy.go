@@ -51,11 +51,10 @@ func (proxy *Proxy) Start() error {
 	if proxy.Enabled {
 		return ErrProxyAlreadyStarted
 	}
-	proxy.Enabled = true
 
 	go proxy.server()
 	err := <-proxy.started
-	// Disable the proxy again if it failed to start
+	// Only enable the proxy if it successfully started
 	proxy.Enabled = err == nil
 	return err
 }
