@@ -48,8 +48,8 @@ Configuring a project to use Toxiproxy consists of three steps:
 **Ubuntu**
 
 ```bash
-$ wget -O toxiproxy-0.0.1.tar.gz https://github.com/shopify/toxiproxy/archive/v0.0.1.deb
-$ sudo dpkg -i toxiproxy-0.0.1.tar.gz
+$ wget -O toxiproxy-1.0.0.tar.gz https://github.com/shopify/toxiproxy/archive/v1.0.0.deb
+$ sudo dpkg -i toxiproxy-1.0.0.tar.gz
 ```
 
 **Unsupported**
