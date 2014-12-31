@@ -5,4 +5,4 @@ dependencies:
 
 test:
   override:
-    - script/test
+    - make test
