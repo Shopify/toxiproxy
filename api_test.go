@@ -289,6 +289,8 @@ func TestCreateDisabledProxy(t *testing.T) {
 		if proxy.Name != "mysql_master" || proxy.Listen != "localhost:3310" || proxy.Upstream != "localhost:20001" || proxy.Enabled {
 			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
 		}
+
+		AssertProxyUp(t, &proxy.Proxy, false)
 	})
 }
 
