@@ -69,8 +69,6 @@ $ brew tap shopify/shopify
 $ brew install toxiproxy
 ```
 
-Compile with `make build`, put the binary in your path create an `init` script.
-
 ### 2. Creating `config/toxiproxy.json`
 
 In `config/toxiproxy.json` you specify the mappings of service upstreams (e.g.
