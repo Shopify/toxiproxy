@@ -50,6 +50,11 @@ Configuring a project to use Toxiproxy consists of three steps:
 
 ### 1. Installing Toxiproxy
 
+**Linux**
+
+See [`Releases`](https://github.com/Shopify/toxiproxy/releases) for the latest
+binaries and system packages for your architecture.
+
 **Ubuntu**
 
 ```bash
