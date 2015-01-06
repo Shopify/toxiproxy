@@ -34,4 +34,4 @@ $(DEB): tmp/build/linux-amd64
 		--description "TCP proxy to simulate network and system conditions" \
 		--url "https://github.com/Shopify/toxiproxy" \
 		$<=/usr/bin/toxiproxy \
-		./toxiproxy.conf=/etc/init/toxiproxy.conf
+		./share/toxiproxy.conf=/etc/init/toxiproxy.conf
