@@ -55,8 +55,8 @@ $ sudo dpkg -i toxiproxy-1.0.0.tar.gz
 **OS X**
 
 ```bash
-$ brew install
-https://raw.githubusercontent.com/Shopify/toxiproxy/master/formula.rb
+$ brew tap shopify/shopify
+$ brew install toxiproxy
 ```
 
 Compile with `make build`, put the binary in your path create an `init` script.
