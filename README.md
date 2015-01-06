@@ -28,6 +28,11 @@ Toxiproxy[/redis/].down do
 end
 ```
 
+Why yet another chaotic TCP proxy? The existing ones we found didn't provide the
+kind of dynamic REST API we needed for integration and unit testing. Linux tools
+like `nc` and so on are not cross-platform and require root, which makes them
+problematic in a test, development and CI environment.
+
 ## Clients
 
 * [toxiproxy-ruby](toxiproxy-ruby)
