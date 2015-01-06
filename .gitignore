@@ -5,3 +5,5 @@ testing.test
 cpu.out
 cover*.out
 coverage.html
+*.deb
+tmp/
