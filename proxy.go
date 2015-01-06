@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -21,34 +22,72 @@ type Proxy struct {
 	Name     string `json:"name"`
 	Listen   string `json:"listen"`
 	Upstream string `json:"upstream"`
+	Enabled  bool   `json:"enabled"`
 
 	started chan error
 
 	tomb        tomb.Tomb
-	connections map[string]net.Conn
+	connections ConnectionList
 	upToxics    *ToxicCollection
 	downToxics  *ToxicCollection
 }
 
+type ConnectionList struct {
+	list map[string]net.Conn
+	lock sync.Mutex
+}
+
+func (c *ConnectionList) Lock() {
+	c.lock.Lock()
+}
+
+func (c *ConnectionList) Unlock() {
+	c.lock.Unlock()
+}
+
+var ErrProxyAlreadyStarted = errors.New("Proxy already started")
+
 func NewProxy() *Proxy {
-	proxy := &Proxy{}
-	proxy.allocate()
+	proxy := &Proxy{
+		started:     make(chan error),
+		connections: ConnectionList{list: make(map[string]net.Conn)},
+	}
+	proxy.upToxics = NewToxicCollection(proxy)
+	proxy.downToxics = NewToxicCollection(proxy)
 	return proxy
 }
 
-// allocate instantiates the necessary dependencies. This is in a seperate
-// method because it allows us to read Proxies from JSON and then call
-// `allocate()` on them, sharing this with `NewProxy()`.
-func (proxy *Proxy) allocate() {
-	proxy.started = make(chan error)
-	proxy.connections = make(map[string]net.Conn)
-	proxy.upToxics = NewToxicCollection(proxy)
-	proxy.downToxics = NewToxicCollection(proxy)
+func (proxy *Proxy) Start() error {
+	proxy.Lock()
+	defer proxy.Unlock()
+
+	return start(proxy)
 }
 
-func (proxy *Proxy) Start() error {
-	go proxy.server()
-	return <-proxy.started
+func (proxy *Proxy) Update(input *Proxy) error {
+	proxy.Lock()
+	defer proxy.Unlock()
+
+	if input.Listen != proxy.Listen || input.Upstream != proxy.Upstream {
+		stop(proxy)
+		proxy.Listen = input.Listen
+		proxy.Upstream = input.Upstream
+	}
+
+	if input.Enabled != proxy.Enabled {
+		if input.Enabled {
+			return start(proxy)
+		}
+		stop(proxy)
+	}
+	return nil
+}
+
+func (proxy *Proxy) Stop() {
+	proxy.Lock()
+	defer proxy.Unlock()
+
+	stop(proxy)
 }
 
 // server runs the Proxy server, accepting new clients and creating Links to
@@ -134,28 +173,48 @@ func (proxy *Proxy) server() {
 		}
 
 		name := client.RemoteAddr().String()
-		proxy.Lock()
-		proxy.connections[name+"client"] = client
-		proxy.connections[name+"upstream"] = upstream
-		proxy.Unlock()
+		proxy.connections.Lock()
+		proxy.connections.list[name+"client"] = client
+		proxy.connections.list[name+"upstream"] = upstream
+		proxy.connections.Unlock()
 		proxy.upToxics.StartLink(name+"client", client, upstream)
 		proxy.downToxics.StartLink(name+"upstream", upstream, client)
 	}
 }
 
 func (proxy *Proxy) RemoveConnection(name string) {
-	proxy.Lock()
-	defer proxy.Unlock()
-	delete(proxy.connections, name)
+	proxy.connections.Lock()
+	defer proxy.connections.Unlock()
+	delete(proxy.connections.list, name)
 }
 
-func (proxy *Proxy) Stop() {
+// Starts a proxy, assumes the lock has already been taken
+func start(proxy *Proxy) error {
+	if proxy.Enabled {
+		return ErrProxyAlreadyStarted
+	}
+
+	proxy.tomb = tomb.Tomb{} // Reset tomb, from previous starts/stops
+	go proxy.server()
+	err := <-proxy.started
+	// Only enable the proxy if it successfully started
+	proxy.Enabled = err == nil
+	return err
+}
+
+// Stops a proxy, assumes the lock has already been taken
+func stop(proxy *Proxy) {
+	if !proxy.Enabled {
+		return
+	}
+	proxy.Enabled = false
+
 	proxy.tomb.Killf("Shutting down from stop()")
 	proxy.tomb.Wait() // Wait until we stop accepting new connections
 
-	proxy.Lock()
-	defer proxy.Unlock()
-	for _, conn := range proxy.connections {
+	proxy.connections.Lock()
+	defer proxy.connections.Unlock()
+	for _, conn := range proxy.connections.list {
 		conn.Close()
 	}
 

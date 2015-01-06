@@ -11,6 +11,8 @@ func (t *NoopToxic) IsEnabled() bool {
 	return true
 }
 
+func (t *NoopToxic) SetEnabled(enabled bool) {}
+
 func (t *NoopToxic) Pipe(stub *ToxicStub) {
 	for {
 		select {

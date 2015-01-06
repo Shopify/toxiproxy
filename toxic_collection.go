@@ -37,6 +37,16 @@ func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 	return collection
 }
 
+func (c *ToxicCollection) ResetToxics() {
+	c.Lock()
+	defer c.Unlock()
+
+	for index, toxic := range c.toxics {
+		toxic.SetEnabled(false)
+		c.setToxic(toxic, index)
+	}
+}
+
 func (c *ToxicCollection) GetToxicMap() map[string]Toxic {
 	result := make(map[string]Toxic)
 	for _, toxic := range c.toxics {
