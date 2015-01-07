@@ -3,8 +3,8 @@
 Toxiproxy is a framework for simulating network conditions. It's made
 specifically to work in testing, CI and development environments, supporting
 deterministic tampering with connections, but with support for randomized chaos
-and customization. We've been using it in all development and test environments
-at Shopify for the past couple of month's successfully for resiliency testing.
+and customization. We've been successfully using it in all development and test
+environments at Shopify since October 2014 for resiliency testing.
 
 Toxiproxy usage consists of two parts. A TCP proxy written in Go (what this
 repository contains) and a client communicating with the proxy over HTTP. You
