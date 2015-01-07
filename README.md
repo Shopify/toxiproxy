@@ -271,6 +271,12 @@ Fields:
  - `latency`: time in milliseconds
  - `jitter`: time in milliseconds
 
+#### down
+
+Bringing a service down is not technically a toxic in the implementation of
+Toxiproxy. This is done by `POST`ing to `/proxies/{proxy}` and setting the
+`enabled` field to `false`.
+
 #### slow_close
 
 Delay the TCP socket from closing until `delay` has elapsed.
@@ -297,12 +303,15 @@ All communication with the Toxiproxy daemon from the client happens through the
 HTTP interface, which is described here.
 
 #### Proxy Fields:
- - `name`: proxy name* (string)
- - `listen`: listen address* (string)
- - `upstream`: proxy upstream address* (string)
+ - `name`: proxy name\* (string)
+ - `listen`: listen address\* (string)
+ - `upstream`: proxy upstream address\* (string)
  - `enabled`: true/false (defaults to true on creation)
 
  \* Changing these fields will restart the proxy and drop any connections. Proxy name is not editable.
+
+If you change `enabled` to `false`, it'll take down the proxy. You can switch it
+back to `true` to reenable it.
 
 All endpoints are JSON.
 
