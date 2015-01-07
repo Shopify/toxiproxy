@@ -4,10 +4,12 @@ DEB=pkg/$(NAME)_$(VERSION)_amd64.deb
 GODEP_PATH=$(shell pwd)/Godeps/_workspace
 GOPATH=$(GODEP_PATH):$$GOPATH
 
-.PHONY: packages deb test rpm
+.PHONY: packages deb test linux darwin
 
-all: deb tmp/build/toxiproxy-linux-amd64 tmp/build/toxiproxy-darwin-amd64
+all: deb linux darwin
 deb: $(DEB)
+darwin: tmp/build/toxiproxy-darwin-amd64 
+linux: tmp/build/toxiproxy-linux-amd64
 
 build:
 	GOPATH=$(GOPATH) go build -o toxiproxy

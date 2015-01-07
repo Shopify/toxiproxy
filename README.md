@@ -406,6 +406,10 @@ Could not connect to Redis at 127.0.0.1:26379: Connection refused
 
 ### Development
 
-* `make build`. Build the Toxiproxy binary.
+* `make all`. Build Toxiproxy binaries and packages for all platforms. Requires
+  to have Go compiled with cross compilation enabled on Linux and Darwin (amd64)
+  as well as [`fpm`](https://github.com/jordansissel/fpm) in your `$PATH` to
+  build the Debian package.
 * `make test`. Run the Toxiproxy tests.
-* `make packages`. Build system packages, requires `fpm` in your `$PATH`.
+* `make darwin`. Build binary for Darwin.
+* `make linux`. Build binary for Linux.
