@@ -3,7 +3,8 @@
 Toxiproxy is a framework for simulating network conditions. It's made
 specifically to work in testing, CI and development environments, supporting
 deterministic tampering with connections, but with support for randomized chaos
-and customization.
+and customization. We've been using it in all development and test environments
+at Shopify for the past couple of month's successfully for resiliency testing.
 
 Toxiproxy usage consists of two parts. A TCP proxy written in Go (what this
 repository contains) and a client communicating with the proxy over HTTP. You
@@ -95,10 +96,11 @@ This is a subset's of Shopify's main application's `config/toxiproxy.json`, note
 convention of `<app_name>_<environment>_<service>_<shard>`. It's strongly
 recommended to stick to this convention for the client libraries to work best,
 easing debugging, making the endpoints discoverable and so that running tests
-doesn't tamper with your development server.
+doesn't disrupt the connections from your server running in another environment.
 
 Use ports outside the ephemeral port range to avoid random port conflicts it's
-32768 to 61000 on Linux by default, see `/proc/sys/net/ipv4/ip_local_port_range`.
+`32,768` to `61,000` on Linux by default, see
+`/proc/sys/net/ipv4/ip_local_port_range`.
 
 ### 3. Populating Toxiproxy
 
