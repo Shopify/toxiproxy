@@ -6,22 +6,26 @@ GOPATH=$(GODEP_PATH):$$GOPATH
 
 .PHONY: packages deb test rpm
 
-packages: deb
+all: deb tmp/build/toxiproxy-linux-amd64 tmp/build/toxiproxy-darwin-amd64
 deb: $(DEB)
 
 build:
 	GOPATH=$(GOPATH) go build -o toxiproxy
 
+clean:
+	rm tmp/build/*
+	rm *.deb
+
 test:
 	GOPATH=$(GOPATH) go test
 
-tmp/build/linux-amd64:
+tmp/build/toxiproxy-linux-amd64:
 	GOOS=linux GOARCH=amd64 GOPATH=$(GOPATH) go build -o $(@)
 
-tmp/build/darwin-amd64:
+tmp/build/toxiproxy-darwin-amd64:
 	GOOS=darwin GOARCH=amd64 GOPATH=$(GOPATH) go build -o $(@)
 
-$(DEB): tmp/build/linux-amd64
+$(DEB): tmp/build/toxiproxy-linux-amd64
 	fpm -t deb \
 		-s dir \
 		--name "toxiproxy" \

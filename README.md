@@ -166,7 +166,7 @@ binaries and system packages for your architecture.
 **Ubuntu**
 
 ```bash
-$ wget -O toxiproxy-1.0.0.tar.gz https://github.com/shopify/toxiproxy/archive/v1.0.0.deb
+$ wget -O toxiproxy-1.0.0.tar.gz https://github.com/Shopify/toxiproxy/releases/download/v1.0.0/toxiproxy_1.0.0_amd64.deb
 $ sudo dpkg -i toxiproxy-1.0.0.tar.gz
 $ sudo service start toxiproxy
 ```
