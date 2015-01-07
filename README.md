@@ -29,6 +29,10 @@ Toxiproxy[/redis/].down do
 end
 ```
 
+While the examples in this README are currently in Ruby, there's nothing
+stopping you from creating a client in any other language (see
+[Clients](https://github.com/shopify/toxiproxy#Clients)).
+
 Why yet another chaotic TCP proxy? The existing ones we found didn't provide the
 kind of dynamic REST API we needed for integration and unit testing. Linux tools
 like `nc` and so on are not cross-platform and require root, which makes them
@@ -40,9 +44,112 @@ problematic in a test, development and CI environment.
 
 [toxiproxy-ruby]: https://github.com/Shopify/toxiproxy-ruby
 
+## Example
+
+Let's walk through an example with a Rails application. Note that Toxiproxy is
+in no way tied to Ruby, it's just been our first usecase and it's currently the
+only language that has a client. You can see the full example at
+[Sirupsen/toxiproxy-rails-example](https://github.com/Sirupsen/toxiproxy-rails-example).
+To get started right away, jump down to [Usage](https://github.com/Shopify/toxiproxy#Usage).
+
+For our popular blog, for some reason we're storing the tags for our posts in
+Redis and the posts themselves in MySQL. We might have a `Post` class that
+includes some methods to manipulate tags in a [Redis set](http://redis.io/commands#set):
+
+```ruby
+class Post < ActiveRecord::Base
+  # Return an Array of all the tags.
+  def tags
+    TagRedis.smembers(tag_key)
+  end
+
+  # Add a tag to the post.
+  def add_tag(tag)
+    TagRedis.sadd(tag_key, tag)
+  end
+
+  # Remove a tag from the post.
+  def remove_tag(tag)
+    TagRedis.srem(tag_key, tag)
+  end
+
+  # Return the key in Redis for the set of tags for the post.
+  def tag_key
+    "post:tags:#{self.id}"
+  end
+end
+```
+
+We've decided that erroring while writing to the tag data store
+(adding/removing) is OK. However, if the tag data store is down, we should be
+able to see the post with no tags. We could simply rescue the
+`Redis::CannotConnectError` around the `SMEMBERS` Redis call in the `tags`
+method. Let's use Toxiproxy to test that.
+
+We've already installed Toxiproxy and it's running on our machine, so we can
+skip to step two. We add Redis to `config/toxiproxy.json` (see Usage below, step
+2):
+
+```json
+[
+  {
+    "name": "toxiproxy_test_redis_tags",
+    "listen": "127.0.0.1:22222",
+    "upstream": "127.0.0.1:6379"
+  }
+]
+```
+
+To populate Toxiproxy when our application boots, to `config/boot.rb` we add:
+
+```ruby
+require 'toxiproxy'
+Toxiproxy.populate(File.join(File.dirname(File.expand_path(__FILE__)), "/toxiproxy.json"))
+```
+
+Then in `config/environments/test.rb` we set the `TagRedis` to be a Redis client
+that connects to Redis through Toxiproxy by adding this line:
+
+```ruby
+TagRedis = Redis.new(port: 22222)
+```
+
+All calls in the test environment now go through Toxiproxy. That means we can
+add a unit test where we simulate a failure:
+
+```ruby
+test "should return empty array when tag redis is down when listing tags" do
+  @post.add_tag "mammals"
+
+  # Take down all Redises in Toxiproxy
+  Toxiproxy[/redis/].down do
+    assert_equal [], @post.tags
+  end
+end
+```
+
+The test fails with `Redis::CannotConnectError`. Perfect! Toxiproxy took down
+the Redis successfully for the duration of the closure. Let's fix the `tags`
+method to be resilient:
+
+```ruby
+def tags
+  TagRedis.smembers(tag_key)
+rescue Redis::CannotConnectError
+  []
+end
+```
+
+The tests pass! We now have a unit test that proofs fetching the tags when
+Redis is down works. You should also write an integration test, that wraps
+fetching the entire blog post page when Redis is down.
+
+Full example application is at
+[Sirupsen/toxiproxy-rails-example](https://github.com/Sirupsen/toxiproxy-rails-example).
+
 ## Usage
 
-Configuring a project to use Toxiproxy consists of three steps:
+Configuring a project to use Toxiproxy consists of four steps:
 
 1. Installing Toxiproxy
 2. Creating `config/toxiproxy.json`
@@ -61,6 +168,7 @@ binaries and system packages for your architecture.
 ```bash
 $ wget -O toxiproxy-1.0.0.tar.gz https://github.com/shopify/toxiproxy/archive/v1.0.0.deb
 $ sudo dpkg -i toxiproxy-1.0.0.tar.gz
+$ sudo service start toxiproxy
 ```
 
 **OS X**
