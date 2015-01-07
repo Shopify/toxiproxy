@@ -142,9 +142,10 @@ rescue Redis::CannotConnectError
 end
 ```
 
-The tests pass! We now have a unit test that proves fetching the tags when
-Redis is down works. You should also write an integration test, that wraps
-fetching the entire blog post page when Redis is down.
+The tests pass! We now have a unit test that proves fetching the tags when Redis
+is down returns an empty array, instead of throwing an exception. For full
+coverage you should also write an integration test that wraps fetching the
+entire blog post page when Redis is down.
 
 Full example application is at
 [Sirupsen/toxiproxy-rails-example](https://github.com/Sirupsen/toxiproxy-rails-example).
