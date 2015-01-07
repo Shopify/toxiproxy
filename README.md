@@ -193,7 +193,7 @@ uses Toxiproxy:
   {
     "name": "shopify_test_redis_master",
     "listen": "127.0.0.1:22220",
-    "upstream": "127.0.0.1:6379" 
+    "upstream": "127.0.0.1:6379"
   },
   {
     "name": "shopify_test_mysql_master",
@@ -310,7 +310,7 @@ Toxiproxy listens for HTTP on port **8474**.
  - `upstream`: proxy upstream address\*\* (string)
  - `enabled`: true/false (defaults to true on creation)
 
- \* To change a proxy's name, it must be deleted and re-created.
+ \* To change a proxy's name, it must be deleted and re-created.  
  \*\* Changing these fields will restart the proxy and drop any connections.
 
 If you change `enabled` to `false`, it'll take down the proxy. You can switch it
