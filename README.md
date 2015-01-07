@@ -13,7 +13,7 @@ Toxiproxy and can then manipulate their health via HTTP. See [Usage](#usage)
 below on how to set up your project.
 
 For example, to add 1000ms of latency to the response of MySQL from the [Ruby
-client](toxiproxy-ruby):
+client](https://github.com/Shopify/toxiproxy-ruby):
 
 ```ruby
 Toxiproxy[:mysql_master].downstream(:latency, latency: 1000).apply do
@@ -42,7 +42,7 @@ development and CI environment.
 
 ## Clients
 
-* [toxiproxy-ruby](toxiproxy-ruby)
+* [toxiproxy-ruby](https://github.com/Shopify/toxiproxy-ruby)
 
 [toxiproxy-ruby]: https://github.com/Shopify/toxiproxy-ruby
 
