@@ -302,13 +302,16 @@ Fields:
 All communication with the Toxiproxy daemon from the client happens through the
 HTTP interface, which is described here.
 
+Toxiproxy listens for HTTP on port **8474**.
+
 #### Proxy Fields:
  - `name`: proxy name\* (string)
- - `listen`: listen address\* (string)
- - `upstream`: proxy upstream address\* (string)
+ - `listen`: listen address\*\* (string)
+ - `upstream`: proxy upstream address\*\* (string)
  - `enabled`: true/false (defaults to true on creation)
 
- \* Changing these fields will restart the proxy and drop any connections. Proxy name is not editable.
+ \* To change a proxy's name, it must be deleted and re-created.
+ \*\* Changing these fields will restart the proxy and drop any connections.
 
 If you change `enabled` to `false`, it'll take down the proxy. You can switch it
 back to `true` to reenable it.
