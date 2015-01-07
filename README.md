@@ -305,16 +305,18 @@ HTTP interface, which is described here.
 Toxiproxy listens for HTTP on port **8474**.
 
 #### Proxy Fields:
- - `name`: proxy name\* (string)
- - `listen`: listen address\*\* (string)
- - `upstream`: proxy upstream address\*\* (string)
+ - `name`: proxy name (string)
+ - `listen`: listen address (string)
+ - `upstream`: proxy upstream address (string)
  - `enabled`: true/false (defaults to true on creation)
 
- \* To change a proxy's name, it must be deleted and re-created.  
- \*\* Changing these fields will restart the proxy and drop any connections.
-
+To change a proxy's name, it must be deleted and recreated.  
+Changing the `listen` or `upstream` fields will restart the proxy and drop active any connections.  
+If `listen` is specified as 0, toxiproxy will pick an ephemeral port. The `listen` field
+in the response will be updated with the actual port.  
 If you change `enabled` to `false`, it'll take down the proxy. You can switch it
 back to `true` to reenable it.
+
 
 All endpoints are JSON.
 
