@@ -33,10 +33,12 @@ While the examples in this README are currently in Ruby, there's nothing
 stopping you from creating a client in any other language (see
 [Clients](https://github.com/shopify/toxiproxy#Clients)).
 
-Why yet another chaotic TCP proxy? The existing ones we found didn't provide the
-kind of dynamic REST API we needed for integration and unit testing. Linux tools
-like `nc` and so on are not cross-platform and require root, which makes them
-problematic in a test, development and CI environment.
+## Why yet another chaotic TCP proxy?
+
+The existing ones we found didn't provide the kind of dynamic API we needed for
+integration and unit testing. Linux tools like `nc` and so on are not
+cross-platform and require root, which makes them problematic in a test,
+development and CI environment.
 
 ## Clients
 
@@ -140,7 +142,7 @@ rescue Redis::CannotConnectError
 end
 ```
 
-The tests pass! We now have a unit test that proofs fetching the tags when
+The tests pass! We now have a unit test that proves fetching the tags when
 Redis is down works. You should also write an integration test, that wraps
 fetching the entire blog post page when Redis is down.
 
