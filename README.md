@@ -412,6 +412,14 @@ $ redis-cli -p 26379
 Could not connect to Redis at 127.0.0.1:26379: Connection refused
 ```
 
+### Troubleshooting
+
+**I am not seeing my Toxiproxy actions reflected for MySQL**. MySQL will prefer
+the local Unix domain socket for some clients, no matter which port you pass it
+if the host is set to `localhost`. Configure your MySQL server to not create a
+socket, and use `127.0.0.1` as the host. Remember to remove the old socket
+after you restart the server.
+
 ### Development
 
 * `make all`. Build Toxiproxy binaries and packages for all platforms. Requires
