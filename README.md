@@ -420,6 +420,10 @@ if the host is set to `localhost`. Configure your MySQL server to not create a
 socket, and use `127.0.0.1` as the host. Remember to remove the old socket
 after you restart the server.
 
+**Toxiproxy causes intermittent connection failures**.  Use ports outside the
+ephemeral port range to avoid random port conflicts it's `32,768` to `61,000` on
+Linux by default, see `/proc/sys/net/ipv4/ip_local_port_range`.
+
 ### Development
 
 * `make all`. Build Toxiproxy binaries and packages for all platforms. Requires
