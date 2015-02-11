@@ -171,7 +171,7 @@ binaries and system packages for your architecture.
 ```bash
 $ wget -O toxiproxy-1.0.0.deb https://github.com/Shopify/toxiproxy/releases/download/v1.0.0/toxiproxy_1.0.0_amd64.deb
 $ sudo dpkg -i toxiproxy-1.0.0.deb
-$ sudo service start toxiproxy
+$ sudo service toxiproxy start
 ```
 
 **OS X**
