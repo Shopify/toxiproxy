@@ -95,7 +95,7 @@ func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, pro
 		proxy := NewTestProxy("test", upstream)
 		proxy.Start()
 
-		conn := AssertProxyUp(t, proxy, true)
+		conn := AssertProxyUp(t, proxy.Listen, true)
 
 		f(conn, response, proxy)
 
@@ -128,7 +128,7 @@ func TestProxyToDownUpstream(t *testing.T) {
 	proxy := NewTestProxy("test", "localhost:20009")
 	proxy.Start()
 
-	conn := AssertProxyUp(t, proxy, true)
+	conn := AssertProxyUp(t, proxy.Listen, true)
 	// Check to make sure the connection is closed
 	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	_, err := conn.Read(make([]byte, 1))
@@ -212,7 +212,7 @@ func TestStartTwoProxiesOnSameAddress(t *testing.T) {
 func TestStopProxyBeforeStarting(t *testing.T) {
 	WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
-		AssertProxyUp(t, proxy, false)
+		AssertProxyUp(t, proxy.Listen, false)
 
 		proxy.Stop()
 		err := proxy.Start()
@@ -224,10 +224,10 @@ func TestStopProxyBeforeStarting(t *testing.T) {
 		if err != ErrProxyAlreadyStarted {
 			t.Error("Proxy did not fail to start when already started", err)
 		}
-		AssertProxyUp(t, proxy, true)
+		AssertProxyUp(t, proxy.Listen, true)
 
 		proxy.Stop()
-		AssertProxyUp(t, proxy, false)
+		AssertProxyUp(t, proxy.Listen, false)
 	})
 }
 
@@ -238,7 +238,7 @@ func TestProxyUpdate(t *testing.T) {
 		if err != nil {
 			t.Error("Proxy failed to start", err)
 		}
-		AssertProxyUp(t, proxy, true)
+		AssertProxyUp(t, proxy.Listen, true)
 
 		before := proxy.Listen
 
@@ -250,21 +250,21 @@ func TestProxyUpdate(t *testing.T) {
 		if proxy.Listen == before || proxy.Listen == input.Listen {
 			t.Errorf("Proxy update didn't change listen address: %s to %s", before, proxy.Listen)
 		}
-		AssertProxyUp(t, proxy, true)
+		AssertProxyUp(t, proxy.Listen, true)
 
 		input.Listen = proxy.Listen
 		err = proxy.Update(input)
 		if err != nil {
 			t.Error("Failed to update proxy", err)
 		}
-		AssertProxyUp(t, proxy, true)
+		AssertProxyUp(t, proxy.Listen, true)
 
 		input.Enabled = false
 		err = proxy.Update(input)
 		if err != nil {
 			t.Error("Failed to update proxy", err)
 		}
-		AssertProxyUp(t, proxy, false)
+		AssertProxyUp(t, proxy.Listen, false)
 	})
 }
 
@@ -277,7 +277,7 @@ func TestRestartFailedToStartProxy(t *testing.T) {
 		if err != nil {
 			t.Error("Proxy failed to start", err)
 		}
-		AssertProxyUp(t, conflict, true)
+		AssertProxyUp(t, conflict.Listen, true)
 
 		proxy.Listen = conflict.Listen
 		err = proxy.Start()
@@ -286,21 +286,21 @@ func TestRestartFailedToStartProxy(t *testing.T) {
 		}
 
 		conflict.Stop()
-		AssertProxyUp(t, conflict, false)
+		AssertProxyUp(t, conflict.Listen, false)
 
 		err = proxy.Start()
 		if err != nil {
 			t.Error("Proxy failed to start after conflict went away", err)
 		}
-		AssertProxyUp(t, proxy, true)
+		AssertProxyUp(t, proxy.Listen, true)
 
 		proxy.Stop()
-		AssertProxyUp(t, proxy, false)
+		AssertProxyUp(t, proxy.Listen, false)
 	})
 }
 
-func AssertProxyUp(t *testing.T, proxy *Proxy, up bool) net.Conn {
-	conn, err := net.Dial("tcp", proxy.Listen)
+func AssertProxyUp(t *testing.T, addr string, up bool) net.Conn {
+	conn, err := net.Dial("tcp", addr)
 	if err != nil && up {
 		t.Error("Expected proxy to be up", err)
 	} else if err == nil && !up {

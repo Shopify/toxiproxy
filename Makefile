@@ -2,7 +2,8 @@ NAME=toxiproxy
 VERSION=$(shell cat VERSION)
 DEB=pkg/$(NAME)_$(VERSION)_amd64.deb
 GODEP_PATH=$(shell pwd)/Godeps/_workspace
-GOPATH=$(GODEP_PATH):$$GOPATH
+ORIGINAL_PATH=$(shell echo $(GOPATH))
+COMBINED_GOPATH=$(GODEP_PATH):$(ORIGINAL_PATH)
 
 .PHONY: packages deb test linux darwin
 
@@ -12,20 +13,20 @@ darwin: tmp/build/toxiproxy-darwin-amd64
 linux: tmp/build/toxiproxy-linux-amd64
 
 build:
-	GOPATH=$(GOPATH) go build -o toxiproxy
+	GOPATH=$(COMBINED_GOPATH) go build -o toxiproxy
 
 clean:
 	rm tmp/build/*
 	rm *.deb
 
 test:
-	GOPATH=$(GOPATH) go test
+	GOPATH=$(COMBINED_GOPATH) go test
 
 tmp/build/toxiproxy-linux-amd64:
-	GOOS=linux GOARCH=amd64 GOPATH=$(GOPATH) go build -o $(@)
+	GOOS=linux GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -o $(@)
 
 tmp/build/toxiproxy-darwin-amd64:
-	GOOS=darwin GOARCH=amd64 GOPATH=$(GOPATH) go build -o $(@)
+	GOOS=darwin GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -o $(@)
 
 $(DEB): tmp/build/toxiproxy-linux-amd64
 	fpm -t deb \
