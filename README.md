@@ -33,6 +33,20 @@ While the examples in this README are currently in Ruby, there's nothing
 stopping you from creating a client in any other language (see
 [Clients](https://github.com/shopify/toxiproxy#Clients)).
 
+An overview of the [HTTP API](https://github.com/Shopify/toxiproxy#http-api) clients wrap:
+
+ - **GET /proxies** - List existing proxies
+ - **POST /proxies** - Create a new proxy
+ - **GET /toxics** - List existing proxies with toxics included
+ - **GET /proxies/{proxy}** - Show the proxy with both its upstream and downstream toxics
+ - **POST /proxies/{proxy}** - Update a proxy's fields
+ - **DELETE /proxies/{proxy}** - Delete an existing proxy
+ - **GET /proxies/{proxy}/upstream/toxics** - List upstream toxics
+ - **GET /proxies/{proxy}/downstream/toxics** - List downstream toxics
+ - **POST /proxies/{proxy}/upstream/toxics/{toxic}** - Update upstream toxic
+ - **POST /proxies/{proxy}/downstream/toxics/{toxic}** - Update downstream toxic
+ - **GET /reset** - Enable all proxies and disable all toxics
+
 ## Why yet another chaotic TCP proxy?
 
 The existing ones we found didn't provide the kind of dynamic API we needed for
