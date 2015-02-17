@@ -101,25 +101,20 @@ able to see the post with no tags. We could simply rescue the
 `Redis::CannotConnectError` around the `SMEMBERS` Redis call in the `tags`
 method. Let's use Toxiproxy to test that.
 
-We've already installed Toxiproxy and it's running on our machine, so we can
-skip to step two. We add Redis to `config/toxiproxy.json` (see Usage below, step
-2):
+Since we've already installed Toxiproxy and it's running on our machine, we can
+skip to step 2. This is where we need to make sure Toxiproxy has a mapping for
+Redis tags. To `config/boot.rb` (before any connection is made) we add:
 
 ```json
-[
+require 'toxiproxy'
+
+Toxiproxy.populate([
   {
     "name": "toxiproxy_test_redis_tags",
     "listen": "127.0.0.1:22222",
     "upstream": "127.0.0.1:6379"
   }
-]
-```
-
-To populate Toxiproxy when our application boots, to `config/boot.rb` we add:
-
-```ruby
-require 'toxiproxy'
-Toxiproxy.populate(File.join(File.dirname(File.expand_path(__FILE__)), "/toxiproxy.json"))
+])
 ```
 
 Then in `config/environments/test.rb` we set the `TagRedis` to be a Redis client
@@ -168,9 +163,8 @@ Full example application is at
 Configuring a project to use Toxiproxy consists of four steps:
 
 1. Installing Toxiproxy
-2. Creating `config/toxiproxy.json`
-3. Populating Toxiproxy
-4. Using Toxiproxy
+2. Populating Toxiproxy
+3. Using Toxiproxy
 
 ### 1. Installing Toxiproxy
 
@@ -194,15 +188,19 @@ $ brew tap shopify/shopify
 $ brew install toxiproxy
 ```
 
-### 2. Creating `config/toxiproxy.json`
+### 2. Populating Toxiproxy
 
-In `config/toxiproxy.json` you specify the mappings of service upstreams (e.g.
-MySQL or Redis) and an address for Toxiproxy to listen on that proxies to that
-upstream. You should have a `config/toxiproxy.json` for each repository that
-uses Toxiproxy:
+When your application boots, it needs to make sure that Toxiproxy knows which
+endpoints to proxy where. The main parameters are: name, address for Toxiproxy
+to **listen** on and the address of the upstream. 
 
-```json
-[
+The client libraries each have helpers for this task, which is essentially just
+making sure each proxy in a list is created. Example from the Ruby client:
+
+```ruby
+# Make sure `shopify_test_redis_master` and `shopify_test_mysql_master` are
+# present in Toxiproxy
+Toxiproxy.populate([
   {
     "name": "shopify_test_redis_master",
     "listen": "127.0.0.1:22220",
@@ -213,42 +211,29 @@ uses Toxiproxy:
     "listen": "127.0.0.1:24220",
     "upstream": "127.0.0.1:3306"
   }
-]
+])
 ```
 
-This is a subset's of Shopify's main application's `config/toxiproxy.json`, note the
-convention of `<app_name>_<environment>_<service>_<shard>`. It's strongly
-recommended to stick to this convention for the client libraries to work best,
-easing debugging, making the endpoints discoverable and so that running tests
-doesn't disrupt the connections from your server running in another environment.
+This code needs to run as early in boot as possible, before any code establishes
+a connection through Toxiproxy. Please check your client library for
+documentation on the population helpers.
+
+We recommend a naming such as the above: `<app>_<env>_<data store>_<shard>`.
+This makes sure there are no clashes between applications using the same
+Toxiproxy.
+
+For large application we recommend storing the Toxiproxy configurations in a
+separate configuration file. We use `config/toxiproxy.json`.
 
 Use ports outside the ephemeral port range to avoid random port conflicts it's
 `32,768` to `61,000` on Linux by default, see
 `/proc/sys/net/ipv4/ip_local_port_range`.
 
-### 3. Populating Toxiproxy
-
-With `config/toxiproxy.json` we need to feed it into Toxiproxy. Toxiproxy
-doesn't know about files, so you cannot tell it about the configuration file.
-This is to avoid problems like switching branches where the configuration is
-different and managing a global configuration file, which is a mess. Instead,
-when booting your application it's responsible for making sure all the proxies
-from `config/toxiproxy.json` are in Toxiproxy. The clients libraries have
-helpers for this task, for example in Ruby during the initialization of your
-application:
-
-```ruby
-# Makes sure all proxies from `config/toxiproxy.json` are present in Toxiproxy
-Toxiproxy.populate("./config/toxiproxy.json")
-```
-
-Please check your client library for documentation on the population helpers.
-
-### 4. Using Toxiproxy
+### 3. Using Toxiproxy
 
 To use Toxiproxy, you now need to configure your application to connect through
-Toxiproxy, for example to use the `config/toxiproxy.json` above we'd need to
-configure our Redis client to connect through toxiproxy:
+Toxiproxy. Continuing with our example from step two, we can configure our Redis
+client to connect through Toxiproxy:
 
 ```ruby
 # old straight to redis
@@ -425,7 +410,7 @@ $ redis-cli -p 26379
 Could not connect to Redis at 127.0.0.1:26379: Connection refused
 ```
 
-### Troubleshooting
+### Frequently Asked Questions
 
 **I am not seeing my Toxiproxy actions reflected for MySQL**. MySQL will prefer
 the local Unix domain socket for some clients, no matter which port you pass it
@@ -436,6 +421,12 @@ after you restart the server.
 **Toxiproxy causes intermittent connection failures**.  Use ports outside the
 ephemeral port range to avoid random port conflicts it's `32,768` to `61,000` on
 Linux by default, see `/proc/sys/net/ipv4/ip_local_port_range`.
+
+**Should I run a Toxiproxy for each application?**. No, we recommend using the
+same Toxiproxy for all applications. To distinguish between services we
+recommend naming your proxies with the scheme: `<app>_<env>_<data
+store>_<shard>`. For example `shopify_test_redis_master` or
+`shopify_development_mysql_1`.
 
 ### Development
 
