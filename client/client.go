@@ -17,12 +17,11 @@ type Proxy struct {
 	Listen   string `json:"listen"`
 	Upstream string `json:"upstream"`
 	Enabled  bool   `json:"enabled"`
-}
 
-type ProxyWithToxics struct {
-	Proxy
 	ToxicsUpstream   map[string]interface{} `json:"upstream_toxics"`
 	ToxicsDownstream map[string]interface{} `json:"downstream_toxics"`
+
+	client *Client
 }
 
 func NewClient(endpoint string) *Client {
@@ -44,40 +43,48 @@ func (client *Client) Proxies() (map[string]*Proxy, error) {
 	return proxies, nil
 }
 
-func (client *Client) CreateProxy(proxy *Proxy) (*Proxy, error) {
-	request, err := json.Marshal(proxy)
-	if err != nil {
-		return nil, err
+func (client *Client) NewProxy(proxy *Proxy) *Proxy {
+	if proxy == nil {
+		proxy = &Proxy{}
 	}
 
-	resp, err := http.Post(client.endpoint+"/proxies", "application/json", bytes.NewReader(request))
+	proxy.client = client
+	return proxy
+}
+
+func (proxy *Proxy) Create() error {
+	request, err := json.Marshal(proxy)
 	if err != nil {
-		return nil, err
+		return err
+	}
+
+	resp, err := http.Post(proxy.client.endpoint+"/proxies", "application/json", bytes.NewReader(request))
+	if err != nil {
+		return err
 	}
 
 	if resp.StatusCode != http.StatusCreated {
 		// TODO  better error
-		fmt.Printf("OMG status=%d", resp.StatusCode)
-		return nil, errors.New("unable to create proxy")
+		return fmt.Errorf("omg error code %d", resp.StatusCode)
 	}
 
 	proxy = new(Proxy)
 	err = json.NewDecoder(resp.Body).Decode(&proxy)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return proxy, nil
+	return nil
 }
 
-func (client *Client) InspectProxy(name string) (*ProxyWithToxics, error) {
+func (client *Client) Proxy(name string) (*Proxy, error) {
 	// TODO url encode
 	resp, err := http.Get(client.endpoint + "/proxies/" + name)
 	if err != nil {
 		return nil, err
 	}
 
-	proxy := &ProxyWithToxics{}
+	proxy := client.NewProxy(nil)
 	err = json.NewDecoder(resp.Body).Decode(proxy)
 	if err != nil {
 		return nil, err
@@ -86,30 +93,30 @@ func (client *Client) InspectProxy(name string) (*ProxyWithToxics, error) {
 	return proxy, nil
 }
 
-// TODO should update return toxics?
-func (client *Client) UpdateProxy(newProxy *Proxy) (*ProxyWithToxics, error) {
-	request, err := json.Marshal(newProxy)
+func (proxy *Proxy) Save() error {
+	request, err := json.Marshal(proxy)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	resp, err := http.Post(client.endpoint+"/proxies/"+newProxy.Name, "application/json", bytes.NewReader(request))
+	fmt.Printf("%+v", proxy)
+
+	resp, err := http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name, "application/json", bytes.NewReader(request))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	proxy := &ProxyWithToxics{}
 	err = json.NewDecoder(resp.Body).Decode(proxy)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return proxy, nil
+	return nil
 }
 
-func (client *Client) DeleteProxy(name string) error {
+func (proxy *Proxy) Delete() error {
 	httpClient := &http.Client{}
-	req, err := http.NewRequest("DELETE", client.endpoint+"/proxies/"+name, nil)
+	req, err := http.NewRequest("DELETE", proxy.client.endpoint+"/proxies/"+proxy.Name, nil)
 
 	if err != nil {
 		return err
@@ -128,13 +135,28 @@ func (client *Client) DeleteProxy(name string) error {
 	return nil
 }
 
-func (client *Client) Toxics() (map[string]*ProxyWithToxics, error) {
+func (proxy *Proxy) Toxics(direction string) (map[string]interface{}, error) {
+	resp, err := http.Get(proxy.client.endpoint + "/proxies/" + proxy.Name + "/" + direction + "/toxics")
+	if err != nil {
+		return nil, err
+	}
+
+	toxics := make(map[string]interface{})
+	err = json.NewDecoder(resp.Body).Decode(&toxics)
+	if err != nil {
+		return nil, err
+	}
+
+	return toxics, nil
+}
+
+func (client *Client) Toxics() (map[string]*Proxy, error) {
 	resp, err := http.Get(client.endpoint + "/toxics")
 	if err != nil {
 		return nil, err
 	}
 
-	proxies := make(map[string]*ProxyWithToxics)
+	proxies := make(map[string]*Proxy)
 	err = json.NewDecoder(resp.Body).Decode(&proxies)
 	if err != nil {
 		return nil, err
