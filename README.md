@@ -33,19 +33,25 @@ While the examples in this README are currently in Ruby, there's nothing
 stopping you from creating a client in any other language (see
 [Clients](https://github.com/shopify/toxiproxy#Clients)).
 
-An overview of the [HTTP API](https://github.com/Shopify/toxiproxy#http-api) clients wrap:
+## Table of Contents
 
- - **GET /proxies** - List existing proxies
- - **POST /proxies** - Create a new proxy
- - **GET /toxics** - List existing proxies with toxics included
- - **GET /proxies/{proxy}** - Show the proxy with both its upstream and downstream toxics
- - **POST /proxies/{proxy}** - Update a proxy's fields
- - **DELETE /proxies/{proxy}** - Delete an existing proxy
- - **GET /proxies/{proxy}/upstream/toxics** - List upstream toxics
- - **GET /proxies/{proxy}/downstream/toxics** - List downstream toxics
- - **POST /proxies/{proxy}/upstream/toxics/{toxic}** - Update upstream toxic
- - **POST /proxies/{proxy}/downstream/toxics/{toxic}** - Update downstream toxic
- - **GET /reset** - Enable all proxies and disable all toxics
+1. [Why yet another chaotic TCP proxy?](#why-yet-another-chaotic-tcp-proxy)
+2. [Clients](#clients)
+3. [Example](#example)
+4. [Usage](#usage)
+  1. [Installing](#1-installing-toxiproxy)
+  2. [Populating](#2-populating-toxiproxy)
+  3. [Using](#3-using-toxiproxy)
+5. [Toxics](#toxics)
+  1. [Latency](#latency)
+  2. [Down](#down)
+  3. [Slow close](#slow_close)
+  4. [Timeout](#timeout)
+6. [HTTP API](#http-api)
+  1. [Proxy fields](#proxy-fields)
+  2. [Curl example](#curl-example)
+7. [FAQ](#frequently-asked-questions)
+8. [Development](#development)
 
 ## Why yet another chaotic TCP proxy?
 
@@ -53,6 +59,7 @@ The existing ones we found didn't provide the kind of dynamic API we needed for
 integration and unit testing. Linux tools like `nc` and so on are not
 cross-platform and require root, which makes them problematic in a test,
 development and CI environment.
+
 
 ## Clients
 
