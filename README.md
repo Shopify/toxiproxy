@@ -410,7 +410,7 @@ $ redis-cli -p 26379
 Could not connect to Redis at 127.0.0.1:26379: Connection refused
 ```
 
-### Troubleshooting
+### Frequently Asked Questions
 
 **I am not seeing my Toxiproxy actions reflected for MySQL**. MySQL will prefer
 the local Unix domain socket for some clients, no matter which port you pass it
@@ -421,6 +421,12 @@ after you restart the server.
 **Toxiproxy causes intermittent connection failures**.  Use ports outside the
 ephemeral port range to avoid random port conflicts it's `32,768` to `61,000` on
 Linux by default, see `/proc/sys/net/ipv4/ip_local_port_range`.
+
+**Should I run a Toxiproxy for each application?**. No, we recommend using the
+same Toxiproxy for all applications. To distinguish between services we
+recommend naming your proxies with the scheme: `<app>_<env>_<data
+store>_<shard>`. For example `shopify_test_redis_master` or
+`shopify_development_mysql_1`.
 
 ### Development
 
