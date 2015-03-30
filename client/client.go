@@ -99,8 +99,6 @@ func (proxy *Proxy) Save() error {
 		return err
 	}
 
-	fmt.Printf("%+v", proxy)
-
 	resp, err := http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name, "application/json", bytes.NewReader(request))
 	if err != nil {
 		return err
