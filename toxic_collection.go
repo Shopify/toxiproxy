@@ -100,7 +100,7 @@ func (c *ToxicCollection) setToxic(toxic Toxic, index int) {
 		group.Add(1)
 		go func(link *ToxicLink) {
 			defer group.Done()
-			link.SetToxic(toxic, index)
+			link.SetToxic(c.chain[index], index)
 		}(link)
 	}
 	group.Wait()

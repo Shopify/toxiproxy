@@ -158,3 +158,91 @@ func TestFullstreamLatencyBiasUp(t *testing.T) {
 func TestFullstreamLatencyBiasDown(t *testing.T) {
 	DoLatencyTest(t, &LatencyToxic{Enabled: true, Latency: 100}, &LatencyToxic{Enabled: true, Latency: 1000})
 }
+
+func TestZeroLatency(t *testing.T) {
+	DoLatencyTest(t, &LatencyToxic{Enabled: true, Latency: 0}, &LatencyToxic{Enabled: true, Latency: 0})
+}
+
+func AssertEchoResponse(t *testing.T, client, server net.Conn) {
+	msg := []byte("hello world\n")
+
+	_, err := client.Write(msg)
+	if err != nil {
+		t.Error("Failed writing to TCP server", err)
+	}
+
+	scan := bufio.NewScanner(server)
+	if !scan.Scan() {
+		t.Error("Client unexpectedly closed connection")
+	}
+
+	resp := append(scan.Bytes(), '\n')
+	if !bytes.Equal(resp, msg) {
+		t.Error("Server didn't read correct bytes from client:", string(resp))
+	}
+
+	_, err = server.Write(resp)
+	if err != nil {
+		t.Error("Failed writing to TCP client", err)
+	}
+
+	scan = bufio.NewScanner(client)
+	if !scan.Scan() {
+		t.Error("Server unexpectedly closed connection")
+	}
+
+	resp = append(scan.Bytes(), '\n')
+	if !bytes.Equal(resp, msg) {
+		t.Error("Client didn't read correct bytes from server:", string(resp))
+	}
+}
+
+func TestPersistentConnections(t *testing.T) {
+	ln, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatal("Failed to create TCP server", err)
+	}
+
+	defer ln.Close()
+
+	proxy := NewTestProxy("test", ln.Addr().String())
+	proxy.Start()
+	defer proxy.Stop()
+
+	serverConnRecv := make(chan net.Conn)
+
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			t.Error("Unable to accept TCP connection", err)
+		}
+		serverConnRecv <- conn
+	}()
+
+	conn, err := net.Dial("tcp", proxy.Listen)
+	if err != nil {
+		t.Error("Unable to dial TCP server", err)
+	}
+
+	serverConn := <-serverConnRecv
+
+	proxy.upToxics.SetToxicValue(&LatencyToxic{Enabled: true, Latency: 0})
+	proxy.downToxics.SetToxicValue(&LatencyToxic{Enabled: true, Latency: 0})
+
+	AssertEchoResponse(t, conn, serverConn)
+
+	proxy.upToxics.ResetToxics()
+	proxy.downToxics.ResetToxics()
+
+	AssertEchoResponse(t, conn, serverConn)
+
+	proxy.upToxics.ResetToxics()
+	proxy.downToxics.ResetToxics()
+
+	AssertEchoResponse(t, conn, serverConn)
+
+	err = conn.Close()
+	if err != nil {
+		t.Error("Failed to close TCP connection", err)
+	}
+}
