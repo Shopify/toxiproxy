@@ -39,6 +39,9 @@ func (client *Client) Proxies() (map[string]*Proxy, error) {
 	if err != nil {
 		return nil, err
 	}
+	for _, proxy := range proxies {
+		proxy.client = client
+	}
 
 	return proxies, nil
 }
