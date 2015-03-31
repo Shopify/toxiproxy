@@ -185,8 +185,8 @@ binaries and system packages for your architecture.
 **Ubuntu**
 
 ```bash
-$ wget -O toxiproxy-1.0.0.deb https://github.com/Shopify/toxiproxy/releases/download/v1.0.0/toxiproxy_1.0.0_amd64.deb
-$ sudo dpkg -i toxiproxy-1.0.0.deb
+$ wget -O toxiproxy-1.0.1.deb https://github.com/Shopify/toxiproxy/releases/download/v1.0.1/toxiproxy_1.0.1_amd64.deb
+$ sudo dpkg -i toxiproxy-1.0.1.deb
 $ sudo service toxiproxy start
 ```
 

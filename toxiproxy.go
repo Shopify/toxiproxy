@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var Version = "1.0.0"
+var Version = "1.0.1"
 
 var host string
 var port string
