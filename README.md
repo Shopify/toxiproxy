@@ -10,8 +10,8 @@ October, 2014.
 
 Toxiproxy usage consists of two parts. A TCP proxy written in Go (what this
 repository contains) and a client communicating with the proxy over HTTP. You
-configure your application to make all development connections go through
-Toxiproxy and can then manipulate their health via HTTP. See [Usage](#usage)
+configure your application to make all test connections go through Toxiproxy
+and can then manipulate their health via HTTP. See [Usage](#usage)
 below on how to set up your project.
 
 For example, to add 1000ms of latency to the response of MySQL from the [Ruby
@@ -59,9 +59,8 @@ stopping you from creating a client in any other language (see
 
 The existing ones we found didn't provide the kind of dynamic API we needed for
 integration and unit testing. Linux tools like `nc` and so on are not
-cross-platform and require root, which makes them problematic in a test,
-development and CI environment.
-
+cross-platform and require root, which makes them problematic in test,
+development and CI environments.
 
 ## Clients
 
@@ -71,10 +70,10 @@ development and CI environment.
 ## Example
 
 Let's walk through an example with a Rails application. Note that Toxiproxy is
-in no way tied to Ruby, it's just been our first usecase and it's currently the
+in no way tied to Ruby, it's just been our first use case and it's currently the
 only language that has a client. You can see the full example at
 [Sirupsen/toxiproxy-rails-example](https://github.com/Sirupsen/toxiproxy-rails-example).
-To get started right away, jump down to [Usage](https://github.com/Shopify/toxiproxy#Usage).
+To get started right away, jump down to [Usage](https://github.com/Shopify/toxiproxy#usage).
 
 For our popular blog, for some reason we're storing the tags for our posts in
 Redis and the posts themselves in MySQL. We might have a `Post` class that
@@ -114,7 +113,7 @@ Since we've already installed Toxiproxy and it's running on our machine, we can
 skip to step 2. This is where we need to make sure Toxiproxy has a mapping for
 Redis tags. To `config/boot.rb` (before any connection is made) we add:
 
-```json
+```ruby
 require 'toxiproxy'
 
 Toxiproxy.populate([
@@ -201,7 +200,7 @@ $ brew install toxiproxy
 
 When your application boots, it needs to make sure that Toxiproxy knows which
 endpoints to proxy where. The main parameters are: name, address for Toxiproxy
-to **listen** on and the address of the upstream. 
+to **listen** on and the address of the upstream.
 
 The client libraries each have helpers for this task, which is essentially just
 making sure each proxy in a list is created. Example from the Ruby client:
@@ -234,8 +233,8 @@ Toxiproxy.
 For large application we recommend storing the Toxiproxy configurations in a
 separate configuration file. We use `config/toxiproxy.json`.
 
-Use ports outside the ephemeral port range to avoid random port conflicts it's
-`32,768` to `61,000` on Linux by default, see
+Use ports outside the ephemeral port range to avoid random port conflicts.
+It's `32,768` to `61,000` on Linux by default, see
 `/proc/sys/net/ipv4/ip_local_port_range`.
 
 ### 3. Using Toxiproxy
@@ -270,7 +269,7 @@ Toxics manipulate the pipe between the client and upstream.
 
 #### latency
 
-Add a delay to all data going through the proxy. The delay is equal to `latency` +/- `jitter`
+Add a delay to all data going through the proxy. The delay is equal to `latency` +/- `jitter`.
 
 Fields:
 
@@ -295,7 +294,7 @@ Fields:
 
 #### timeout
 
-Stops all data from getting through, and close the connection after `timeout` If
+Stops all data from getting through, and close the connection after `timeout`. If
 `timeout` is 0, the connection won't close, and data will be delayed until the
 toxic is disabled.
 
@@ -312,6 +311,7 @@ HTTP interface, which is described here.
 Toxiproxy listens for HTTP on port **8474**.
 
 #### Proxy Fields:
+
  - `name`: proxy name (string)
  - `listen`: listen address (string)
  - `upstream`: proxy upstream address (string)
@@ -326,7 +326,6 @@ in the response will be updated with the actual port.
 
 If you change `enabled` to `false`, it'll take down the proxy. You can switch it
 back to `true` to reenable it.
-
 
 All endpoints are JSON.
 
@@ -427,15 +426,14 @@ if the host is set to `localhost`. Configure your MySQL server to not create a
 socket, and use `127.0.0.1` as the host. Remember to remove the old socket
 after you restart the server.
 
-**Toxiproxy causes intermittent connection failures**.  Use ports outside the
-ephemeral port range to avoid random port conflicts it's `32,768` to `61,000` on
+**Toxiproxy causes intermittent connection failures**. Use ports outside the
+ephemeral port range to avoid random port conflicts. It's `32,768` to `61,000` on
 Linux by default, see `/proc/sys/net/ipv4/ip_local_port_range`.
 
 **Should I run a Toxiproxy for each application?**. No, we recommend using the
 same Toxiproxy for all applications. To distinguish between services we
-recommend naming your proxies with the scheme: `<app>_<env>_<data
-store>_<shard>`. For example `shopify_test_redis_master` or
-`shopify_development_mysql_1`.
+recommend naming your proxies with the scheme: `<app>_<env>_<data store>_<shard>`.
+For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 
 ### Development
 
