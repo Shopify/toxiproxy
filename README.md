@@ -65,7 +65,7 @@ development and CI environments.
 ## Clients
 
 * [toxiproxy-ruby](https://github.com/Shopify/toxiproxy-ruby)
-* [toxiproxy-go](https://github.com/Shopify/toxiproxy/blob/master/client/client.go) WIP
+* [toxiproxy-go](https://github.com/Shopify/toxiproxy/tree/master/client)
 
 ## Example
 
@@ -202,7 +202,7 @@ When your application boots, it needs to make sure that Toxiproxy knows which
 endpoints to proxy where. The main parameters are: name, address for Toxiproxy
 to **listen** on and the address of the upstream.
 
-The client libraries each have helpers for this task, which is essentially just
+Some client libraries have helpers for this task, which is essentially just
 making sure each proxy in a list is created. Example from the Ruby client:
 
 ```ruby
@@ -225,6 +225,12 @@ Toxiproxy.populate([
 This code needs to run as early in boot as possible, before any code establishes
 a connection through Toxiproxy. Please check your client library for
 documentation on the population helpers.
+
+Alternatively use the HTTP API directly to create proxies, e.g.:
+
+```bash
+curl -i -d '{"name": "shopify_test_redis_master", "upstream": "localhost:6379", "listen": "localhost:26379"}' localhost:8474/proxies
+```
 
 We recommend a naming such as the above: `<app>_<env>_<data store>_<shard>`.
 This makes sure there are no clashes between applications using the same

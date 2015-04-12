@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -38,36 +36,6 @@ func WithServer(t *testing.T, f func(string)) {
 	if err != nil {
 		t.Error("Failed to clear collection", err)
 	}
-}
-
-func ListToxics(t *testing.T, addr, proxy, direction string) map[string]interface{} {
-	resp, err := http.Get(addr + "/proxies/" + proxy + "/" + direction + "/toxics")
-	if err != nil {
-		t.Fatal("Failed to get index", err)
-	}
-
-	toxics := make(map[string]interface{})
-	err = json.NewDecoder(resp.Body).Decode(&toxics)
-	if err != nil {
-		t.Fatal("Failed to parse JSON response from index")
-	}
-
-	return toxics
-}
-
-func SetToxic(t *testing.T, addr, proxy, direction, name, toxic string) map[string]interface{} {
-	resp, err := http.Post(addr+"/proxies/"+proxy+"/"+direction+"/toxics/"+name, "application/json", strings.NewReader(toxic))
-	if err != nil {
-		t.Fatal("Failed to get index", err)
-	}
-
-	toxics := make(map[string]interface{})
-	err = json.NewDecoder(resp.Body).Decode(&toxics)
-	if err != nil {
-		t.Fatal("Failed to parse JSON response from index")
-	}
-
-	return toxics
 }
 
 func TestIndexWithNoProxies(t *testing.T) {
@@ -290,7 +258,15 @@ func TestResetState(t *testing.T) {
 			t.Fatal("Unable to create proxy: ", err)
 		}
 
-		latency := SetToxic(t, addr, "mysql_master", "downstream", "latency", `{"enabled": true, "latency": 100, "jitter": 10}`)
+		latency, err := disabledProxy.SetToxic("latency", "downstream", tclient.Fields{
+			"enabled": true,
+			"latency": 100,
+			"jitter":  10,
+		})
+		if err != nil {
+			t.Fatal("Error setting toxic: %+v", err)
+		}
+
 		if latency["enabled"] != true {
 			t.Fatal("Latency toxic did not start up")
 		}
@@ -316,7 +292,11 @@ func TestResetState(t *testing.T) {
 			t.Fatal("Expected proxy to be enabled")
 		}
 
-		toxics := ListToxics(t, addr, "mysql_master", "downstream")
+		toxics, err := proxy.Toxics("downstream")
+		if err != nil {
+			t.Fatal("Error requesting toxics: %+v", err)
+		}
+
 		latency = AssertToxicEnabled(t, toxics, "latency", false)
 		if latency["latency"] != 100.0 || latency["jitter"] != 10.0 {
 			t.Fatal("Latency toxic did not keep settings on reset")
@@ -326,14 +306,18 @@ func TestResetState(t *testing.T) {
 	})
 }
 
-func TestListToxics(t *testing.T) {
+func TestListingToxics(t *testing.T) {
 	WithServer(t, func(addr string) {
 		err := testProxy.Create()
 		if err != nil {
 			t.Fatal("Unable to create proxy")
 		}
 
-		toxics := ListToxics(t, addr, "mysql_master", "upstream")
+		toxics, err := testProxy.Toxics("upstream")
+		if err != nil {
+			t.Fatal("Error returning toxics: %+v", err)
+		}
+
 		AssertToxicEnabled(t, toxics, "latency", false)
 	})
 }
@@ -345,7 +329,15 @@ func TestSetToxics(t *testing.T) {
 			t.Fatal("Unable to create proxy")
 		}
 
-		latency := SetToxic(t, addr, "mysql_master", "downstream", "latency", `{"enabled": true, "latency": 100, "jitter": 10}`)
+		latency, err := testProxy.SetToxic("latency", "downstream", tclient.Fields{
+			"enabled": true,
+			"latency": 100,
+			"jitter":  10,
+		})
+		if err != nil {
+			t.Fatal("Error setting toxic: %+v", err)
+		}
+
 		if latency["enabled"] != true {
 			t.Fatal("Latency toxic did not start up")
 		}
@@ -353,10 +345,16 @@ func TestSetToxics(t *testing.T) {
 			t.Fatal("Latency toxic did not start up with correct settings")
 		}
 
-		toxics := ListToxics(t, addr, "mysql_master", "downstream")
+		toxics, err := testProxy.Toxics("downstream")
+		if err != nil {
+			t.Fatal("Error returning toxics: %+v", err)
+		}
 		AssertToxicEnabled(t, toxics, "latency", true)
 
-		toxics = ListToxics(t, addr, "mysql_master", "upstream")
+		toxics, err = testProxy.Toxics("upstream")
+		if err != nil {
+			t.Fatal("Error returning toxics: %+v", err)
+		}
 		AssertToxicEnabled(t, toxics, "latency", false)
 	})
 }
@@ -368,15 +366,29 @@ func TestUpdateToxics(t *testing.T) {
 			t.Fatal("Unable to create proxy: ", err)
 		}
 
-		latency := SetToxic(t, addr, "mysql_master", "downstream", "latency", `{"enabled": true, "latency": 100, "jitter": 10}`)
+		latency, err := testProxy.SetToxic("latency", "downstream", tclient.Fields{
+			"enabled": true,
+			"latency": 100,
+			"jitter":  10,
+		})
+		if err != nil {
+			t.Fatal("Error setting toxic: %+v", err)
+		}
+
 		if latency["enabled"] != true {
 			t.Fatal("Latency toxic did not start up")
 		}
 		if latency["latency"] != 100.0 || latency["jitter"] != 10.0 {
-			t.Fatal("Latency toxic did not start up with correct settings")
+			t.Fatal("Latency toxic did not start up with correct settings: %+v", latency)
 		}
 
-		latency = SetToxic(t, addr, "mysql_master", "downstream", "latency", `{"latency": 1000}`)
+		latency, err = testProxy.SetToxic("latency", "downstream", tclient.Fields{
+			"latency": 1000,
+		})
+		if err != nil {
+			t.Fatal("Error setting toxic: %+v", err)
+		}
+
 		if latency["enabled"] != true {
 			t.Fatal("Latency toxic did not stay enabled")
 		}
