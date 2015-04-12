@@ -12,6 +12,8 @@ type Client struct {
 	endpoint string
 }
 
+type Fields map[string]interface{}
+
 type Proxy struct {
 	Name     string `json:"name"`
 	Listen   string `json:"listen"`
@@ -138,6 +140,26 @@ func (proxy *Proxy) Delete() error {
 
 func (proxy *Proxy) Toxics(direction string) (map[string]interface{}, error) {
 	resp, err := http.Get(proxy.client.endpoint + "/proxies/" + proxy.Name + "/" + direction + "/toxics")
+	if err != nil {
+		return nil, err
+	}
+
+	toxics := make(map[string]interface{})
+	err = json.NewDecoder(resp.Body).Decode(&toxics)
+	if err != nil {
+		return nil, err
+	}
+
+	return toxics, nil
+}
+
+func (proxy *Proxy) SetToxic(name string, direction string, fields Fields) (map[string]interface{}, error) {
+	request, err := json.Marshal(fields)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name+"/"+direction+"/toxics/"+name, "application/json", bytes.NewReader(request))
 	if err != nil {
 		return nil, err
 	}
