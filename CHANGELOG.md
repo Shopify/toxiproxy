@@ -1,3 +1,7 @@
+# 1.0.2
+
+* Added Toxic support to Go client
+
 # 1.0.1
 
 * Various improvements to the documentation
