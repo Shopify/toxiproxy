@@ -57,7 +57,8 @@ func (client *Client) Proxies() (map[string]*Proxy, error) {
 }
 
 // NewProxy instantiates a new proxy instance. Note Create() must be called on
-// it to create it.
+// it to create it. The Enabled field must be set to true, otherwise the Proxy
+// will not be enabled when created.
 func (client *Client) NewProxy(proxy *Proxy) *Proxy {
 	if proxy == nil {
 		proxy = &Proxy{}
