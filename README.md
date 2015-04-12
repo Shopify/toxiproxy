@@ -353,10 +353,10 @@ All endpoints are JSON.
 $ curl -i -d '{"name": "redis", "upstream": "localhost:6379", "listen": "localhost:26379"}' localhost:8474/proxies
 HTTP/1.1 201 Created
 Content-Type: application/json
-Date: Mon, 10 Nov 2014 16:05:39 GMT
-Content-Length: 71
+Date: Sun, 12 Apr 2015 19:52:08 GMT
+Content-Length: 392
 
-{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379"}
+{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true,"upstream_toxics":{"latency":{"enabled":false,"latency":0,"jitter":0},"slow_close":{"enabled":false,"delay":0},"timeout":{"enabled":false,"timeout":0}},"downstream_toxics":{"latency":{"enabled":false,"latency":0,"jitter":0},"slow_close":{"enabled":false,"delay":0},"timeout":{"enabled":false,"timeout":0}}}
 ```
 
 ```bash
@@ -371,10 +371,10 @@ OK
 $ curl -i localhost:8474/proxies
 HTTP/1.1 200 OK
 Content-Type: application/json
-Date: Mon, 10 Nov 2014 16:06:54 GMT
-Content-Length: 81
+Date: Sun, 12 Apr 2015 19:52:49 GMT
+Content-Length: 96
 
-{"redis":{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379"}}
+{"redis":{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true}}
 ```
 
 ```bash
