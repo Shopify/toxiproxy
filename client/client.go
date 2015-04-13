@@ -1,5 +1,5 @@
-// The Toxiproxy Go client provides a wrapper around the Toxiproxy HTTP API for
-// testing the resiliency of Go applications.
+// Package client provides a Toxiproxy client provides a wrapper around the
+// Toxiproxy HTTP API for testing the resiliency of Go applications.
 package client
 
 import (
