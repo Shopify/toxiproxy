@@ -66,6 +66,7 @@ development and CI environments.
 
 * [toxiproxy-ruby](https://github.com/Shopify/toxiproxy-ruby)
 * [toxiproxy-go](https://github.com/Shopify/toxiproxy/tree/master/client)
+* [toxiproxy.net](https://github.com/mdevilliers/Toxiproxy.Net)
 
 ## Example
 
