@@ -1,3 +1,7 @@
+# 1.0.3 (Unreleased)
+
+* Rename Go library package to Toxiproxy from Client
+
 # 1.0.2
 
 * Added Toxic support to Go client
