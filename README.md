@@ -6,7 +6,7 @@ deterministic tampering with connections, but with support for randomized chaos
 and customization. **Toxiproxy is the tool you need to prove with tests that
 your application doesn't have single points of failure.** We've been
 successfully using it in all development and test environments at Shopify since
-October, 2014.
+October, 2014. See our [blog post][blog] on resiliency for more information.
 
 Toxiproxy usage consists of two parts. A TCP proxy written in Go (what this
 repository contains) and a client communicating with the proxy over HTTP. You
@@ -451,3 +451,5 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 * `make test`. Run the Toxiproxy tests.
 * `make darwin`. Build binary for Darwin.
 * `make linux`. Build binary for Linux.
+
+[blog]: http://www.shopify.com/technology/16906928-building-and-testing-resilient-ruby-on-rails-applications
