@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -87,7 +88,7 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *LatencyToxic) {
 		proxy.upToxics.SetToxicValue(upLatency)
 		proxy.downToxics.SetToxicValue(downLatency)
 
-		msg := []byte("hello world\n")
+		msg := []byte("hello world " + strings.Repeat("a", 32*1024) + "\n")
 
 		timer := time.Now()
 		_, err := conn.Write(msg)

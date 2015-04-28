@@ -8,7 +8,7 @@ import (
 
 func TestBasicReadWrite(t *testing.T) {
 	send := []byte("hello world")
-	c := make(chan []byte)
+	c := make(chan *Packet)
 	writer := NewChanWriter(c)
 	reader := NewChanReader(c)
 	go writer.Write(send)
@@ -35,7 +35,7 @@ func TestBasicReadWrite(t *testing.T) {
 
 func TestReadMoreThanWrite(t *testing.T) {
 	send := []byte("hello world")
-	c := make(chan []byte)
+	c := make(chan *Packet)
 	writer := NewChanWriter(c)
 	reader := NewChanReader(c)
 	go writer.Write(send)
@@ -62,7 +62,7 @@ func TestReadMoreThanWrite(t *testing.T) {
 
 func TestReadLessThanWrite(t *testing.T) {
 	send := []byte("hello world")
-	c := make(chan []byte)
+	c := make(chan *Packet)
 	writer := NewChanWriter(c)
 	reader := NewChanReader(c)
 	go writer.Write(send)
@@ -99,7 +99,7 @@ func TestReadLessThanWrite(t *testing.T) {
 
 func TestMultiReadWrite(t *testing.T) {
 	send := []byte("hello world, this message is longer")
-	c := make(chan []byte)
+	c := make(chan *Packet)
 	writer := NewChanWriter(c)
 	reader := NewChanReader(c)
 	go func() {
@@ -131,7 +131,7 @@ func TestMultiReadWrite(t *testing.T) {
 
 func TestMultiWriteWithCopy(t *testing.T) {
 	send := []byte("hello world, this message is longer")
-	c := make(chan []byte)
+	c := make(chan *Packet)
 	writer := NewChanWriter(c)
 	reader := NewChanReader(c)
 	go func() {
