@@ -18,12 +18,12 @@ func (t *NoopToxic) Pipe(stub *ToxicStub) {
 		select {
 		case <-stub.interrupt:
 			return
-		case p := <-stub.input:
-			if p == nil {
+		case c := <-stub.input:
+			if c == nil {
 				stub.Close()
 				return
 			}
-			stub.output <- p
+			stub.output <- c
 		}
 	}
 }

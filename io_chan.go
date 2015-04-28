@@ -5,23 +5,23 @@ import (
 	"time"
 )
 
-// Simulates a TCP packet by storing a slice of bytes with the receive timestmap
-type Packet struct {
+// Stores a slice of bytes with its receive timestmap
+type StreamChunk struct {
 	data      []byte
 	timestamp time.Time
 }
 
 // Implements the io.WriteCloser interface for a chan []byte
 type ChanWriter struct {
-	output chan<- *Packet
+	output chan<- *StreamChunk
 }
 
-func NewChanWriter(output chan<- *Packet) *ChanWriter {
+func NewChanWriter(output chan<- *StreamChunk) *ChanWriter {
 	return &ChanWriter{output}
 }
 
 func (c *ChanWriter) Write(buf []byte) (int, error) {
-	packet := &Packet{make([]byte, len(buf)), time.Now()}
+	packet := &StreamChunk{make([]byte, len(buf)), time.Now()}
 	copy(packet.data, buf) // Make a copy before sending it to the channel
 	c.output <- packet
 	return len(buf), nil
@@ -34,11 +34,11 @@ func (c *ChanWriter) Close() error {
 
 // Implements the io.Reader interface for a chan []byte
 type ChanReader struct {
-	input  <-chan *Packet
+	input  <-chan *StreamChunk
 	buffer []byte
 }
 
-func NewChanReader(input <-chan *Packet) *ChanReader {
+func NewChanReader(input <-chan *StreamChunk) *ChanReader {
 	return &ChanReader{input, []byte{}}
 }
 
