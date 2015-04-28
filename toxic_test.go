@@ -281,3 +281,99 @@ func TestLatencyToxicCloseRace(t *testing.T) {
 		proxy.upToxics.SetToxicValue(&LatencyToxic{Enabled: false})
 	}
 }
+
+func BenchmarkBandwidthToxic(b *testing.B) {
+	ln, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		b.Fatal("Failed to create TCP server", err)
+	}
+
+	defer ln.Close()
+
+	proxy := NewTestProxy("test", ln.Addr().String())
+	proxy.Start()
+	defer proxy.Stop()
+
+	buf := []byte(strings.Repeat("hello world ", 1000))
+
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			b.Error("Unable to accept TCP connection", err)
+		}
+		buf2 := make([]byte, len(buf))
+		for err == nil {
+			_, err = conn.Read(buf2)
+		}
+	}()
+
+	conn, err := net.Dial("tcp", proxy.Listen)
+	if err != nil {
+		b.Error("Unable to dial TCP server", err)
+	}
+
+	proxy.upToxics.SetToxicValue(&BandwidthToxic{Enabled: true, Rate: 1024 * 10})
+
+	b.SetBytes(int64(len(buf)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		n, err := conn.Write(buf)
+		if err != nil || n != len(buf) {
+			b.Errorf("%v, %d == %d", err, n, len(buf))
+			break
+		}
+	}
+
+	err = conn.Close()
+	if err != nil {
+		b.Error("Failed to close TCP connection", err)
+	}
+}
+
+func BenchmarkNoopToxic(b *testing.B) {
+	ln, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		b.Fatal("Failed to create TCP server", err)
+	}
+
+	defer ln.Close()
+
+	proxy := NewTestProxy("test", ln.Addr().String())
+	proxy.Start()
+	defer proxy.Stop()
+
+	buf := []byte(strings.Repeat("hello world ", 1000))
+
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			b.Error("Unable to accept TCP connection", err)
+		}
+		buf2 := make([]byte, len(buf))
+		for err == nil {
+			_, err = conn.Read(buf2)
+		}
+	}()
+
+	conn, err := net.Dial("tcp", proxy.Listen)
+	if err != nil {
+		b.Error("Unable to dial TCP server", err)
+	}
+
+	b.SetBytes(int64(len(buf)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		n, err := conn.Write(buf)
+		if err != nil || n != len(buf) {
+			b.Errorf("%v, %d == %d", err, n, len(buf))
+			break
+		}
+	}
+
+	err = conn.Close()
+	if err != nil {
+		b.Error("Failed to close TCP connection", err)
+	}
+}
