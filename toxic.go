@@ -31,6 +31,7 @@ type ToxicStub struct {
 	input     <-chan []byte
 	output    chan<- []byte
 	interrupt chan struct{}
+	running   chan struct{}
 	closed    chan struct{}
 }
 
@@ -43,6 +44,13 @@ func NewToxicStub(input <-chan []byte, output chan<- []byte) *ToxicStub {
 	}
 }
 
+// Begin running a toxic on this stub, can be interrupted.
+func (s *ToxicStub) Run(toxic Toxic) {
+	s.running = make(chan struct{})
+	defer close(s.running)
+	toxic.Pipe(s)
+}
+
 // Interrupt the flow of data so that the toxic controlling the stub can be replaced.
 // Returns true if the stream was successfully interrupted.
 func (s *ToxicStub) Interrupt() bool {
@@ -50,11 +58,12 @@ func (s *ToxicStub) Interrupt() bool {
 	case <-s.closed:
 		return false
 	case s.interrupt <- struct{}{}:
+		<-s.running // Wait for the running toxic to exit
 		return true
 	}
 }
 
 func (s *ToxicStub) Close() {
-	close(s.output)
 	close(s.closed)
+	close(s.output)
 }

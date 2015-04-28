@@ -246,3 +246,37 @@ func TestPersistentConnections(t *testing.T) {
 		t.Error("Failed to close TCP connection", err)
 	}
 }
+
+func TestLatencyToxicCloseRace(t *testing.T) {
+	ln, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatal("Failed to create TCP server", err)
+	}
+
+	defer ln.Close()
+
+	proxy := NewTestProxy("test", ln.Addr().String())
+	proxy.Start()
+	defer proxy.Stop()
+
+	go func() {
+		for {
+			_, err := ln.Accept()
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	// Check for potential race conditions when interrupting toxics
+	for i := 0; i < 1000; i++ {
+		proxy.upToxics.SetToxicValue(&LatencyToxic{Enabled: true, Latency: 10})
+		conn, err := net.Dial("tcp", proxy.Listen)
+		if err != nil {
+			t.Error("Unable to dial TCP server", err)
+		}
+		conn.Write([]byte("hello"))
+		conn.Close()
+		proxy.upToxics.SetToxicValue(&LatencyToxic{Enabled: false})
+	}
+}

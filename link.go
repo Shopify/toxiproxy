@@ -57,7 +57,7 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		link.input.Close()
 	}()
 	for i, toxic := range link.toxics.chain {
-		go toxic.Pipe(link.stubs[i])
+		go link.stubs[i].Run(toxic)
 	}
 	go func() {
 		bytes, err := io.Copy(dest, link.output)
@@ -78,6 +78,6 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 // Replace the toxic at the specified index
 func (link *ToxicLink) SetToxic(toxic Toxic, index int) {
 	if link.stubs[index].Interrupt() {
-		go toxic.Pipe(link.stubs[index])
+		go link.stubs[index].Run(toxic)
 	}
 }

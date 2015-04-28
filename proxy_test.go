@@ -9,8 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"gopkg.in/tomb.v1"
 )
+
+func init() {
+	logrus.SetLevel(logrus.FatalLevel)
+}
 
 func NewTestProxy(name, upstream string) *Proxy {
 	proxy := NewProxy()
