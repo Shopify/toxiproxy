@@ -37,7 +37,7 @@ func NewClient(endpoint string) *Client {
 	return &Client{endpoint: endpoint}
 }
 
-// Proxies returns a map with all the proxies.
+// Proxies returns a map with all the proxies and their toxics.
 func (client *Client) Proxies() (map[string]*Proxy, error) {
 	resp, err := http.Get(client.endpoint + "/proxies")
 	if err != nil {
@@ -191,22 +191,6 @@ func (proxy *Proxy) SetToxic(name string, direction string, fields Fields) (map[
 	}
 
 	return toxics, nil
-}
-
-// Toxics lists all proxies and toxics.
-func (client *Client) Toxics() (map[string]*Proxy, error) {
-	resp, err := http.Get(client.endpoint + "/toxics")
-	if err != nil {
-		return nil, err
-	}
-
-	proxies := make(map[string]*Proxy)
-	err = json.NewDecoder(resp.Body).Decode(&proxies)
-	if err != nil {
-		return nil, err
-	}
-
-	return proxies, nil
 }
 
 // ResetState resets the state of all proxies and toxics in Toxiproxy.
