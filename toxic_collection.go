@@ -21,6 +21,7 @@ func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 	toxicOrder := []Toxic{
 		new(SlowCloseToxic),
 		new(LatencyToxic),
+		new(BandwidthToxic),
 		new(TimeoutToxic),
 	}
 

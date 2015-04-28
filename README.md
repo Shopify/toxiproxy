@@ -292,6 +292,15 @@ Bringing a service down is not technically a toxic in the implementation of
 Toxiproxy. This is done by `POST`ing to `/proxies/{proxy}` and setting the
 `enabled` field to `false`.
 
+#### bandwidth
+
+Limit a connection to a maximum number of kilobytes per second.
+
+Fields:
+
+ - `enabled`: true/false
+ - `rate`: rate in KB/s
+
 #### slow_close
 
 Delay the TCP socket from closing until `delay` has elapsed.
