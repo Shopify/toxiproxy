@@ -22,6 +22,7 @@ func (t *BandwidthToxic) SetEnabled(enabled bool) {
 }
 
 func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
+	var sleep time.Duration = 0
 	for {
 		select {
 		case <-stub.interrupt:
@@ -31,14 +32,13 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 				stub.Close()
 				return
 			}
-			var sleep time.Duration
 			if t.Rate <= 0 {
 				sleep = 0
 			} else {
-				sleep = time.Duration(len(p.data)) * time.Millisecond / time.Duration(t.Rate)
+				sleep += time.Duration(len(p.data)) * time.Millisecond / time.Duration(t.Rate)
 			}
 			// If the rate is low enough, split the packet up and send in 100 millisecond intervals
-			for sleep > 100*time.Millisecond {
+			for int64(len(p.data)) > t.Rate*100 {
 				select {
 				case <-time.After(100 * time.Millisecond):
 					stub.output <- &StreamChunk{p.data[:t.Rate*100], p.timestamp}
@@ -49,8 +49,11 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 					return
 				}
 			}
+			start := time.Now()
 			select {
 			case <-time.After(sleep):
+				// time.After only seems to have ~1ms prevision, so offset the next sleep by the error
+				sleep -= time.Now().Sub(start)
 				stub.output <- p
 			case <-stub.interrupt:
 				stub.output <- p // Don't drop any data on the floor

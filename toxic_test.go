@@ -282,7 +282,7 @@ func TestLatencyToxicCloseRace(t *testing.T) {
 	}
 }
 
-func BenchmarkBandwidthToxic(b *testing.B) {
+func BenchmarkBandwidthToxic100MB(b *testing.B) {
 	ln, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		b.Fatal("Failed to create TCP server", err)
@@ -312,7 +312,7 @@ func BenchmarkBandwidthToxic(b *testing.B) {
 		b.Error("Unable to dial TCP server", err)
 	}
 
-	proxy.upToxics.SetToxicValue(&BandwidthToxic{Enabled: true, Rate: 1024 * 10})
+	proxy.upToxics.SetToxicValue(&BandwidthToxic{Enabled: true, Rate: 100 * 1000})
 
 	b.SetBytes(int64(len(buf)))
 	b.ReportAllocs()
