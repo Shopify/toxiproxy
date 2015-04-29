@@ -31,10 +31,10 @@ func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
 	}
 
 	// Initialize the link with ToxicStubs
-	last := make(chan []byte)
+	last := make(chan *StreamChunk)
 	link.input = NewChanWriter(last)
 	for i := 0; i < len(link.stubs); i++ {
-		next := make(chan []byte)
+		next := make(chan *StreamChunk)
 		link.stubs[i] = NewToxicStub(last, next)
 		last = next
 	}

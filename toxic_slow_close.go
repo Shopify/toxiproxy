@@ -26,8 +26,8 @@ func (t *SlowCloseToxic) Pipe(stub *ToxicStub) {
 		select {
 		case <-stub.interrupt:
 			return
-		case buf := <-stub.input:
-			if buf == nil {
+		case c := <-stub.input:
+			if c == nil {
 				delay := time.Duration(t.Delay) * time.Millisecond
 				select {
 				case <-time.After(delay):
@@ -37,7 +37,7 @@ func (t *SlowCloseToxic) Pipe(stub *ToxicStub) {
 					return
 				}
 			}
-			stub.output <- buf
+			stub.output <- c
 		}
 	}
 }

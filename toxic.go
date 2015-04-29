@@ -28,14 +28,14 @@ type Toxic interface {
 }
 
 type ToxicStub struct {
-	input     <-chan []byte
-	output    chan<- []byte
+	input     <-chan *StreamChunk
+	output    chan<- *StreamChunk
 	interrupt chan struct{}
 	running   chan struct{}
 	closed    chan struct{}
 }
 
-func NewToxicStub(input <-chan []byte, output chan<- []byte) *ToxicStub {
+func NewToxicStub(input <-chan *StreamChunk, output chan<- *StreamChunk) *ToxicStub {
 	return &ToxicStub{
 		interrupt: make(chan struct{}),
 		closed:    make(chan struct{}),

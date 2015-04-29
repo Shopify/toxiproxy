@@ -40,17 +40,17 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 		select {
 		case <-stub.interrupt:
 			return
-		case buf := <-stub.input:
-			if buf == nil {
+		case c := <-stub.input:
+			if c == nil {
 				stub.Close()
 				return
 			}
-			sleep := t.delay()
+			sleep := t.delay() - time.Now().Sub(c.timestamp)
 			select {
 			case <-time.After(sleep):
-				stub.output <- buf
+				stub.output <- c
 			case <-stub.interrupt:
-				stub.output <- buf // Don't drop any data on the floor
+				stub.output <- c // Don't drop any data on the floor
 				return
 			}
 		}
