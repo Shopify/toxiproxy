@@ -437,11 +437,11 @@ Could not connect to Redis at 127.0.0.1:26379: Connection refused
 
 ### Frequently Asked Questions
 
-**How fast is Toxiproxy?** Toxiproxy adds *100-150µs* of latency to data when no
-toxics are enabled. When running with `GOMAXPROCS=4`, throughput can be as
-high as *900MB/s*, however this can changed depending on which toxics are enabled
-and how much data is being sent in per write call. (Latency can lower the
-bandwidth if writes start blocking / buffers fill up).
+**How fast is Toxiproxy?** The speed of Toxiproxy depends largely on your hardware,
+but you can expect a latency of *< 100µs* when no toxics are enabled. When running
+with `GOMAXPROCS=4` on a Macbook Pro we acheived *~1000MB/s* throuput, and as high
+as *2400MB/s* on a higher end desktop. Basically, you can expect Toxiproxy to move
+data around at least as fast the app you're testing.
 
 **I am not seeing my Toxiproxy actions reflected for MySQL**. MySQL will prefer
 the local Unix domain socket for some clients, no matter which port you pass it
