@@ -336,9 +336,8 @@ back to `true` to reenable it.
 
 All endpoints are JSON.
 
- - **GET /proxies** - List existing proxies
+ - **GET /proxies** - List existing proxies and their toxics
  - **POST /proxies** - Create a new proxy
- - **GET /toxics** - List existing proxies with toxics included
  - **GET /proxies/{proxy}** - Show the proxy with both its upstream and downstream toxics
  - **POST /proxies/{proxy}** - Update a proxy's fields
  - **DELETE /proxies/{proxy}** - Delete an existing proxy
