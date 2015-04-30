@@ -1,6 +1,8 @@
-# 1.0.3 (Unreleased)
+# 1.0.3
 
 * Rename Go library package to Toxiproxy from Client
+* Fix latency toxic send to closed channel panic #46
+* Fix latency toxic accumulating delay #47
 
 # 1.0.2
 
