@@ -437,6 +437,12 @@ Could not connect to Redis at 127.0.0.1:26379: Connection refused
 
 ### Frequently Asked Questions
 
+**How fast is Toxiproxy?** Toxiproxy adds *100-150µs* of latency to data when no
+toxics are enabled. When running with `GOMAXPROCS=4`, throughput can be as
+high as *900MB/s*, however this can changed depending on which toxics are enabled
+and how much data is being sent in per write call. (Latency can lower the
+bandwidth if writes start blocking / buffers fill up).
+
 **I am not seeing my Toxiproxy actions reflected for MySQL**. MySQL will prefer
 the local Unix domain socket for some clients, no matter which port you pass it
 if the host is set to `localhost`. Configure your MySQL server to not create a
@@ -447,7 +453,7 @@ after you restart the server.
 ephemeral port range to avoid random port conflicts. It's `32,768` to `61,000` on
 Linux by default, see `/proc/sys/net/ipv4/ip_local_port_range`.
 
-**Should I run a Toxiproxy for each application?**. No, we recommend using the
+**Should I run a Toxiproxy for each application?** No, we recommend using the
 same Toxiproxy for all applications. To distinguish between services we
 recommend naming your proxies with the scheme: `<app>_<env>_<data store>_<shard>`.
 For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
