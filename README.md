@@ -272,7 +272,9 @@ Please consult your respective client library on usage.
 
 ### Toxics
 
-Toxics manipulate the pipe between the client and upstream.
+Toxics manipulate the pipe between the client and upstream. If the `enabled`
+field is not provided when creating the toxic, it will default to being
+disabled.
 
 #### latency
 
