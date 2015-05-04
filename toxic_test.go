@@ -317,8 +317,8 @@ func TestProxyLatency(t *testing.T) {
 		AssertEchoResponse(t, conn, serverConn)
 	}
 	latency := time.Now().Sub(start) / 200
-	if latency > 500*time.Microsecond {
-		t.Errorf("Average proxy latency > 500µs (%v)", latency)
+	if latency > 300*time.Microsecond {
+		t.Errorf("Average proxy latency > 300µs (%v)", latency)
 	} else {
 		t.Logf("Average proxy latency: %v", latency)
 	}
@@ -385,6 +385,56 @@ func TestBandwidthToxic(t *testing.T) {
 		time.Duration(len(buf))*time.Second/time.Duration(rate*1000),
 		10*time.Millisecond,
 	)
+}
+
+func TestToxicUpdate(t *testing.T) {
+	ln, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatal("Failed to create TCP server", err)
+	}
+
+	defer ln.Close()
+
+	proxy := NewTestProxy("test", ln.Addr().String())
+	proxy.Start()
+	defer proxy.Stop()
+
+	serverConnRecv := make(chan net.Conn)
+
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			t.Error("Unable to accept TCP connection", err)
+		}
+		serverConnRecv <- conn
+	}()
+
+	conn, err := net.Dial("tcp", proxy.Listen)
+	if err != nil {
+		t.Error("Unable to dial TCP server", err)
+	}
+
+	serverConn := <-serverConnRecv
+
+	running := true
+	go func() {
+		enabled := false
+		for running {
+			proxy.upToxics.SetToxicValue(&LatencyToxic{Enabled: enabled})
+			enabled = !enabled
+			proxy.downToxics.SetToxicValue(&LatencyToxic{Enabled: enabled})
+		}
+	}()
+
+	for i := 0; i < 100; i++ {
+		AssertEchoResponse(t, conn, serverConn)
+	}
+	running = false
+
+	err = conn.Close()
+	if err != nil {
+		t.Error("Failed to close TCP connection", err)
+	}
 }
 
 func BenchmarkBandwidthToxic100MB(b *testing.B) {
