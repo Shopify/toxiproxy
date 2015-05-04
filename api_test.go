@@ -61,7 +61,7 @@ func TestCreateProxy(t *testing.T) {
 	})
 }
 
-func TestIndexWithProxies(t *testing.T) {
+func TestIndexWithToxics(t *testing.T) {
 	WithServer(t, func(addr string) {
 		err := testProxy.Create()
 		if err != nil {
@@ -70,25 +70,7 @@ func TestIndexWithProxies(t *testing.T) {
 
 		proxies, err := client.Proxies()
 		if err != nil {
-			t.Fatal("Failed listing proxies: ", err)
-		}
-
-		if len(proxies) == 0 {
-			t.Fatal("Expected new proxy in list")
-		}
-	})
-}
-
-func TestIndexWithToxics(t *testing.T) {
-	WithServer(t, func(addr string) {
-		err := testProxy.Create()
-		if err != nil {
-			t.Fatal("Unable to create proxy")
-		}
-
-		proxies, err := client.Toxics()
-		if err != nil {
-			t.Fatal("Error listing toxics: ", err)
+			t.Fatal("Error listing proxies: ", err)
 		}
 
 		if len(proxies) == 0 {

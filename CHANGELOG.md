@@ -1,3 +1,7 @@
+# 1.1.0 (Unreleased)
+
+* Remove /toxics endpoint in favour of /proxies
+
 # 1.0.3
 
 * Rename Go library package to Toxiproxy from Client

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -26,7 +25,6 @@ func (server *server) Listen(host string, port string) {
 	r.HandleFunc("/reset", server.ResetState).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
-	r.HandleFunc("/toxics", server.ProxyToxicIndex).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyShow).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyUpdate).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE")
@@ -50,33 +48,11 @@ func (server *server) Listen(host string, port string) {
 }
 
 func (server *server) ProxyIndex(response http.ResponseWriter, request *http.Request) {
-	data, err := json.Marshal(server.collection.Proxies())
-	if err != nil {
-		http.Error(response, fmt.Sprint(err), http.StatusInternalServerError)
-		return
-	}
-
-	response.Header().Set("Content-Type", "application/json")
-	_, err = response.Write(data)
-	if err != nil {
-		logrus.Warn("ProxyIndex: Failed to write response to client", err)
-	}
-}
-
-func (server *server) ProxyToxicIndex(response http.ResponseWriter, request *http.Request) {
 	proxies := server.collection.Proxies()
-	marshalData := make(map[string]struct {
-		*Proxy
-		ToxicsUpstream   map[string]Toxic `json:"upstream_toxics"`
-		ToxicsDownstream map[string]Toxic `json:"downstream_toxics"`
-	}, len(proxies))
+	marshalData := make(map[string]interface{}, len(proxies))
 
 	for name, proxy := range proxies {
-		data := marshalData[name]
-		data.Proxy = proxy
-		data.ToxicsUpstream = proxy.upToxics.GetToxicMap()
-		data.ToxicsDownstream = proxy.downToxics.GetToxicMap()
-		marshalData[name] = data
+		marshalData[name] = proxyWithToxics(proxy)
 	}
 
 	data, err := json.Marshal(marshalData)
