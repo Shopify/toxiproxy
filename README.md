@@ -292,6 +292,15 @@ Bringing a service down is not technically a toxic in the implementation of
 Toxiproxy. This is done by `POST`ing to `/proxies/{proxy}` and setting the
 `enabled` field to `false`.
 
+#### bandwidth
+
+Limit a connection to a maximum number of kilobytes per second.
+
+Fields:
+
+ - `enabled`: true/false
+ - `rate`: rate in KB/s
+
 #### slow_close
 
 Delay the TCP socket from closing until `delay` has elapsed.
@@ -428,6 +437,12 @@ Could not connect to Redis at 127.0.0.1:26379: Connection refused
 
 ### Frequently Asked Questions
 
+**How fast is Toxiproxy?** The speed of Toxiproxy depends largely on your hardware,
+but you can expect a latency of *< 100µs* when no toxics are enabled. When running
+with `GOMAXPROCS=4` on a Macbook Pro we acheived *~1000MB/s* throuput, and as high
+as *2400MB/s* on a higher end desktop. Basically, you can expect Toxiproxy to move
+data around at least as fast the app you're testing.
+
 **I am not seeing my Toxiproxy actions reflected for MySQL**. MySQL will prefer
 the local Unix domain socket for some clients, no matter which port you pass it
 if the host is set to `localhost`. Configure your MySQL server to not create a
@@ -438,7 +453,7 @@ after you restart the server.
 ephemeral port range to avoid random port conflicts. It's `32,768` to `61,000` on
 Linux by default, see `/proc/sys/net/ipv4/ip_local_port_range`.
 
-**Should I run a Toxiproxy for each application?**. No, we recommend using the
+**Should I run a Toxiproxy for each application?** No, we recommend using the
 same Toxiproxy for all applications. To distinguish between services we
 recommend naming your proxies with the scheme: `<app>_<env>_<data store>_<shard>`.
 For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.

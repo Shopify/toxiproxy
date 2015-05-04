@@ -1,6 +1,7 @@
 # 1.1.0 (Unreleased)
 
 * Remove /toxics endpoint in favour of /proxies
+* Add bandwidth toxic
 
 # 1.0.3
 
