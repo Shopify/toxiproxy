@@ -37,8 +37,9 @@ func (server *server) Listen(host string, port string) {
 	http.Handle("/", r)
 
 	logrus.WithFields(logrus.Fields{
-		"host": host,
-		"port": port,
+		"host":    host,
+		"port":    port,
+		"version": Version,
 	}).Info("API HTTP server starting")
 
 	err := http.ListenAndServe(net.JoinHostPort(host, port), nil)
