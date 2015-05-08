@@ -109,7 +109,7 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 		return
 	}
 	if len(input.Upstream) < 1 {
-		http.Error(response, server.apiError(errors.New("Missing required field: name"), http.StatusBadRequest), http.StatusBadRequest)
+		http.Error(response, server.apiError(errors.New("Missing required field: upstream"), http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
