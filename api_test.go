@@ -61,6 +61,30 @@ func TestCreateProxy(t *testing.T) {
 	})
 }
 
+func TestCreateProxyBlankName(t *testing.T) {
+	WithServer(t, func(addr string) {
+		blankProxy := client.NewProxy(&tclient.Proxy{})
+		err := blankProxy.Create()
+		if err == nil {
+			t.Fatal("Expected error creating proxy, got nil")
+		} else if err.Error() != "Create: HTTP 400: Missing required field: name" {
+			t.Fatal("Expected different error creating proxy:", err)
+		}
+	})
+}
+
+func TestCreateProxyBlankUpstream(t *testing.T) {
+	WithServer(t, func(addr string) {
+		blankProxy := client.NewProxy(&tclient.Proxy{Name: "test"})
+		err := blankProxy.Create()
+		if err == nil {
+			t.Fatal("Expected error creating proxy, got nil")
+		} else if err.Error() != "Create: HTTP 400: Missing required field: upstream" {
+			t.Fatal("Expected different error creating proxy:", err)
+		}
+	})
+}
+
 func TestIndexWithToxics(t *testing.T) {
 	WithServer(t, func(addr string) {
 		err := testProxy.Create()

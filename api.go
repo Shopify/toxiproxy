@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -100,6 +101,15 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 	err := json.NewDecoder(request.Body).Decode(&input)
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	if len(input.Name) < 1 {
+		http.Error(response, server.apiError(errors.New("Missing required field: name"), http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	if len(input.Upstream) < 1 {
+		http.Error(response, server.apiError(errors.New("Missing required field: upstream"), http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
