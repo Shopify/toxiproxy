@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-var Version = "1.2.1"
-
 var host string
 var port string
 
@@ -20,7 +18,6 @@ func init() {
 }
 
 func main() {
-	proxies := NewProxyCollection()
-	server := NewServer(proxies)
+	server := NewServer()
 	server.Listen(host, port)
 }

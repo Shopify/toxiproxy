@@ -8,7 +8,6 @@ import (
 // The SlicerToxic slices data into multiple smaller packets
 // to simulate real-world TCP behaviour.
 type SlicerToxic struct {
-	Enabled bool `json:"enabled"`
 	// Average number of bytes to slice at
 	AverageSize int `json:"average_size"`
 	// +/- bytes to vary sliced amounts. Must be less than
@@ -17,18 +16,6 @@ type SlicerToxic struct {
 	// Microseconds to delay each packet. May be useful since there's
 	// usually some kind of buffering of network data
 	Delay int `json:"delay"`
-}
-
-func (t *SlicerToxic) Name() string {
-	return "slicer"
-}
-
-func (t *SlicerToxic) IsEnabled() bool {
-	return t.Enabled
-}
-
-func (t *SlicerToxic) SetEnabled(enabled bool) {
-	t.Enabled = enabled
 }
 
 // Returns a list of chunk offsets to slice up a packet of the
@@ -87,4 +74,8 @@ func (t *SlicerToxic) Pipe(stub *ToxicStub) {
 			}
 		}
 	}
+}
+
+func init() {
+	RegisterToxic("slicer", new(SlicerToxic))
 }

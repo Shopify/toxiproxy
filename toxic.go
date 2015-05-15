@@ -1,5 +1,10 @@
 package main
 
+import (
+	"reflect"
+	"sync"
+)
+
 // A Toxic is something that can be attatched to a link to modify the way
 // data can be passed through (for example, by adding latency)
 //
@@ -14,17 +19,15 @@ package main
 // for multiple connections.
 
 type Toxic interface {
-	// Return the unique name of the toxic, as used by the json api.
-	Name() string
-
-	// Returns true if the toxic is enabled. Disabled toxics are not used and are replaced with NoopToxics.
-	IsEnabled() bool
-
-	// Sets the enabled field of the toxic, does not replace the toxic when set.
-	SetEnabled(bool)
-
 	// Defines how packets flow through a ToxicStub. Pipe() blocks until the link is closed or interrupted.
 	Pipe(*ToxicStub)
+}
+
+type ToxicWrapper struct {
+	Toxic `json:"-"`
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Index int    `json:"-"`
 }
 
 type ToxicStub struct {
@@ -66,4 +69,35 @@ func (s *ToxicStub) Interrupt() bool {
 func (s *ToxicStub) Close() {
 	close(s.closed)
 	close(s.output)
+}
+
+var ToxicRegistry map[string]Toxic
+var registryMutex sync.RWMutex
+
+func RegisterToxic(typeName string, toxic Toxic) {
+	registryMutex.Lock()
+	defer registryMutex.Unlock()
+
+	if ToxicRegistry == nil {
+		ToxicRegistry = make(map[string]Toxic)
+	}
+	ToxicRegistry[typeName] = toxic
+}
+
+func NewToxic(typeName string) Toxic {
+	registryMutex.RLock()
+	defer registryMutex.RUnlock()
+
+	orig, ok := ToxicRegistry[typeName]
+	if !ok {
+		return nil
+	}
+	return reflect.New(reflect.TypeOf(orig).Elem()).Interface().(Toxic)
+}
+
+func ToxicCount() int {
+	registryMutex.RLock()
+	defer registryMutex.RUnlock()
+
+	return len(ToxicRegistry)
 }

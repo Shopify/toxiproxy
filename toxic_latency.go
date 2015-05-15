@@ -7,22 +7,9 @@ import (
 
 // The LatencyToxic passes data through with the a delay of latency +/- jitter added.
 type LatencyToxic struct {
-	Enabled bool `json:"enabled"`
 	// Times in milliseconds
 	Latency int64 `json:"latency"`
 	Jitter  int64 `json:"jitter"`
-}
-
-func (t *LatencyToxic) Name() string {
-	return "latency"
-}
-
-func (t *LatencyToxic) IsEnabled() bool {
-	return t.Enabled
-}
-
-func (t *LatencyToxic) SetEnabled(enabled bool) {
-	t.Enabled = enabled
 }
 
 func (t *LatencyToxic) delay() time.Duration {
@@ -45,7 +32,7 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 				stub.Close()
 				return
 			}
-			sleep := t.delay() - time.Now().Sub(c.timestamp)
+			sleep := t.delay() - time.Since(c.timestamp)
 			select {
 			case <-time.After(sleep):
 				stub.output <- c
@@ -55,4 +42,8 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 			}
 		}
 	}
+}
+
+func init() {
+	RegisterToxic("latency", new(LatencyToxic))
 }
