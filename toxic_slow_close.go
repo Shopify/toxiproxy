@@ -4,21 +4,8 @@ import "time"
 
 // The SlowCloseToxic stops the TCP connection from closing until after a delay.
 type SlowCloseToxic struct {
-	Enabled bool `json:"enabled"`
 	// Times in milliseconds
 	Delay int64 `json:"delay"`
-}
-
-func (t *SlowCloseToxic) Name() string {
-	return "slow_close"
-}
-
-func (t *SlowCloseToxic) IsEnabled() bool {
-	return t.Enabled
-}
-
-func (t *SlowCloseToxic) SetEnabled(enabled bool) {
-	t.Enabled = enabled
 }
 
 func (t *SlowCloseToxic) Pipe(stub *ToxicStub) {
@@ -40,4 +27,8 @@ func (t *SlowCloseToxic) Pipe(stub *ToxicStub) {
 			stub.output <- c
 		}
 	}
+}
+
+func init() {
+	RegisterToxic("slow_close", new(SlowCloseToxic))
 }

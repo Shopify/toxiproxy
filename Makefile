@@ -7,7 +7,7 @@ COMBINED_GOPATH=$(GODEP_PATH):$(ORIGINAL_PATH)
 
 .PHONY: packages deb test linux darwin windows
 
-all: deb linux darwin windows docker
+all: version deb linux darwin windows docker
 deb: $(DEB)
 darwin: tmp/build/toxiproxy-darwin-amd64 
 linux: tmp/build/toxiproxy-linux-amd64
@@ -21,7 +21,10 @@ clean:
 	rm *.deb
 
 test:
-	GOMAXPROCS=4 GOPATH=$(COMBINED_GOPATH) go test -v
+	GOMAXPROCS=4 GOPATH=$(COMBINED_GOPATH) go test -v -race
+
+version:
+	sed -i "s/Version = \"[^\"]*\"/Version = \"$(VERSION)\"/" version.go
 
 tmp/build/toxiproxy-linux-amd64:
 	GOOS=linux GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -o $(@)

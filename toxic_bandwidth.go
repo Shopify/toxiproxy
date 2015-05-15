@@ -4,21 +4,8 @@ import "time"
 
 // The BandwidthToxic passes data through at a limited rate
 type BandwidthToxic struct {
-	Enabled bool `json:"enabled"`
 	// Rate in KB/s
 	Rate int64 `json:"rate"`
-}
-
-func (t *BandwidthToxic) Name() string {
-	return "bandwidth"
-}
-
-func (t *BandwidthToxic) IsEnabled() bool {
-	return t.Enabled
-}
-
-func (t *BandwidthToxic) SetEnabled(enabled bool) {
-	t.Enabled = enabled
 }
 
 func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
@@ -53,7 +40,7 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 			select {
 			case <-time.After(sleep):
 				// time.After only seems to have ~1ms prevision, so offset the next sleep by the error
-				sleep -= time.Now().Sub(start)
+				sleep -= time.Since(start)
 				stub.output <- p
 			case <-stub.interrupt:
 				stub.output <- p // Don't drop any data on the floor
@@ -61,4 +48,8 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 			}
 		}
 	}
+}
+
+func init() {
+	RegisterToxic("bandwidth", new(BandwidthToxic))
 }
