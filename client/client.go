@@ -5,7 +5,6 @@ package toxiproxy
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 )
@@ -40,6 +39,11 @@ func NewClient(endpoint string) *Client {
 // Proxies returns a map with all the proxies and their toxics.
 func (client *Client) Proxies() (map[string]*Proxy, error) {
 	resp, err := http.Get(client.endpoint + "/proxies")
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkError(resp, http.StatusOK, "Proxies")
 	if err != nil {
 		return nil, err
 	}
@@ -80,9 +84,9 @@ func (proxy *Proxy) Create() error {
 		return err
 	}
 
-	if resp.StatusCode != http.StatusCreated {
-		// TODO  better error
-		return fmt.Errorf("omg error code %d", resp.StatusCode)
+	err = checkError(resp, http.StatusCreated, "Create")
+	if err != nil {
+		return err
 	}
 
 	proxy = new(Proxy)
@@ -98,6 +102,11 @@ func (proxy *Proxy) Create() error {
 func (client *Client) Proxy(name string) (*Proxy, error) {
 	// TODO url encode
 	resp, err := http.Get(client.endpoint + "/proxies/" + name)
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkError(resp, http.StatusOK, "Proxy")
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +128,11 @@ func (proxy *Proxy) Save() error {
 	}
 
 	resp, err := http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name, "application/json", bytes.NewReader(request))
+	if err != nil {
+		return err
+	}
+
+	err = checkError(resp, http.StatusOK, "Save")
 	if err != nil {
 		return err
 	}
@@ -147,17 +161,17 @@ func (proxy *Proxy) Delete() error {
 		return err
 	}
 
-	if resp.StatusCode != http.StatusNoContent {
-		// TODO better error
-		return errors.New("Status code bad")
-	}
-
-	return nil
+	return checkError(resp, http.StatusNoContent, "Delete")
 }
 
 // Toxics returns a map of all the toxics and their attributes for a direction.
 func (proxy *Proxy) Toxics(direction string) (map[string]interface{}, error) {
 	resp, err := http.Get(proxy.client.endpoint + "/proxies/" + proxy.Name + "/" + direction + "/toxics")
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkError(resp, http.StatusOK, "Toxics")
 	if err != nil {
 		return nil, err
 	}
@@ -184,6 +198,11 @@ func (proxy *Proxy) SetToxic(name string, direction string, fields Fields) (map[
 		return nil, err
 	}
 
+	err = checkError(resp, http.StatusOK, "SetToxic")
+	if err != nil {
+		return nil, err
+	}
+
 	toxics := make(map[string]interface{})
 	err = json.NewDecoder(resp.Body).Decode(&toxics)
 	if err != nil {
@@ -200,10 +219,27 @@ func (client *Client) ResetState() error {
 		return err
 	}
 
-	if resp.StatusCode != http.StatusNoContent {
-		// TODO better error
-		return errors.New("unable to reset")
-	}
+	return checkError(resp, http.StatusNoContent, "ResetState")
+}
 
+type ApiError struct {
+	Title  string `json:"title"`
+	Status int    `json:"status"`
+}
+
+func (err *ApiError) Error() string {
+	return fmt.Sprintf("HTTP %d: %s", err.Status, err.Title)
+}
+
+func checkError(resp *http.Response, expectedCode int, caller string) error {
+	if resp.StatusCode != expectedCode {
+		apiError := new(ApiError)
+		err := json.NewDecoder(resp.Body).Decode(apiError)
+		if err != nil {
+			apiError.Title = fmt.Sprintf("Unexpected response code, expected %d", expectedCode)
+			apiError.Status = resp.StatusCode
+		}
+		return fmt.Errorf("%s: %v", caller, apiError)
+	}
 	return nil
 }

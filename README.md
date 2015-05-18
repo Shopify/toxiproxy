@@ -33,7 +33,7 @@ end
 
 While the examples in this README are currently in Ruby, there's nothing
 stopping you from creating a client in any other language (see
-[Clients](https://github.com/shopify/toxiproxy#Clients)).
+[Clients](#clients)).
 
 ## Table of Contents
 
@@ -75,7 +75,7 @@ Let's walk through an example with a Rails application. Note that Toxiproxy is
 in no way tied to Ruby, it's just been our first use case and it's currently the
 only language that has a client. You can see the full example at
 [Sirupsen/toxiproxy-rails-example](https://github.com/Sirupsen/toxiproxy-rails-example).
-To get started right away, jump down to [Usage](https://github.com/Shopify/toxiproxy#usage).
+To get started right away, jump down to [Usage](#usage).
 
 For our popular blog, for some reason we're storing the tags for our posts in
 Redis and the posts themselves in MySQL. We might have a `Post` class that
