@@ -264,7 +264,7 @@ func TestResetState(t *testing.T) {
 			t.Fatal("Unable to create proxy: ", err)
 		}
 
-		latency, err := disabledProxy.SetToxic("latency", "downstream", tclient.Fields{
+		latency, err := disabledProxy.SetToxic("latency", "downstream", tclient.Toxic{
 			"enabled": true,
 			"latency": 100,
 			"jitter":  10,
@@ -335,7 +335,7 @@ func TestSetToxics(t *testing.T) {
 			t.Fatal("Unable to create proxy")
 		}
 
-		latency, err := testProxy.SetToxic("latency", "downstream", tclient.Fields{
+		latency, err := testProxy.SetToxic("latency", "downstream", tclient.Toxic{
 			"enabled": true,
 			"latency": 100,
 			"jitter":  10,
@@ -372,7 +372,7 @@ func TestUpdateToxics(t *testing.T) {
 			t.Fatal("Unable to create proxy: ", err)
 		}
 
-		latency, err := testProxy.SetToxic("latency", "downstream", tclient.Fields{
+		latency, err := testProxy.SetToxic("latency", "downstream", tclient.Toxic{
 			"enabled": true,
 			"latency": 100,
 			"jitter":  10,
@@ -388,7 +388,7 @@ func TestUpdateToxics(t *testing.T) {
 			t.Fatal("Latency toxic did not start up with correct settings: %+v", latency)
 		}
 
-		latency, err = testProxy.SetToxic("latency", "downstream", tclient.Fields{
+		latency, err = testProxy.SetToxic("latency", "downstream", tclient.Toxic{
 			"latency": 1000,
 		})
 		if err != nil {
@@ -422,20 +422,15 @@ func TestVersionEndpointReturnsVersion(t *testing.T) {
 	})
 }
 
-func AssertToxicEnabled(t *testing.T, toxics map[string]interface{}, name string, enabled bool) map[string]interface{} {
+func AssertToxicEnabled(t *testing.T, toxics tclient.Toxics, name string, enabled bool) tclient.Toxic {
 	toxic, ok := toxics[name]
 	if !ok {
 		t.Fatalf("Expected to see %s toxic in list", name)
 		return nil
 	}
-	toxicMap, ok := toxic.(map[string]interface{})
-	if !ok {
-		t.Fatal("Couldn't read toxic as a %s toxic", name)
-		return nil
-	}
-	if toxicMap["enabled"] != enabled {
+	if toxic["enabled"] != enabled {
 		t.Fatal("%s toxic should have had enabled = %v", name, enabled)
 		return nil
 	}
-	return toxicMap
+	return toxic
 }
