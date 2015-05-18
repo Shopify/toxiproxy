@@ -1,3 +1,7 @@
+# Unreleased
+
+* Add a Toxic and Toxics type for the Go client
+
 # 1.1.0
 
 * Remove /toxics endpoint in favour of /proxies

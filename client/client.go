@@ -14,7 +14,8 @@ type Client struct {
 	endpoint string
 }
 
-type Fields map[string]interface{}
+type Toxic map[string]interface{}
+type Toxics map[string]Toxic
 
 // Proxy represents a Proxy.
 type Proxy struct {
@@ -23,8 +24,8 @@ type Proxy struct {
 	Upstream string `json:"upstream"` // The upstream address to proxy to
 	Enabled  bool   `json:"enabled"`  // Whether the proxy is enabled
 
-	ToxicsUpstream   map[string]interface{} `json:"upstream_toxics"`   // Toxics in the upstream direction
-	ToxicsDownstream map[string]interface{} `json:"downstream_toxics"` // Toxics in the downstream direction
+	ToxicsUpstream   Toxics `json:"upstream_toxics"`   // Toxics in the upstream direction
+	ToxicsDownstream Toxics `json:"downstream_toxics"` // Toxics in the downstream direction
 
 	client *Client
 }
@@ -165,7 +166,7 @@ func (proxy *Proxy) Delete() error {
 }
 
 // Toxics returns a map of all the toxics and their attributes for a direction.
-func (proxy *Proxy) Toxics(direction string) (map[string]interface{}, error) {
+func (proxy *Proxy) Toxics(direction string) (Toxics, error) {
 	resp, err := http.Get(proxy.client.endpoint + "/proxies/" + proxy.Name + "/" + direction + "/toxics")
 	if err != nil {
 		return nil, err
@@ -176,7 +177,7 @@ func (proxy *Proxy) Toxics(direction string) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	toxics := make(map[string]interface{})
+	toxics := make(Toxics)
 	err = json.NewDecoder(resp.Body).Decode(&toxics)
 	if err != nil {
 		return nil, err
@@ -187,8 +188,8 @@ func (proxy *Proxy) Toxics(direction string) (map[string]interface{}, error) {
 
 // SetToxic sets the parameters for a toxic with a given name in the direction.
 // See https://github.com/Shopify/toxiproxy#toxics for a list of all Toxics.
-func (proxy *Proxy) SetToxic(name string, direction string, fields Fields) (map[string]interface{}, error) {
-	request, err := json.Marshal(fields)
+func (proxy *Proxy) SetToxic(name string, direction string, toxic Toxic) (Toxic, error) {
+	request, err := json.Marshal(toxic)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +204,7 @@ func (proxy *Proxy) SetToxic(name string, direction string, fields Fields) (map[
 		return nil, err
 	}
 
-	toxics := make(map[string]interface{})
+	toxics := make(Toxic)
 	err = json.NewDecoder(resp.Body).Decode(&toxics)
 	if err != nil {
 		return nil, err
