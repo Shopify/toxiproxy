@@ -1,6 +1,7 @@
 # Unreleased
 
 * Add a Toxic and Toxics type for the Go client
+* Add basic CLI
 
 # 1.1.0
 
