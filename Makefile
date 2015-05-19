@@ -9,8 +9,9 @@ COMBINED_GOPATH=$(GODEP_PATH):$(ORIGINAL_PATH)
 
 all: deb linux darwin
 deb: $(DEB)
-darwin: tmp/build/toxiproxy-darwin-amd64 
-linux: tmp/build/toxiproxy-linux-amd64
+
+darwin: tmp/build/toxiproxy-server-darwin-amd64 tmp/build/toxiproxy-client-darwin-amd64
+linux: tmp/build/toxiproxy-server-linux-amd64 tmp/build/toxiproxy-client-linux-amd64
 
 build:
 	GOPATH=$(COMBINED_GOPATH) go build -o toxiproxy
@@ -22,13 +23,19 @@ clean:
 test:
 	GOMAXPROCS=4 GOPATH=$(COMBINED_GOPATH) go test -v
 
-tmp/build/toxiproxy-linux-amd64:
-	GOOS=linux GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -o $(@)
+tmp/build/toxiproxy-server-linux-amd64:
+	GOOS=linux GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -o $(@) github.com/Shopify/toxiproxy
 
-tmp/build/toxiproxy-darwin-amd64:
-	GOOS=darwin GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -o $(@)
+tmp/build/toxiproxy-client-linux-amd64:
+	GOOS=linux GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -o $(@) github.com/Shopify/toxiproxy/cli
 
-$(DEB): tmp/build/toxiproxy-linux-amd64
+tmp/build/toxiproxy-server-darwin-amd64:
+	GOOS=darwin GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -o $(@) github.com/Shopify/toxiproxy
+
+tmp/build/toxiproxy-client-darwin-amd64:
+	GOOS=darwin GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -o $(@) github.com/Shopify/toxiproxy/cli
+
+$(DEB): tmp/build/toxiproxy-server-linux-amd64 tmp/build/toxiproxy-client-linux-amd64
 	fpm -t deb \
 		-s dir \
 		--name "toxiproxy" \
@@ -40,5 +47,7 @@ $(DEB): tmp/build/toxiproxy-linux-amd64
 		--maintainer "Simon Eskildsen <simon.eskildsen@shopify.com>" \
 		--description "TCP proxy to simulate network and system conditions" \
 		--url "https://github.com/Shopify/toxiproxy" \
-		$<=/usr/bin/toxiproxy \
+		$(word 1,$^)=/usr/bin/toxiproxy \
+		$(word 1,$^)=/usr/bin/toxiproxy-server \
+		$(word 2,$^)=/usr/bin/toxiproxy-client \
 		./share/toxiproxy.conf=/etc/init/toxiproxy.conf
