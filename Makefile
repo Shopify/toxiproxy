@@ -7,7 +7,7 @@ COMBINED_GOPATH=$(GODEP_PATH):$(ORIGINAL_PATH)
 
 .PHONY: packages deb test linux darwin
 
-all: deb linux darwin
+all: deb linux darwin docker
 deb: $(DEB)
 darwin: tmp/build/toxiproxy-darwin-amd64 
 linux: tmp/build/toxiproxy-linux-amd64
@@ -27,6 +27,10 @@ tmp/build/toxiproxy-linux-amd64:
 
 tmp/build/toxiproxy-darwin-amd64:
 	GOOS=darwin GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -o $(@)
+
+docker:
+	docker build --tag="sirupsen/toxiproxy:$(VERSION)" .
+	docker push sirupsen/toxiproxy:$(VERSION)
 
 $(DEB): tmp/build/toxiproxy-linux-amd64
 	fpm -t deb \
