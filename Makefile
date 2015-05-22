@@ -31,6 +31,7 @@ tmp/build/toxiproxy-darwin-amd64:
 docker:
 	docker build --tag="sirupsen/toxiproxy:$(VERSION)" .
 	docker push sirupsen/toxiproxy:$(VERSION)
+	docker tag sirupsen/toxiproxy:$(VERSION) sirupsen/toxiproxy:latest
 
 $(DEB): tmp/build/toxiproxy-linux-amd64
 	fpm -t deb \
