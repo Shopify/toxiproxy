@@ -186,8 +186,8 @@ binaries and system packages for your architecture.
 **Ubuntu**
 
 ```bash
-$ wget -O toxiproxy-1.0.2.deb https://github.com/Shopify/toxiproxy/releases/download/v1.0.2/toxiproxy_1.0.2_amd64.deb
-$ sudo dpkg -i toxiproxy-1.0.2.deb
+$ wget -O toxiproxy-1.1.0.deb https://github.com/Shopify/toxiproxy/releases/download/v1.0.2/toxiproxy_1.1.0_amd64.deb
+$ sudo dpkg -i toxiproxy-1.1.0.deb
 $ sudo service toxiproxy start
 ```
 
@@ -196,6 +196,15 @@ $ sudo service toxiproxy start
 ```bash
 $ brew tap shopify/shopify
 $ brew install toxiproxy
+```
+
+**Docker**
+
+Toxiproxy is available on [Docker Hub](https://registry.hub.docker.com/u/sirupsen/toxiproxy/).
+
+```bash
+$ docker pull sirupsen/toxiproxy
+$ docker run -it sirupsen/toxiproxy
 ```
 
 ### 2. Populating Toxiproxy
