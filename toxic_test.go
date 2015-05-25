@@ -416,20 +416,25 @@ func TestToxicUpdate(t *testing.T) {
 
 	serverConn := <-serverConnRecv
 
-	running := true
+	running := make(chan struct{})
 	go func() {
 		enabled := false
-		for running {
-			proxy.upToxics.SetToxicValue(&LatencyToxic{Enabled: enabled})
-			enabled = !enabled
-			proxy.downToxics.SetToxicValue(&LatencyToxic{Enabled: enabled})
+		for {
+			select {
+			case <-running:
+				return
+			default:
+				proxy.upToxics.SetToxicValue(&LatencyToxic{Enabled: enabled})
+				enabled = !enabled
+				proxy.downToxics.SetToxicValue(&LatencyToxic{Enabled: enabled})
+			}
 		}
 	}()
 
 	for i := 0; i < 100; i++ {
 		AssertEchoResponse(t, conn, serverConn)
 	}
-	running = false
+	close(running)
 
 	err = conn.Close()
 	if err != nil {
