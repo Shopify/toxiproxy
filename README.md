@@ -200,11 +200,11 @@ $ brew install toxiproxy
 
 **Docker**
 
-Toxiproxy is available on [Docker Hub](https://registry.hub.docker.com/u/sirupsen/toxiproxy/).
+Toxiproxy is available on [Docker Hub](https://registry.hub.docker.com/u/shopify/toxiproxy/).
 
 ```bash
-$ docker pull sirupsen/toxiproxy
-$ docker run -it sirupsen/toxiproxy
+$ docker pull shopify/toxiproxy
+$ docker run -it shopify/toxiproxy
 ```
 
 ### 2. Populating Toxiproxy
