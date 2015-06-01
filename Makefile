@@ -29,9 +29,9 @@ tmp/build/toxiproxy-darwin-amd64:
 	GOOS=darwin GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -o $(@)
 
 docker:
-	docker build --tag="sirupsen/toxiproxy:$(VERSION)" .
-	docker push sirupsen/toxiproxy:$(VERSION)
-	docker tag sirupsen/toxiproxy:$(VERSION) sirupsen/toxiproxy:latest
+	docker build --tag="shopify/toxiproxy:$(VERSION)" .
+	docker push shopify/toxiproxy:$(VERSION)
+	docker tag shopify/toxiproxy:$(VERSION) shopify/toxiproxy:latest
 
 $(DEB): tmp/build/toxiproxy-linux-amd64
 	fpm -t deb \
