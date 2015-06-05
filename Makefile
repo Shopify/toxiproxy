@@ -30,8 +30,9 @@ tmp/build/toxiproxy-darwin-amd64:
 
 docker:
 	docker build --tag="shopify/toxiproxy:$(VERSION)" .
+	docker tag -f shopify/toxiproxy:$(VERSION) shopify/toxiproxy:latest
 	docker push shopify/toxiproxy:$(VERSION)
-	docker tag shopify/toxiproxy:$(VERSION) shopify/toxiproxy:latest
+	docker push shopify/toxiproxy:latest
 
 $(DEB): tmp/build/toxiproxy-linux-amd64
 	fpm -t deb \
