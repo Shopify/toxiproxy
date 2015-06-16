@@ -1,5 +1,7 @@
 # Toxiproxy
 
+![](http://i.imgur.com/sOaNw0o.png)
+
 Toxiproxy is a framework for simulating network conditions. It's made
 specifically to work in testing, CI and development environments, supporting
 deterministic tampering with connections, but with support for randomized chaos
