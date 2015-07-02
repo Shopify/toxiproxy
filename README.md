@@ -70,6 +70,7 @@ development and CI environments.
 * [toxiproxy-go](https://github.com/Shopify/toxiproxy/tree/master/client)
 * [toxiproxy.net](https://github.com/mdevilliers/Toxiproxy.Net)
 * [toxiproxy-php-client](https://github.com/ihsw/toxiproxy-php-client)
+* [toxiproxy-node](https://github.com/dlion/toxiproxy-node)
 
 ## Example
 
