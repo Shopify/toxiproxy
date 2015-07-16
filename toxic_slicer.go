@@ -50,7 +50,7 @@ func (t *SlicerToxic) chunk(start int, end int) []int {
 
 	// +1 in the size variation to offset favoring of smaller
 	// numbers by integer division
-	mid := start + (end-start)/2 + (rand.Intn(t.SizeVariation*2+1) - t.SizeVariation)
+	mid := start + (end-start)/2 + (rand.Intn(t.SizeVariation*2) - t.SizeVariation) + rand.Intn(1)
 	left := t.chunk(start, mid)
 	right := t.chunk(mid, end)
 
