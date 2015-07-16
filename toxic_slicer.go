@@ -10,10 +10,10 @@ import (
 type SlicerToxic struct {
 	Enabled bool `json:"enabled"`
 	// Average number of bytes to slice at
-	AverageSize int `json:"averageSize"`
+	AverageSize int `json:"average_size"`
 	// +/- bytes to vary sliced amounts. Must be less than
 	// the average size
-	SizeVariation int `json:"sizeVariation"`
+	SizeVariation int `json:"size_variation"`
 	// Microseconds to delay each packet. May be useful since there's
 	// usually some kind of buffering of network data
 	Delay int `json:"delay"`
@@ -54,9 +54,9 @@ func (t *SlicerToxic) chunk(start int, end int) []int {
 	left := t.chunk(start, mid)
 	right := t.chunk(mid, end)
 
-	out := make([]int, len(left)+len(right))
-	copy(out, left)
-	copy(out[len(left):], right)
+	out := make([]int, 0, len(left)+len(right))
+	out = append(out, left...)
+	out = append(out, right...)
 
 	return out
 }
@@ -73,9 +73,9 @@ func (t *SlicerToxic) Pipe(stub *ToxicStub) {
 			}
 
 			chunks := t.chunk(0, len(c.data))
-			for i := 0; i < len(chunks); i += 2 {
+			for i := 1; i < len(chunks); i += 2 {
 				stub.output <- &StreamChunk{
-					data:      c.data[chunks[i]:chunks[i+1]],
+					data:      c.data[chunks[i-1]:chunks[i]],
 					timestamp: c.timestamp,
 				}
 

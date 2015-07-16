@@ -342,8 +342,8 @@ sliced "packet".
 Fields:
 
  - `enabled`: true/false
- - `averageSize`: size in bytes of an average packet
- - `sizeVariation`: variation in bytes of an average packet (should be smaller than averageSize)
+ - `average_size`: size in bytes of an average packet
+ - `size_variation`: variation in bytes of an average packet (should be smaller than averageSize)
  - `delay`: time in microseconds to delay each packet by
 
 
