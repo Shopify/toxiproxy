@@ -22,6 +22,7 @@ func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 		new(SlowCloseToxic),
 		new(LatencyToxic),
 		new(BandwidthToxic),
+		new(SlicerToxic),
 		new(TimeoutToxic),
 	}
 

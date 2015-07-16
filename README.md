@@ -334,6 +334,19 @@ Fields:
  - `enabled`: true/false
  - `timeout`: time in milliseconds
 
+#### slicer
+
+Slices TCP data up into small bits, optionally adding a delay between each
+sliced "packet".
+
+Fields:
+
+ - `enabled`: true/false
+ - `averageSize`: size in bytes of an average packet
+ - `sizeVariation`: variation in bytes of an average packet (should be smaller than averageSize)
+ - `delay`: time in microseconds to delay each packet by
+
+
 ### HTTP API
 
 All communication with the Toxiproxy daemon from the client happens through the
