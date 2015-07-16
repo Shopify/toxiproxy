@@ -81,6 +81,10 @@ func (t *SlicerToxic) Pipe(stub *ToxicStub) {
 
 				select {
 				case <-stub.interrupt:
+					stub.output <- &StreamChunk{
+						data:      c.data[chunks[i]:],
+						timestamp: c.timestamp,
+					}
 					return
 				case <-time.After(time.Duration(t.Delay) * time.Microsecond):
 				}
