@@ -54,11 +54,7 @@ func (t *SlicerToxic) chunk(start int, end int) []int {
 	left := t.chunk(start, mid)
 	right := t.chunk(mid, end)
 
-	out := make([]int, 0, len(left)+len(right))
-	out = append(out, left...)
-	out = append(out, right...)
-
-	return out
+	return append(left, right...)
 }
 
 func (t *SlicerToxic) Pipe(stub *ToxicStub) {
