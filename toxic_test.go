@@ -283,6 +283,60 @@ func TestLatencyToxicCloseRace(t *testing.T) {
 	}
 }
 
+func TestLatencyToxicBandwidth(t *testing.T) {
+	ln, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatal("Failed to create TCP server", err)
+	}
+
+	defer ln.Close()
+
+	proxy := NewTestProxy("test", ln.Addr().String())
+	proxy.Start()
+	defer proxy.Stop()
+
+	buf := []byte(strings.Repeat("hello world ", 1000))
+
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			t.Error("Unable to accept TCP connection", err)
+		}
+		for err == nil {
+			_, err = conn.Write(buf)
+		}
+	}()
+
+	conn, err := net.Dial("tcp", proxy.Listen)
+	if err != nil {
+		t.Error("Unable to dial TCP server", err)
+	}
+
+	proxy.downToxics.SetToxicValue(&LatencyToxic{Enabled: true, Latency: 100})
+
+	time.Sleep(100 * time.Millisecond) // Wait for latency toxic
+	buf2 := make([]byte, len(buf))
+
+	start := time.Now()
+	count := 0
+	for i := 0; i < 100; i++ {
+		n, err := io.ReadFull(conn, buf2)
+		count += n
+		if err != nil {
+			t.Error(err)
+			break
+		}
+	}
+
+	// Assert the transfer was at least 100MB/s
+	AssertDeltaTime(t, "Latency toxic bandwidth", time.Since(start), 0, time.Duration(count/100000)*time.Millisecond)
+
+	err = conn.Close()
+	if err != nil {
+		t.Error("Failed to close TCP connection", err)
+	}
+}
+
 func TestProxyLatency(t *testing.T) {
 	ln, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
