@@ -2,6 +2,7 @@
 
 * Add a Toxic and Toxics type for the Go client
 * Add `Dockerfile`
+* Fix latency toxic limiting bandwidth #67
 
 # 1.1.0
 
