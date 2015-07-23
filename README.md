@@ -49,8 +49,10 @@ stopping you from creating a client in any other language (see
 5. [Toxics](#toxics)
   1. [Latency](#latency)
   2. [Down](#down)
-  3. [Slow close](#slow_close)
-  4. [Timeout](#timeout)
+  3. [Bandwidth](#bandwidth)
+  4. [Slow close](#slow_close)
+  5. [Timeout](#timeout)
+  6. [Slicer](#slicer)
 6. [HTTP API](#http-api)
   1. [Proxy fields](#proxy-fields)
   2. [Curl example](#curl-example)
@@ -343,7 +345,7 @@ Fields:
 
  - `enabled`: true/false
  - `average_size`: size in bytes of an average packet
- - `size_variation`: variation in bytes of an average packet (should be smaller than averageSize)
+ - `size_variation`: variation in bytes of an average packet (should be smaller than average_size)
  - `delay`: time in microseconds to delay each packet by
 
 
