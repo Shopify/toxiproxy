@@ -1,4 +1,4 @@
-# Unreleased
+# 1.2.0
 
 * Add a Toxic and Toxics type for the Go client
 * Add `Dockerfile`
