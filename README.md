@@ -189,8 +189,8 @@ binaries and system packages for your architecture.
 **Ubuntu**
 
 ```bash
-$ wget -O toxiproxy-1.1.0.deb https://github.com/Shopify/toxiproxy/releases/download/v1.0.2/toxiproxy_1.1.0_amd64.deb
-$ sudo dpkg -i toxiproxy-1.1.0.deb
+$ wget -O toxiproxy-1.2.0.deb https://github.com/Shopify/toxiproxy/releases/download/v1.2.0/toxiproxy_1.2.0_amd64.deb
+$ sudo dpkg -i toxiproxy-1.2.0.deb
 $ sudo service toxiproxy start
 ```
 
@@ -493,5 +493,17 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 * `make test`. Run the Toxiproxy tests.
 * `make darwin`. Build binary for Darwin.
 * `make linux`. Build binary for Linux.
+
+### Release
+
+1. Update `CHANGELOG.md`
+2. Bump `VERSION`
+3. Change versions in `README.md`
+4. Commit
+5. Tag
+6. `make` to create binaries, packages and push new Docker image
+7. Create [Github draft release](https://github.com/Shopify/toxiproxy/releases/new) against new tag and upload binaries and Debian package
+8. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)
+
 
 [blog]: http://www.shopify.com/technology/16906928-building-and-testing-resilient-ruby-on-rails-applications
