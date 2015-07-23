@@ -231,16 +231,56 @@ func TestDeleteProxy(t *testing.T) {
 	})
 }
 
-func TestCreateProxyTwice(t *testing.T) {
+func TestCreateProxyPortConflict(t *testing.T) {
 	WithServer(t, func(addr string) {
 		err := testProxy.Create()
 		if err != nil {
 			t.Fatal("Unable to create proxy")
 		}
 
-		err = testProxy.Create()
+		testProxy2 := *testProxy
+		testProxy2.Name = "test"
+		err = testProxy2.Create()
 		if err == nil {
-			t.Fatal("Expected error when creating same proxy twice")
+			t.Fatal("Proxy did not result in conflict.")
+		} else if err.Error() != "Create: HTTP 409: listen tcp 127.0.0.1:3310: bind: address already in use" {
+			t.Fatal("Incorrect error adding proxy:", err)
+		}
+
+		err = testProxy.Delete()
+		if err != nil {
+			t.Fatal("Unable to delete proxy: ", err)
+		}
+		err = testProxy2.Create()
+		if err != nil {
+			t.Fatal("Unable to create proxy: ", err)
+		}
+	})
+}
+
+func TestCreateProxyNameConflict(t *testing.T) {
+	WithServer(t, func(addr string) {
+		err := testProxy.Create()
+		if err != nil {
+			t.Fatal("Unable to create proxy: ", err)
+		}
+
+		testProxy2 := *testProxy
+		testProxy2.Listen = "localhost:3311"
+		err = testProxy2.Create()
+		if err == nil {
+			t.Fatal("Proxy did not result in conflict.")
+		} else if err.Error() != "Create: HTTP 409: Proxy with name mysql_master already exists" {
+			t.Fatal("Incorrect error adding proxy:", err)
+		}
+
+		err = testProxy.Delete()
+		if err != nil {
+			t.Fatal("Unable to delete proxy: ", err)
+		}
+		err = testProxy2.Create()
+		if err != nil {
+			t.Fatal("Unable to create proxy: ", err)
 		}
 	})
 }

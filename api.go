@@ -117,15 +117,8 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 	proxy.Name = input.Name
 	proxy.Listen = input.Listen
 	proxy.Upstream = input.Upstream
-	if input.Enabled {
-		err = proxy.Start()
-		if err != nil {
-			http.Error(response, server.apiError(err, http.StatusConflict), http.StatusConflict)
-			return
-		}
-	}
 
-	err = server.collection.Add(proxy)
+	err = server.collection.Add(proxy, input.Enabled)
 	if err != nil {
 		http.Error(response, server.apiError(err, http.StatusConflict), http.StatusConflict)
 		return
