@@ -441,6 +441,47 @@ func TestBandwidthToxic(t *testing.T) {
 	)
 }
 
+func TestSlicerToxic(t *testing.T) {
+	data := []byte(strings.Repeat("hello world ", 40000)) // 480 kb
+	slicer := &SlicerToxic{Enabled: true, AverageSize: 1024, SizeVariation: 512, Delay: 10}
+
+	input := make(chan *StreamChunk)
+	output := make(chan *StreamChunk)
+	stub := NewToxicStub(input, output)
+
+	done := make(chan bool)
+	go func() {
+		slicer.Pipe(stub)
+		done <- true
+	}()
+	defer func() {
+		input <- nil
+		<-done
+	}()
+
+	input <- &StreamChunk{data: data}
+
+	buf := make([]byte, 0, len(data))
+	reads := 0
+L:
+	for {
+		select {
+		case c := <-output:
+			reads++
+			buf = append(buf, c.data...)
+		case <-time.After(5 * time.Millisecond):
+			break L
+		}
+	}
+
+	if reads < 480/2 || reads > 480/2+480 {
+		t.Errorf("Expected to read about 480 times, but read %d times.", reads)
+	}
+	if bytes.Compare(buf, data) != 0 {
+		t.Errorf("Server did not read correct buffer from client!")
+	}
+}
+
 func TestToxicUpdate(t *testing.T) {
 	ln, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
