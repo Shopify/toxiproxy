@@ -1,3 +1,7 @@
+# Unreleased
+
+* Fix proxy name conflicts leaking an open port #69
+
 # 1.2.0
 
 * Add a Toxic and Toxics type for the Go client

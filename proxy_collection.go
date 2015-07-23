@@ -21,12 +21,19 @@ func NewProxyCollection() *ProxyCollection {
 	}
 }
 
-func (collection *ProxyCollection) Add(proxy *Proxy) error {
+func (collection *ProxyCollection) Add(proxy *Proxy, start bool) error {
 	collection.Lock()
 	defer collection.Unlock()
 
 	if _, exists := collection.proxies[proxy.Name]; exists {
 		return fmt.Errorf("Proxy with name %s already exists", proxy.Name)
+	}
+
+	if start {
+		err := proxy.Start()
+		if err != nil {
+			return err
+		}
 	}
 
 	collection.proxies[proxy.Name] = proxy

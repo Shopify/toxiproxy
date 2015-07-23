@@ -14,7 +14,7 @@ func TestAddProxyToCollection(t *testing.T) {
 		t.Error("Expected proxies to be empty")
 	}
 
-	err := collection.Add(proxy)
+	err := collection.Add(proxy, false)
 	if err != nil {
 		t.Error("Expected to be able to add first proxy to collection")
 	}
@@ -28,12 +28,12 @@ func TestAddTwoProxiesToCollection(t *testing.T) {
 	collection := NewProxyCollection()
 	proxy := NewTestProxy("test", "localhost:20000")
 
-	err := collection.Add(proxy)
+	err := collection.Add(proxy, false)
 	if err != nil {
 		t.Error("Expected to be able to add first proxy to collection")
 	}
 
-	err = collection.Add(proxy)
+	err = collection.Add(proxy, false)
 	if err == nil {
 		t.Error("Expected to not be able to add proxy with same name")
 	}
@@ -43,14 +43,35 @@ func TestListProxies(t *testing.T) {
 	collection := NewProxyCollection()
 	proxy := NewTestProxy("test", "localhost:20000")
 
-	err := collection.Add(proxy)
+	err := collection.Add(proxy, false)
 	if err != nil {
 		t.Error("Expected to be able to add first proxy to collection")
 	}
 
 	proxies := collection.Proxies()
-	if _, ok := proxies[proxy.Name]; !ok {
+	proxy, ok := proxies[proxy.Name]
+	if !ok {
 		t.Error("Expected to be able to see existing proxy")
+	} else if proxy.Enabled {
+		t.Error("Expected proxy not to be running")
+	}
+}
+
+func TestAddProxyAndStart(t *testing.T) {
+	collection := NewProxyCollection()
+	proxy := NewTestProxy("test", "localhost:20000")
+
+	err := collection.Add(proxy, true)
+	if err != nil {
+		t.Error("Expected to be able to add proxy to collection:", err)
+	}
+
+	proxies := collection.Proxies()
+	proxy, ok := proxies[proxy.Name]
+	if !ok {
+		t.Error("Expected to be able to see existing proxy")
+	} else if !proxy.Enabled {
+		t.Error("Expected proxy to be running")
 	}
 }
 
@@ -62,7 +83,7 @@ func TestAddAndRemoveProxyFromCollection(t *testing.T) {
 			t.Error("Expected proxies to be empty")
 		}
 
-		err := collection.Add(proxy)
+		err := collection.Add(proxy, false)
 		if err != nil {
 			t.Error("Expected to be able to add first proxy to collection")
 		}
