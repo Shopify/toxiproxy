@@ -191,8 +191,8 @@ binaries and system packages for your architecture.
 **Ubuntu**
 
 ```bash
-$ wget -O toxiproxy-1.2.0.deb https://github.com/Shopify/toxiproxy/releases/download/v1.2.0/toxiproxy_1.2.0_amd64.deb
-$ sudo dpkg -i toxiproxy-1.2.0.deb
+$ wget -O toxiproxy-1.2.1.deb https://github.com/Shopify/toxiproxy/releases/download/v1.2.1/toxiproxy_1.2.1_amd64.deb
+$ sudo dpkg -i toxiproxy-1.2.1.deb
 $ sudo service toxiproxy start
 ```
 
@@ -499,7 +499,7 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 ### Release
 
 1. Update `CHANGELOG.md`
-2. Bump `VERSION`
+2. Bump `VERSION` and `toxiproxy.go`
 3. Change versions in `README.md`
 4. Commit
 5. Tag

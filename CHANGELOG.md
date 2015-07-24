@@ -1,4 +1,4 @@
-# Unreleased
+# 1.2.1
 
 * Fix proxy name conflicts leaking an open port #69
 
