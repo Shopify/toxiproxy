@@ -1,3 +1,7 @@
+# Unreleased
+
+* Fix slicer toxic testing race condition #71
+
 # 1.2.1
 
 * Fix proxy name conflicts leaking an open port #69
