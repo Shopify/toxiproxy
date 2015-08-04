@@ -1,6 +1,10 @@
-package main
+package toxics
 
-import "time"
+import (
+	"time"
+
+	"github.com/Shopify/toxiproxy/stream"
+)
 
 // The BandwidthToxic passes data through at a limited rate
 type BandwidthToxic struct {
@@ -12,9 +16,9 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 	var sleep time.Duration = 0
 	for {
 		select {
-		case <-stub.interrupt:
+		case <-stub.Interrupt:
 			return
-		case p := <-stub.input:
+		case p := <-stub.Input:
 			if p == nil {
 				stub.Close()
 				return
@@ -22,17 +26,17 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 			if t.Rate <= 0 {
 				sleep = 0
 			} else {
-				sleep += time.Duration(len(p.data)) * time.Millisecond / time.Duration(t.Rate)
+				sleep += time.Duration(len(p.Data)) * time.Millisecond / time.Duration(t.Rate)
 			}
 			// If the rate is low enough, split the packet up and send in 100 millisecond intervals
-			for int64(len(p.data)) > t.Rate*100 {
+			for int64(len(p.Data)) > t.Rate*100 {
 				select {
 				case <-time.After(100 * time.Millisecond):
-					stub.output <- &StreamChunk{p.data[:t.Rate*100], p.timestamp}
-					p.data = p.data[t.Rate*100:]
+					stub.Output <- &stream.StreamChunk{p.Data[:t.Rate*100], p.Timestamp}
+					p.Data = p.Data[t.Rate*100:]
 					sleep -= 100 * time.Millisecond
-				case <-stub.interrupt:
-					stub.output <- p // Don't drop any data on the floor
+				case <-stub.Interrupt:
+					stub.Output <- p // Don't drop any data on the floor
 					return
 				}
 			}
@@ -41,9 +45,9 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 			case <-time.After(sleep):
 				// time.After only seems to have ~1ms prevision, so offset the next sleep by the error
 				sleep -= time.Since(start)
-				stub.output <- p
-			case <-stub.interrupt:
-				stub.output <- p // Don't drop any data on the floor
+				stub.Output <- p
+			case <-stub.Interrupt:
+				stub.Output <- p // Don't drop any data on the floor
 				return
 			}
 		}
@@ -51,5 +55,5 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 }
 
 func init() {
-	RegisterToxic("bandwidth", new(BandwidthToxic))
+	Register("bandwidth", new(BandwidthToxic))
 }

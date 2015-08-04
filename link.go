@@ -1,8 +1,10 @@
-package main
+package toxiproxy
 
 import (
 	"io"
 
+	"github.com/Shopify/toxiproxy/stream"
+	"github.com/Shopify/toxiproxy/toxics"
 	"github.com/Sirupsen/logrus"
 )
 
@@ -16,29 +18,29 @@ import (
 // Input > ToxicStub > ToxicStub > Output
 //
 type ToxicLink struct {
-	stubs  []*ToxicStub
+	stubs  []*toxics.ToxicStub
 	proxy  *Proxy
 	toxics *ToxicCollection
-	input  *ChanWriter
-	output *ChanReader
+	input  *stream.ChanWriter
+	output *stream.ChanReader
 }
 
 func NewToxicLink(proxy *Proxy, collection *ToxicCollection) *ToxicLink {
 	link := &ToxicLink{
-		stubs:  make([]*ToxicStub, len(collection.chain), cap(collection.chain)),
+		stubs:  make([]*toxics.ToxicStub, len(collection.chain), cap(collection.chain)),
 		proxy:  proxy,
 		toxics: collection,
 	}
 
 	// Initialize the link with ToxicStubs
-	last := make(chan *StreamChunk, 1024)
-	link.input = NewChanWriter(last)
+	last := make(chan *stream.StreamChunk, 1024)
+	link.input = stream.NewChanWriter(last)
 	for i := 0; i < len(link.stubs); i++ {
-		next := make(chan *StreamChunk, 1024)
-		link.stubs[i] = NewToxicStub(last, next)
+		next := make(chan *stream.StreamChunk, 1024)
+		link.stubs[i] = toxics.NewToxicStub(last, next)
 		last = next
 	}
-	link.output = NewChanReader(last)
+	link.output = stream.NewChanReader(last)
 	return link
 }
 
@@ -76,14 +78,14 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 }
 
 // Add a toxic to the end of the chain.
-func (link *ToxicLink) AddToxic(toxic *ToxicWrapper) {
+func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	i := toxic.Index
 
 	// Interrupt the last toxic so that we don't have a race when moving channels
-	if link.stubs[i-1].Interrupt() {
-		newin := make(chan *StreamChunk)
-		link.stubs = append(link.stubs, NewToxicStub(newin, link.stubs[i-1].output))
-		link.stubs[i-1].output = newin
+	if link.stubs[i-1].InterruptToxic() {
+		newin := make(chan *stream.StreamChunk)
+		link.stubs = append(link.stubs, toxics.NewToxicStub(newin, link.stubs[i-1].Output))
+		link.stubs[i-1].Output = newin
 
 		go link.stubs[i].Run(toxic)
 		go link.stubs[i-1].Run(link.toxics.chain[i-1])
@@ -91,19 +93,19 @@ func (link *ToxicLink) AddToxic(toxic *ToxicWrapper) {
 }
 
 // Replace an existing toxic in the chain.
-func (link *ToxicLink) UpdateToxic(toxic *ToxicWrapper) {
-	if link.stubs[toxic.Index].Interrupt() {
+func (link *ToxicLink) UpdateToxic(toxic *toxics.ToxicWrapper) {
+	if link.stubs[toxic.Index].InterruptToxic() {
 		go link.stubs[toxic.Index].Run(toxic)
 	}
 }
 
 // Remove an existing toxic from the chain.
-func (link *ToxicLink) RemoveToxic(toxic *ToxicWrapper) {
+func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 	i := toxic.Index
 
 	// Interrupt the last toxic so that the target's buffer is empty
-	if link.stubs[i-1].Interrupt() && link.stubs[i].Interrupt() {
-		link.stubs[i-1].output = link.stubs[i].output
+	if link.stubs[i-1].InterruptToxic() && link.stubs[i].InterruptToxic() {
+		link.stubs[i-1].Output = link.stubs[i].Output
 		link.stubs = append(link.stubs[:i], link.stubs[i+1:]...)
 
 		go link.stubs[i-1].Run(link.toxics.chain[i-1])

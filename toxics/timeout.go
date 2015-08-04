@@ -1,4 +1,4 @@
-package main
+package toxics
 
 import "time"
 
@@ -16,15 +16,15 @@ func (t *TimeoutToxic) Pipe(stub *ToxicStub) {
 		case <-time.After(timeout):
 			stub.Close()
 			return
-		case <-stub.interrupt:
+		case <-stub.Interrupt:
 			return
 		}
 	} else {
-		<-stub.interrupt
+		<-stub.Interrupt
 		return
 	}
 }
 
 func init() {
-	RegisterToxic("timeout", new(TimeoutToxic))
+	Register("timeout", new(TimeoutToxic))
 }

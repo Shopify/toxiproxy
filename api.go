@@ -1,4 +1,4 @@
-package main
+package toxiproxy
 
 import (
 	"encoding/json"
@@ -7,21 +7,22 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/Shopify/toxiproxy/toxics"
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 )
 
-type server struct {
-	collection *ProxyCollection
+type ApiServer struct {
+	Collection *ProxyCollection
 }
 
-func NewServer() *server {
-	return &server{
-		collection: NewProxyCollection(),
+func NewServer() *ApiServer {
+	return &ApiServer{
+		Collection: NewProxyCollection(),
 	}
 }
 
-func (server *server) Listen(host string, port string) {
+func (server *ApiServer) Listen(host string, port string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/reset", server.ResetState).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
@@ -50,8 +51,8 @@ func (server *server) Listen(host string, port string) {
 	}
 }
 
-func (server *server) ProxyIndex(response http.ResponseWriter, request *http.Request) {
-	proxies := server.collection.Proxies()
+func (server *ApiServer) ProxyIndex(response http.ResponseWriter, request *http.Request) {
+	proxies := server.Collection.Proxies()
 	marshalData := make(map[string]interface{}, len(proxies))
 
 	for name, proxy := range proxies {
@@ -70,8 +71,8 @@ func (server *server) ProxyIndex(response http.ResponseWriter, request *http.Req
 	}
 }
 
-func (server *server) ResetState(response http.ResponseWriter, request *http.Request) {
-	proxies := server.collection.Proxies()
+func (server *ApiServer) ResetState(response http.ResponseWriter, request *http.Request) {
+	proxies := server.Collection.Proxies()
 
 	for _, proxy := range proxies {
 		err := proxy.Start()
@@ -79,8 +80,8 @@ func (server *server) ResetState(response http.ResponseWriter, request *http.Req
 			return
 		}
 
-		proxy.upToxics.ResetToxics()
-		proxy.downToxics.ResetToxics()
+		proxy.UpToxics.ResetToxics()
+		proxy.DownToxics.ResetToxics()
 	}
 
 	response.WriteHeader(http.StatusNoContent)
@@ -90,7 +91,7 @@ func (server *server) ResetState(response http.ResponseWriter, request *http.Req
 	}
 }
 
-func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Request) {
+func (server *ApiServer) ProxyCreate(response http.ResponseWriter, request *http.Request) {
 	// Default fields to enable the proxy right away
 	input := Proxy{Enabled: true}
 	err := json.NewDecoder(request.Body).Decode(&input)
@@ -112,7 +113,7 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 	proxy.Listen = input.Listen
 	proxy.Upstream = input.Upstream
 
-	err = server.collection.Add(proxy, input.Enabled)
+	err = server.Collection.Add(proxy, input.Enabled)
 	if apiError(response, err) {
 		return
 	}
@@ -130,10 +131,30 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 	}
 }
 
-func (server *server) ProxyUpdate(response http.ResponseWriter, request *http.Request) {
+func (server *ApiServer) ProxyShow(response http.ResponseWriter, request *http.Request) {
 	vars := mux.Vars(request)
 
-	proxy, err := server.collection.Get(vars["proxy"])
+	proxy, err := server.Collection.Get(vars["proxy"])
+	if apiError(response, err) {
+		return
+	}
+
+	data, err := json.Marshal(proxyWithToxics(proxy))
+	if apiError(response, err) {
+		return
+	}
+
+	response.Header().Set("Content-Type", "application/json")
+	_, err = response.Write(data)
+	if err != nil {
+		logrus.Warn("ProxyShow: Failed to write response to client", err)
+	}
+}
+
+func (server *ApiServer) ProxyUpdate(response http.ResponseWriter, request *http.Request) {
+	vars := mux.Vars(request)
+
+	proxy, err := server.Collection.Get(vars["proxy"])
 	if apiError(response, err) {
 		return
 	}
@@ -162,10 +183,10 @@ func (server *server) ProxyUpdate(response http.ResponseWriter, request *http.Re
 	}
 }
 
-func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Request) {
+func (server *ApiServer) ProxyDelete(response http.ResponseWriter, request *http.Request) {
 	vars := mux.Vars(request)
 
-	err := server.collection.Remove(vars["proxy"])
+	err := server.Collection.Remove(vars["proxy"])
 	if apiError(response, err) {
 		return
 	}
@@ -177,30 +198,10 @@ func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Re
 	}
 }
 
-func (server *server) ProxyShow(response http.ResponseWriter, request *http.Request) {
+func (server *ApiServer) ToxicIndex(response http.ResponseWriter, request *http.Request) {
 	vars := mux.Vars(request)
 
-	proxy, err := server.collection.Get(vars["proxy"])
-	if apiError(response, err) {
-		return
-	}
-
-	data, err := json.Marshal(proxyWithToxics(proxy))
-	if apiError(response, err) {
-		return
-	}
-
-	response.Header().Set("Content-Type", "application/json")
-	_, err = response.Write(data)
-	if err != nil {
-		logrus.Warn("ProxyShow: Failed to write response to client", err)
-	}
-}
-
-func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Request) {
-	vars := mux.Vars(request)
-
-	proxy, err := server.collection.Get(vars["proxy"])
+	proxy, err := server.Collection.Get(vars["proxy"])
 	if apiError(response, err) {
 		return
 	}
@@ -208,9 +209,9 @@ func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Req
 	var data []byte
 	switch vars["stream"] {
 	case "upstream":
-		data, err = json.Marshal(proxy.upToxics.GetToxicMap())
+		data, err = json.Marshal(proxy.UpToxics.GetToxicMap())
 	case "downstream":
-		data, err = json.Marshal(proxy.downToxics.GetToxicMap())
+		data, err = json.Marshal(proxy.DownToxics.GetToxicMap())
 	default:
 		apiError(response, ErrInvalidStream)
 		return
@@ -226,20 +227,20 @@ func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Req
 	}
 }
 
-func (server *server) ToxicCreate(response http.ResponseWriter, request *http.Request) {
+func (server *ApiServer) ToxicCreate(response http.ResponseWriter, request *http.Request) {
 	vars := mux.Vars(request)
 
-	proxy, err := server.collection.Get(vars["proxy"])
+	proxy, err := server.Collection.Get(vars["proxy"])
 	if apiError(response, err) {
 		return
 	}
 
-	var toxic Toxic
+	var toxic toxics.Toxic
 	switch vars["stream"] {
 	case "upstream":
-		toxic, err = proxy.upToxics.AddToxicJson(request.Body)
+		toxic, err = proxy.UpToxics.AddToxicJson(request.Body)
 	case "downstream":
-		toxic, err = proxy.downToxics.AddToxicJson(request.Body)
+		toxic, err = proxy.DownToxics.AddToxicJson(request.Body)
 	default:
 		apiError(response, ErrInvalidStream)
 		return
@@ -260,20 +261,20 @@ func (server *server) ToxicCreate(response http.ResponseWriter, request *http.Re
 	}
 }
 
-func (server *server) ToxicShow(response http.ResponseWriter, request *http.Request) {
+func (server *ApiServer) ToxicShow(response http.ResponseWriter, request *http.Request) {
 	vars := mux.Vars(request)
 
-	proxy, err := server.collection.Get(vars["proxy"])
+	proxy, err := server.Collection.Get(vars["proxy"])
 	if apiError(response, err) {
 		return
 	}
 
-	var toxic Toxic
+	var toxic toxics.Toxic
 	switch vars["stream"] {
 	case "upstream":
-		toxic = proxy.upToxics.GetToxic(vars["toxic"])
+		toxic = proxy.UpToxics.GetToxic(vars["toxic"])
 	case "downstream":
-		toxic = proxy.downToxics.GetToxic(vars["toxic"])
+		toxic = proxy.DownToxics.GetToxic(vars["toxic"])
 	default:
 		apiError(response, ErrInvalidStream)
 		return
@@ -295,20 +296,20 @@ func (server *server) ToxicShow(response http.ResponseWriter, request *http.Requ
 	}
 }
 
-func (server *server) ToxicUpdate(response http.ResponseWriter, request *http.Request) {
+func (server *ApiServer) ToxicUpdate(response http.ResponseWriter, request *http.Request) {
 	vars := mux.Vars(request)
 
-	proxy, err := server.collection.Get(vars["proxy"])
+	proxy, err := server.Collection.Get(vars["proxy"])
 	if apiError(response, err) {
 		return
 	}
 
-	var toxic Toxic
+	var toxic toxics.Toxic
 	switch vars["stream"] {
 	case "upstream":
-		toxic, err = proxy.upToxics.UpdateToxicJson(vars["toxic"], request.Body)
+		toxic, err = proxy.UpToxics.UpdateToxicJson(vars["toxic"], request.Body)
 	case "downstream":
-		toxic, err = proxy.downToxics.UpdateToxicJson(vars["toxic"], request.Body)
+		toxic, err = proxy.DownToxics.UpdateToxicJson(vars["toxic"], request.Body)
 	default:
 		apiError(response, ErrInvalidStream)
 		return
@@ -329,19 +330,19 @@ func (server *server) ToxicUpdate(response http.ResponseWriter, request *http.Re
 	}
 }
 
-func (server *server) ToxicDelete(response http.ResponseWriter, request *http.Request) {
+func (server *ApiServer) ToxicDelete(response http.ResponseWriter, request *http.Request) {
 	vars := mux.Vars(request)
 
-	proxy, err := server.collection.Get(vars["proxy"])
+	proxy, err := server.Collection.Get(vars["proxy"])
 	if apiError(response, err) {
 		return
 	}
 
 	switch vars["stream"] {
 	case "upstream":
-		err = proxy.upToxics.RemoveToxic(vars["toxic"])
+		err = proxy.UpToxics.RemoveToxic(vars["toxic"])
 	case "downstream":
-		err = proxy.downToxics.RemoveToxic(vars["toxic"])
+		err = proxy.DownToxics.RemoveToxic(vars["toxic"])
 	default:
 		apiError(response, ErrInvalidStream)
 		return
@@ -357,7 +358,7 @@ func (server *server) ToxicDelete(response http.ResponseWriter, request *http.Re
 	}
 }
 
-func (server *server) Version(response http.ResponseWriter, request *http.Request) {
+func (server *ApiServer) Version(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "text/plain")
 	_, err := response.Write([]byte(Version))
 	if err != nil {
@@ -419,11 +420,11 @@ func apiError(resp http.ResponseWriter, err error) bool {
 
 func proxyWithToxics(proxy *Proxy) (result struct {
 	*Proxy
-	UpstreamToxics   map[string]Toxic `json:"upstream_toxics"`
-	DownstreamToxics map[string]Toxic `json:"downstream_toxics"`
+	UpstreamToxics   map[string]toxics.Toxic `json:"upstream_toxics"`
+	DownstreamToxics map[string]toxics.Toxic `json:"downstream_toxics"`
 }) {
 	result.Proxy = proxy
-	result.UpstreamToxics = proxy.upToxics.GetToxicMap()
-	result.DownstreamToxics = proxy.downToxics.GetToxicMap()
+	result.UpstreamToxics = proxy.UpToxics.GetToxicMap()
+	result.DownstreamToxics = proxy.DownToxics.GetToxicMap()
 	return
 }
