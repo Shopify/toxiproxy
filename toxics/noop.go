@@ -1,4 +1,4 @@
-package main
+package toxics
 
 // The NoopToxic passes all data through without any toxic effects.
 type NoopToxic struct{}
@@ -6,18 +6,18 @@ type NoopToxic struct{}
 func (t *NoopToxic) Pipe(stub *ToxicStub) {
 	for {
 		select {
-		case <-stub.interrupt:
+		case <-stub.Interrupt:
 			return
-		case c := <-stub.input:
+		case c := <-stub.Input:
 			if c == nil {
 				stub.Close()
 				return
 			}
-			stub.output <- c
+			stub.Output <- c
 		}
 	}
 }
 
 func init() {
-	RegisterToxic("noop", new(NoopToxic))
+	Register("noop", new(NoopToxic))
 }

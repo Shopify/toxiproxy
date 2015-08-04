@@ -1,4 +1,4 @@
-package main
+package toxiproxy_test
 
 import (
 	"io/ioutil"
@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Shopify/toxiproxy"
 	tclient "github.com/Shopify/toxiproxy/client"
 )
 
-var testServer *server
+var testServer *toxiproxy.ApiServer
 
 var client = tclient.NewClient("http://127.0.0.1:8475")
 var testProxy = client.NewProxy(&tclient.Proxy{
@@ -23,7 +24,7 @@ func WithServer(t *testing.T, f func(string)) {
 	// Make sure only one server is running at a time. Apparently there's no clean
 	// way to shut it down between each test run.
 	if testServer == nil {
-		testServer = NewServer()
+		testServer = toxiproxy.NewServer()
 		go testServer.Listen("localhost", "8475")
 
 		// Allow server to start. There's no clean way to know when it listens.
@@ -31,7 +32,7 @@ func WithServer(t *testing.T, f func(string)) {
 	}
 
 	defer func() {
-		err := testServer.collection.Clear()
+		err := testServer.Collection.Clear()
 		if err != nil {
 			t.Error("Failed to clear collection", err)
 		}
@@ -539,7 +540,7 @@ func TestVersionEndpointReturnsVersion(t *testing.T) {
 			t.Fatal("Unable to read body from response")
 		}
 
-		if string(body) != Version {
+		if string(body) != toxiproxy.Version {
 			t.Fatal("Expected to return Version from /version, got:", string(body))
 		}
 	})

@@ -1,4 +1,4 @@
-package main
+package toxiproxy_test
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Shopify/toxiproxy"
 	"github.com/Sirupsen/logrus"
 	"gopkg.in/tomb.v1"
 )
@@ -17,8 +18,8 @@ func init() {
 	logrus.SetLevel(logrus.FatalLevel)
 }
 
-func NewTestProxy(name, upstream string) *Proxy {
-	proxy := NewProxy()
+func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
+	proxy := toxiproxy.NewProxy()
 
 	proxy.Name = name
 	proxy.Listen = "localhost:0"
@@ -95,7 +96,7 @@ func TestSimpleServer(t *testing.T) {
 	})
 }
 
-func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, proxyServer *Proxy)) {
+func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy)) {
 	WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
 		proxy.Start()
@@ -109,7 +110,7 @@ func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, pro
 }
 
 func TestProxySimpleMessage(t *testing.T) {
-	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
+	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *toxiproxy.Proxy) {
 		msg := []byte("hello world")
 
 		_, err := conn.Write(msg)
@@ -145,7 +146,7 @@ func TestProxyToDownUpstream(t *testing.T) {
 }
 
 func TestProxyBigMessage(t *testing.T) {
-	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
+	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *toxiproxy.Proxy) {
 		buf := make([]byte, 32*1024)
 		msg := make([]byte, len(buf)*2)
 		hex.Encode(msg, buf)
@@ -168,7 +169,7 @@ func TestProxyBigMessage(t *testing.T) {
 }
 
 func TestProxyTwoPartMessage(t *testing.T) {
-	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
+	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *toxiproxy.Proxy) {
 		msg1 := []byte("hello world")
 		msg2 := []byte("hello world")
 
@@ -197,7 +198,7 @@ func TestProxyTwoPartMessage(t *testing.T) {
 }
 
 func TestClosingProxyMultipleTimes(t *testing.T) {
-	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
+	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *toxiproxy.Proxy) {
 		proxy.Stop()
 		proxy.Stop()
 		proxy.Stop()
@@ -205,7 +206,7 @@ func TestClosingProxyMultipleTimes(t *testing.T) {
 }
 
 func TestStartTwoProxiesOnSameAddress(t *testing.T) {
-	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
+	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *toxiproxy.Proxy) {
 		proxy2 := NewTestProxy("proxy_2", "localhost:3306")
 		proxy2.Listen = proxy.Listen
 		if err := proxy2.Start(); err == nil {
@@ -226,7 +227,7 @@ func TestStopProxyBeforeStarting(t *testing.T) {
 		}
 
 		err = proxy.Start()
-		if err != ErrProxyAlreadyStarted {
+		if err != toxiproxy.ErrProxyAlreadyStarted {
 			t.Error("Proxy did not fail to start when already started", err)
 		}
 		AssertProxyUp(t, proxy.Listen, true)
@@ -247,7 +248,7 @@ func TestProxyUpdate(t *testing.T) {
 
 		before := proxy.Listen
 
-		input := &Proxy{Listen: "localhost:0", Upstream: proxy.Upstream, Enabled: true}
+		input := &toxiproxy.Proxy{Listen: "localhost:0", Upstream: proxy.Upstream, Enabled: true}
 		err = proxy.Update(input)
 		if err != nil {
 			t.Error("Failed to update proxy", err)
@@ -286,7 +287,7 @@ func TestRestartFailedToStartProxy(t *testing.T) {
 
 		proxy.Listen = conflict.Listen
 		err = proxy.Start()
-		if err == nil || err == ErrProxyAlreadyStarted {
+		if err == nil || err == toxiproxy.ErrProxyAlreadyStarted {
 			t.Error("Proxy started when it should have conflicted")
 		}
 

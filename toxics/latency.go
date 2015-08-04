@@ -1,4 +1,4 @@
-package main
+package toxics
 
 import (
 	"math/rand"
@@ -25,19 +25,19 @@ func (t *LatencyToxic) delay() time.Duration {
 func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 	for {
 		select {
-		case <-stub.interrupt:
+		case <-stub.Interrupt:
 			return
-		case c := <-stub.input:
+		case c := <-stub.Input:
 			if c == nil {
 				stub.Close()
 				return
 			}
-			sleep := t.delay() - time.Since(c.timestamp)
+			sleep := t.delay() - time.Since(c.Timestamp)
 			select {
 			case <-time.After(sleep):
-				stub.output <- c
-			case <-stub.interrupt:
-				stub.output <- c // Don't drop any data on the floor
+				stub.Output <- c
+			case <-stub.Interrupt:
+				stub.Output <- c // Don't drop any data on the floor
 				return
 			}
 		}
@@ -45,5 +45,5 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 }
 
 func init() {
-	RegisterToxic("latency", new(LatencyToxic))
+	Register("latency", new(LatencyToxic))
 }

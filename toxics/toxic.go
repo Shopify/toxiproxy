@@ -1,8 +1,10 @@
-package main
+package toxics
 
 import (
 	"reflect"
 	"sync"
+
+	"github.com/Shopify/toxiproxy/stream"
 )
 
 // A Toxic is something that can be attatched to a link to modify the way
@@ -31,19 +33,19 @@ type ToxicWrapper struct {
 }
 
 type ToxicStub struct {
-	input     <-chan *StreamChunk
-	output    chan<- *StreamChunk
-	interrupt chan struct{}
+	Input     <-chan *stream.StreamChunk
+	Output    chan<- *stream.StreamChunk
+	Interrupt chan struct{}
 	running   chan struct{}
 	closed    chan struct{}
 }
 
-func NewToxicStub(input <-chan *StreamChunk, output chan<- *StreamChunk) *ToxicStub {
+func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.StreamChunk) *ToxicStub {
 	return &ToxicStub{
-		interrupt: make(chan struct{}),
+		Interrupt: make(chan struct{}),
 		closed:    make(chan struct{}),
-		input:     input,
-		output:    output,
+		Input:     input,
+		Output:    output,
 	}
 }
 
@@ -56,11 +58,11 @@ func (s *ToxicStub) Run(toxic Toxic) {
 
 // Interrupt the flow of data so that the toxic controlling the stub can be replaced.
 // Returns true if the stream was successfully interrupted.
-func (s *ToxicStub) Interrupt() bool {
+func (s *ToxicStub) InterruptToxic() bool {
 	select {
 	case <-s.closed:
 		return false
-	case s.interrupt <- struct{}{}:
+	case s.Interrupt <- struct{}{}:
 		<-s.running // Wait for the running toxic to exit
 		return true
 	}
@@ -68,13 +70,13 @@ func (s *ToxicStub) Interrupt() bool {
 
 func (s *ToxicStub) Close() {
 	close(s.closed)
-	close(s.output)
+	close(s.Output)
 }
 
 var ToxicRegistry map[string]Toxic
 var registryMutex sync.RWMutex
 
-func RegisterToxic(typeName string, toxic Toxic) {
+func Register(typeName string, toxic Toxic) {
 	registryMutex.Lock()
 	defer registryMutex.Unlock()
 
@@ -84,7 +86,7 @@ func RegisterToxic(typeName string, toxic Toxic) {
 	ToxicRegistry[typeName] = toxic
 }
 
-func NewToxic(typeName string) Toxic {
+func New(typeName string) Toxic {
 	registryMutex.RLock()
 	defer registryMutex.RUnlock()
 
@@ -95,7 +97,7 @@ func NewToxic(typeName string) Toxic {
 	return reflect.New(reflect.TypeOf(orig).Elem()).Interface().(Toxic)
 }
 
-func ToxicCount() int {
+func Count() int {
 	registryMutex.RLock()
 	defer registryMutex.RUnlock()
 
