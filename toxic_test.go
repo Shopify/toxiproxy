@@ -455,8 +455,14 @@ func TestSlicerToxic(t *testing.T) {
 		done <- true
 	}()
 	defer func() {
-		input <- nil
-		<-done
+		close(input)
+		for {
+			select {
+			case <-done:
+				return
+			case <-output:
+			}
+		}
 	}()
 
 	input <- &StreamChunk{data: data}
@@ -469,7 +475,7 @@ L:
 		case c := <-output:
 			reads++
 			buf = append(buf, c.data...)
-		case <-time.After(5 * time.Millisecond):
+		case <-time.After(10 * time.Millisecond):
 			break L
 		}
 	}
