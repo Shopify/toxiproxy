@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"sync"
 )
@@ -73,7 +72,7 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (Toxic, error) {
 	wrapper := new(ToxicWrapper)
 	err := json.NewDecoder(io.TeeReader(data, &buffer)).Decode(wrapper)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't decode JSON: %v", err)
+		return nil, joinError(err, ErrBadRequestBody)
 	}
 	if wrapper.Name == "" {
 		wrapper.Name = wrapper.Type
@@ -81,17 +80,17 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (Toxic, error) {
 
 	wrapper.Toxic = NewToxic(wrapper.Type)
 	if wrapper.Toxic == nil {
-		return nil, fmt.Errorf("Toxic type not found: '%s'", wrapper.Name)
+		return nil, ErrInvalidToxicType
 	}
 
 	for _, toxic := range c.toxics {
 		if toxic.Name == wrapper.Name {
-			return nil, fmt.Errorf("Toxic with same name already exists: '%s'", wrapper.Name)
+			return nil, ErrToxicAlreadyExists
 		}
 	}
 	err = json.NewDecoder(&buffer).Decode(wrapper.Toxic)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't decode toxic JSON: %v", err)
+		return nil, joinError(err, ErrBadRequestBody)
 	}
 
 	c.toxics = append(c.toxics, wrapper)
@@ -107,14 +106,14 @@ func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (Toxic, e
 		if toxic.Name == name {
 			err := json.NewDecoder(data).Decode(toxic.Toxic)
 			if err != nil {
-				return nil, err
+				return nil, joinError(err, ErrBadRequestBody)
 			}
 
 			c.chainUpdateToxic(toxic)
 			return toxic.Toxic, nil
 		}
 	}
-	return nil, fmt.Errorf("Toxic not found: %s", name)
+	return nil, ErrToxicNotFound
 }
 
 func (c *ToxicCollection) RemoveToxic(name string) error {
@@ -129,7 +128,7 @@ func (c *ToxicCollection) RemoveToxic(name string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Toxic not found: %s", name)
+	return ErrToxicNotFound
 }
 
 func (c *ToxicCollection) StartLink(name string, input io.Reader, output io.WriteCloser) {

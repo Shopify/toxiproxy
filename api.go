@@ -2,18 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
-)
-
-var (
-	ErrInvalidStream = errors.New("invalid stream")
-	ErrToxicNotFound = errors.New("toxic not found")
 )
 
 type server struct {
@@ -64,9 +59,7 @@ func (server *server) ProxyIndex(response http.ResponseWriter, request *http.Req
 	}
 
 	data, err := json.Marshal(marshalData)
-	if err != nil {
-		response.Header().Set("Content-Type", "application/json")
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+	if apiError(response, err) {
 		return
 	}
 
@@ -82,9 +75,7 @@ func (server *server) ResetState(response http.ResponseWriter, request *http.Req
 
 	for _, proxy := range proxies {
 		err := proxy.Start()
-		if err != nil && err != ErrProxyAlreadyStarted {
-			response.Header().Set("Content-Type", "application/json")
-			http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+		if err != ErrProxyAlreadyStarted && apiError(response, err) {
 			return
 		}
 
@@ -100,22 +91,19 @@ func (server *server) ResetState(response http.ResponseWriter, request *http.Req
 }
 
 func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
-
-	// Default fields enable to proxy right away
+	// Default fields to enable the proxy right away
 	input := Proxy{Enabled: true}
 	err := json.NewDecoder(request.Body).Decode(&input)
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
+	if apiError(response, joinError(err, ErrBadRequestBody)) {
 		return
 	}
 
 	if len(input.Name) < 1 {
-		http.Error(response, server.apiError(errors.New("Missing required field: name"), http.StatusBadRequest), http.StatusBadRequest)
+		apiError(response, joinError(fmt.Errorf("name"), ErrMissingField))
 		return
 	}
 	if len(input.Upstream) < 1 {
-		http.Error(response, server.apiError(errors.New("Missing required field: upstream"), http.StatusBadRequest), http.StatusBadRequest)
+		apiError(response, joinError(fmt.Errorf("upstream"), ErrMissingField))
 		return
 	}
 
@@ -125,17 +113,16 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 	proxy.Upstream = input.Upstream
 
 	err = server.collection.Add(proxy, input.Enabled)
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusConflict), http.StatusConflict)
+	if apiError(response, err) {
 		return
 	}
 
 	data, err := json.Marshal(proxyWithToxics(proxy))
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+	if apiError(response, err) {
 		return
 	}
 
+	response.Header().Set("Content-Type", "application/json")
 	response.WriteHeader(http.StatusCreated)
 	_, err = response.Write(data)
 	if err != nil {
@@ -144,38 +131,34 @@ func (server *server) ProxyCreate(response http.ResponseWriter, request *http.Re
 }
 
 func (server *server) ProxyUpdate(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
 	proxy, err := server.collection.Get(vars["proxy"])
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+	if apiError(response, err) {
 		return
 	}
 
 	// Default fields are the same as existing proxy
 	input := Proxy{Listen: proxy.Listen, Upstream: proxy.Upstream, Enabled: proxy.Enabled}
 	err = json.NewDecoder(request.Body).Decode(&input)
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
+	if apiError(response, joinError(err, ErrBadRequestBody)) {
 		return
 	}
 
 	err = proxy.Update(&input)
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+	if apiError(response, err) {
 		return
 	}
 
 	data, err := json.Marshal(proxyWithToxics(proxy))
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+	if apiError(response, err) {
 		return
 	}
 
+	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
-		logrus.Warn("ProxyAction: Failed to write response to client", err)
+		logrus.Warn("ProxyUpdate: Failed to write response to client", err)
 	}
 }
 
@@ -183,9 +166,7 @@ func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Re
 	vars := mux.Vars(request)
 
 	err := server.collection.Remove(vars["proxy"])
-	if err != nil {
-		response.Header().Set("Content-Type", "application/json")
-		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+	if apiError(response, err) {
 		return
 	}
 
@@ -197,34 +178,30 @@ func (server *server) ProxyDelete(response http.ResponseWriter, request *http.Re
 }
 
 func (server *server) ProxyShow(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
 	proxy, err := server.collection.Get(vars["proxy"])
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+	if apiError(response, err) {
 		return
 	}
 
 	data, err := json.Marshal(proxyWithToxics(proxy))
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+	if apiError(response, err) {
 		return
 	}
 
+	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
-		logrus.Warn("ToxicIndex: Failed to write response to client", err)
+		logrus.Warn("ProxyShow: Failed to write response to client", err)
 	}
 }
 
 func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
 	proxy, err := server.collection.Get(vars["proxy"])
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+	if apiError(response, err) {
 		return
 	}
 
@@ -235,14 +212,14 @@ func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Req
 	case "downstream":
 		data, err = json.Marshal(proxy.downToxics.GetToxicMap())
 	default:
-		http.Error(response, server.apiError(ErrInvalidStream, http.StatusBadRequest), http.StatusBadRequest)
+		apiError(response, ErrInvalidStream)
 		return
 	}
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+	if apiError(response, err) {
 		return
 	}
 
+	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
 		logrus.Warn("ToxicIndex: Failed to write response to client", err)
@@ -250,12 +227,10 @@ func (server *server) ToxicIndex(response http.ResponseWriter, request *http.Req
 }
 
 func (server *server) ToxicCreate(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
 	proxy, err := server.collection.Get(vars["proxy"])
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+	if apiError(response, err) {
 		return
 	}
 
@@ -266,20 +241,19 @@ func (server *server) ToxicCreate(response http.ResponseWriter, request *http.Re
 	case "downstream":
 		toxic, err = proxy.downToxics.AddToxicJson(request.Body)
 	default:
-		http.Error(response, server.apiError(ErrInvalidStream, http.StatusBadRequest), http.StatusBadRequest)
+		apiError(response, ErrInvalidStream)
 		return
 	}
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+	if apiError(response, err) {
 		return
 	}
 
 	data, err := json.Marshal(toxic)
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+	if apiError(response, err) {
 		return
 	}
 
+	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
 		logrus.Warn("ToxicCreate: Failed to write response to client", err)
@@ -287,12 +261,10 @@ func (server *server) ToxicCreate(response http.ResponseWriter, request *http.Re
 }
 
 func (server *server) ToxicShow(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
 	proxy, err := server.collection.Get(vars["proxy"])
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+	if apiError(response, err) {
 		return
 	}
 
@@ -303,20 +275,20 @@ func (server *server) ToxicShow(response http.ResponseWriter, request *http.Requ
 	case "downstream":
 		toxic = proxy.downToxics.GetToxic(vars["toxic"])
 	default:
-		http.Error(response, server.apiError(ErrInvalidStream, http.StatusBadRequest), http.StatusBadRequest)
+		apiError(response, ErrInvalidStream)
 		return
 	}
 	if toxic == nil {
-		http.Error(response, server.apiError(ErrToxicNotFound, http.StatusNotFound), http.StatusNotFound)
+		apiError(response, ErrToxicNotFound)
 		return
 	}
 
 	data, err := json.Marshal(toxic)
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+	if apiError(response, err) {
 		return
 	}
 
+	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
 		logrus.Warn("ToxicShow: Failed to write response to client", err)
@@ -324,12 +296,10 @@ func (server *server) ToxicShow(response http.ResponseWriter, request *http.Requ
 }
 
 func (server *server) ToxicUpdate(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(request)
 
 	proxy, err := server.collection.Get(vars["proxy"])
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+	if apiError(response, err) {
 		return
 	}
 
@@ -340,20 +310,19 @@ func (server *server) ToxicUpdate(response http.ResponseWriter, request *http.Re
 	case "downstream":
 		toxic, err = proxy.downToxics.UpdateToxicJson(vars["toxic"], request.Body)
 	default:
-		http.Error(response, server.apiError(ErrInvalidStream, http.StatusBadRequest), http.StatusBadRequest)
+		apiError(response, ErrInvalidStream)
 		return
 	}
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusBadRequest), http.StatusBadRequest)
+	if apiError(response, err) {
 		return
 	}
 
 	data, err := json.Marshal(toxic)
-	if err != nil {
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+	if apiError(response, err) {
 		return
 	}
 
+	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
 		logrus.Warn("ToxicUpdate: Failed to write response to client", err)
@@ -364,9 +333,7 @@ func (server *server) ToxicDelete(response http.ResponseWriter, request *http.Re
 	vars := mux.Vars(request)
 
 	proxy, err := server.collection.Get(vars["proxy"])
-	if err != nil {
-		response.Header().Set("Content-Type", "application/json")
-		http.Error(response, server.apiError(err, http.StatusNotFound), http.StatusNotFound)
+	if apiError(response, err) {
 		return
 	}
 
@@ -376,13 +343,10 @@ func (server *server) ToxicDelete(response http.ResponseWriter, request *http.Re
 	case "downstream":
 		err = proxy.downToxics.RemoveToxic(vars["toxic"])
 	default:
-		response.Header().Set("Content-Type", "application/json")
-		http.Error(response, server.apiError(ErrInvalidStream, http.StatusBadRequest), http.StatusBadRequest)
+		apiError(response, ErrInvalidStream)
 		return
 	}
-	if err != nil {
-		response.Header().Set("Content-Type", "application/json")
-		http.Error(response, server.apiError(err, http.StatusInternalServerError), http.StatusInternalServerError)
+	if apiError(response, err) {
 		return
 	}
 
@@ -401,16 +365,56 @@ func (server *server) Version(response http.ResponseWriter, request *http.Reques
 	}
 }
 
-func (server *server) apiError(err error, code int) string {
-	data, err2 := json.Marshal(struct {
-		Title  string `json:"title"`
-		Status int    `json:"status"`
-	}{err.Error(), code})
+type ApiError struct {
+	Message    string `json:"title"`
+	StatusCode int    `json:"status"`
+}
+
+func (e *ApiError) Error() string {
+	return e.Message
+}
+
+func newError(msg string, status int) *ApiError {
+	return &ApiError{msg, status}
+}
+
+func joinError(err error, wrapper *ApiError) *ApiError {
+	if err != nil {
+		return &ApiError{wrapper.Message + ": " + err.Error(), wrapper.StatusCode}
+	}
+	return nil
+}
+
+var (
+	ErrBadRequestBody     = newError("bad request body", http.StatusBadRequest)
+	ErrMissingField       = newError("missing required field", http.StatusBadRequest)
+	ErrProxyNotFound      = newError("proxy not found", http.StatusNotFound)
+	ErrProxyAlreadyExists = newError("proxy already exists", http.StatusConflict)
+	ErrInvalidStream      = newError("stream not found", http.StatusNotFound)
+	ErrInvalidToxicType   = newError("invalid toxic type", http.StatusBadRequest)
+	ErrToxicAlreadyExists = newError("toxic already exists", http.StatusConflict)
+	ErrToxicNotFound      = newError("toxic not found", http.StatusNotFound)
+)
+
+func apiError(resp http.ResponseWriter, err error) bool {
+	obj, ok := err.(*ApiError)
+	if !ok && err != nil {
+		logrus.Warn("Error did not include status code:", err)
+		obj = &ApiError{err.Error(), http.StatusInternalServerError}
+	}
+
+	if obj == nil {
+		return false
+	}
+
+	data, err2 := json.Marshal(obj)
 	if err2 != nil {
 		logrus.Warn("Error json encoding error (╯°□°）╯︵ ┻━┻", err2)
-		return ""
 	}
-	return string(data)
+	resp.Header().Set("Content-Type", "application/json")
+	http.Error(resp, string(data), obj.StatusCode)
+
+	return true
 }
 
 func proxyWithToxics(proxy *Proxy) (result struct {
