@@ -203,6 +203,10 @@ $ brew tap shopify/shopify
 $ brew install toxiproxy
 ```
 
+**Windows**
+
+Toxiproxy for Windows is available for download at https://github.com/Shopify/toxiproxy/releases/download/v1.2.1/toxiproxy-windows-amd64.exe
+
 **Docker**
 
 Toxiproxy is available on [Docker Hub](https://registry.hub.docker.com/u/shopify/toxiproxy/).
