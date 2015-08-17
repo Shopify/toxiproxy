@@ -21,7 +21,10 @@ type ToxicCollection struct {
 
 func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 	collection := &ToxicCollection{
-		noop:   &toxics.ToxicWrapper{new(toxics.NoopToxic), "", "", 0},
+		noop: &toxics.ToxicWrapper{
+			Toxic: new(toxics.NoopToxic),
+			Type:  "noop",
+		},
 		proxy:  proxy,
 		chain:  make([]*toxics.ToxicWrapper, 1, toxics.Count()+1),
 		toxics: make([]*toxics.ToxicWrapper, 0, toxics.Count()),
@@ -80,8 +83,7 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (toxics.Toxic, error) {
 		wrapper.Name = wrapper.Type
 	}
 
-	wrapper.Toxic = toxics.New(wrapper.Type)
-	if wrapper.Toxic == nil {
+	if toxics.New(wrapper) == nil {
 		return nil, ErrInvalidToxicType
 	}
 
@@ -153,7 +155,7 @@ func (c *ToxicCollection) chainAddToxic(toxic *toxics.ToxicWrapper) {
 	toxic.Index = len(c.chain)
 	c.chain = append(c.chain, toxic)
 
-	// Asynchronously add the toxic in each link
+	// Asynchronously add the toxic to each link
 	group := sync.WaitGroup{}
 	for _, link := range c.links {
 		group.Add(1)
@@ -168,7 +170,7 @@ func (c *ToxicCollection) chainAddToxic(toxic *toxics.ToxicWrapper) {
 func (c *ToxicCollection) chainUpdateToxic(toxic *toxics.ToxicWrapper) {
 	c.chain[toxic.Index] = toxic
 
-	// Asynchronously add the toxic in each link
+	// Asynchronously update the toxic in each link
 	group := sync.WaitGroup{}
 	for _, link := range c.links {
 		group.Add(1)
@@ -186,7 +188,7 @@ func (c *ToxicCollection) chainRemoveToxic(toxic *toxics.ToxicWrapper) {
 		c.chain[i].Index = i
 	}
 
-	// Asynchronously add the toxic in each link
+	// Asynchronously remove the toxic from each link
 	group := sync.WaitGroup{}
 	for _, link := range c.links {
 		group.Add(1)
