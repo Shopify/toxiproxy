@@ -25,11 +25,17 @@ type Toxic interface {
 	Pipe(*ToxicStub)
 }
 
+type BufferedToxic interface {
+	// Defines the size of buffer this toxic should use
+	GetBufferSize() int
+}
+
 type ToxicWrapper struct {
-	Toxic `json:"-"`
-	Name  string `json:"name"`
-	Type  string `json:"type"`
-	Index int    `json:"-"`
+	Toxic      `json:"-"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	Index      int    `json:"-"`
+	BufferSize int    `json:"-"`
 }
 
 type ToxicStub struct {
@@ -86,15 +92,21 @@ func Register(typeName string, toxic Toxic) {
 	ToxicRegistry[typeName] = toxic
 }
 
-func New(typeName string) Toxic {
+func New(wrapper *ToxicWrapper) Toxic {
 	registryMutex.RLock()
 	defer registryMutex.RUnlock()
 
-	orig, ok := ToxicRegistry[typeName]
+	orig, ok := ToxicRegistry[wrapper.Type]
 	if !ok {
 		return nil
 	}
-	return reflect.New(reflect.TypeOf(orig).Elem()).Interface().(Toxic)
+	wrapper.Toxic = reflect.New(reflect.TypeOf(orig).Elem()).Interface().(Toxic)
+	if buffered, ok := wrapper.Toxic.(BufferedToxic); ok {
+		wrapper.BufferSize = buffered.GetBufferSize()
+	} else {
+		wrapper.BufferSize = 0
+	}
+	return wrapper.Toxic
 }
 
 func Count() int {

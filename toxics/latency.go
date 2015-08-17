@@ -12,6 +12,10 @@ type LatencyToxic struct {
 	Jitter  int64 `json:"jitter"`
 }
 
+func (t *LatencyToxic) GetBufferSize() int {
+	return 1024
+}
+
 func (t *LatencyToxic) delay() time.Duration {
 	// Delay = t.Latency +/- t.Jitter
 	delay := t.Latency

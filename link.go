@@ -33,10 +33,16 @@ func NewToxicLink(proxy *Proxy, collection *ToxicCollection) *ToxicLink {
 	}
 
 	// Initialize the link with ToxicStubs
-	last := make(chan *stream.StreamChunk, 1024)
+	last := make(chan *stream.StreamChunk) // The first toxic is always a noop
 	link.input = stream.NewChanWriter(last)
 	for i := 0; i < len(link.stubs); i++ {
-		next := make(chan *stream.StreamChunk, 1024)
+		var next chan *stream.StreamChunk
+		if i+1 < len(link.stubs) {
+			next = make(chan *stream.StreamChunk, link.toxics.chain[i+1].BufferSize)
+		} else {
+			next = make(chan *stream.StreamChunk)
+		}
+
 		link.stubs[i] = toxics.NewToxicStub(last, next)
 		last = next
 	}
@@ -83,7 +89,7 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 
 	// Interrupt the last toxic so that we don't have a race when moving channels
 	if link.stubs[i-1].InterruptToxic() {
-		newin := make(chan *stream.StreamChunk)
+		newin := make(chan *stream.StreamChunk, toxic.BufferSize)
 		link.stubs = append(link.stubs, toxics.NewToxicStub(newin, link.stubs[i-1].Output))
 		link.stubs[i-1].Output = newin
 
@@ -92,7 +98,7 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	}
 }
 
-// Replace an existing toxic in the chain.
+// Update an existing toxic in the chain.
 func (link *ToxicLink) UpdateToxic(toxic *toxics.ToxicWrapper) {
 	if link.stubs[toxic.Index].InterruptToxic() {
 		go link.stubs[toxic.Index].Run(toxic)
@@ -105,6 +111,12 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 
 	// Interrupt the last toxic so that the target's buffer is empty
 	if link.stubs[i-1].InterruptToxic() && link.stubs[i].InterruptToxic() {
+		// Empty the toxic's buffer if necessary
+		for len(link.stubs[i].Input) > 0 {
+			tmp := <-link.stubs[i].Input
+			link.stubs[i].Output <- tmp
+		}
+
 		link.stubs[i-1].Output = link.stubs[i].Output
 		link.stubs = append(link.stubs[:i], link.stubs[i+1:]...)
 
