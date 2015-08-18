@@ -1,9 +1,6 @@
-package main
+package toxiproxy
 
-import (
-	"fmt"
-	"sync"
-)
+import "sync"
 
 // ProxyCollection is a collection of proxies. It's the interface for anything
 // to add and remove proxies from the toxiproxy instance. It's responsibilty is
@@ -26,7 +23,7 @@ func (collection *ProxyCollection) Add(proxy *Proxy, start bool) error {
 	defer collection.Unlock()
 
 	if _, exists := collection.proxies[proxy.Name]; exists {
-		return fmt.Errorf("Proxy with name %s already exists", proxy.Name)
+		return ErrProxyAlreadyExists
 	}
 
 	if start {
@@ -92,7 +89,7 @@ func (collection *ProxyCollection) Clear() error {
 func (collection *ProxyCollection) getByName(name string) (*Proxy, error) {
 	proxy, exists := collection.proxies[name]
 	if !exists {
-		return nil, fmt.Errorf("Proxy with name %s doesn't exist", name)
+		return nil, ErrProxyNotFound
 	}
 	return proxy, nil
 }

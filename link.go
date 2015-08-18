@@ -1,44 +1,52 @@
-package main
+package toxiproxy
 
 import (
 	"io"
 
+	"github.com/Shopify/toxiproxy/stream"
+	"github.com/Shopify/toxiproxy/toxics"
 	"github.com/Sirupsen/logrus"
 )
 
 // ToxicLinks are single direction pipelines that connects an input and output via
-// a chain of toxics. There is a fixed number of toxics in the chain, such that a
-// toxic always maps to the same toxic stub. Toxics are replaced with noops when
-// disabled.
+// a chain of toxics. The chain always starts with a NoopToxic, and toxics are added
+// and removed as they are enabled/disabled. New toxics are always added to the end
+// of the chain.
 //
-//         NoopToxic LatencyToxic  NoopToxic
-//             v           v           v
-// Input > ToxicStub > ToxicStub > ToxicStub > Output
+//         NoopToxic  LatencyToxic
+//             v           v
+// Input > ToxicStub > ToxicStub > Output
 //
 type ToxicLink struct {
-	stubs  []*ToxicStub
+	stubs  []*toxics.ToxicStub
 	proxy  *Proxy
 	toxics *ToxicCollection
-	input  *ChanWriter
-	output *ChanReader
+	input  *stream.ChanWriter
+	output *stream.ChanReader
 }
 
-func NewToxicLink(proxy *Proxy, toxics *ToxicCollection) *ToxicLink {
+func NewToxicLink(proxy *Proxy, collection *ToxicCollection) *ToxicLink {
 	link := &ToxicLink{
-		stubs:  make([]*ToxicStub, len(toxics.chain)),
+		stubs:  make([]*toxics.ToxicStub, len(collection.chain), cap(collection.chain)),
 		proxy:  proxy,
-		toxics: toxics,
+		toxics: collection,
 	}
 
 	// Initialize the link with ToxicStubs
-	last := make(chan *StreamChunk, 1024)
-	link.input = NewChanWriter(last)
+	last := make(chan *stream.StreamChunk) // The first toxic is always a noop
+	link.input = stream.NewChanWriter(last)
 	for i := 0; i < len(link.stubs); i++ {
-		next := make(chan *StreamChunk, 1024)
-		link.stubs[i] = NewToxicStub(last, next)
+		var next chan *stream.StreamChunk
+		if i+1 < len(link.stubs) {
+			next = make(chan *stream.StreamChunk, link.toxics.chain[i+1].BufferSize)
+		} else {
+			next = make(chan *stream.StreamChunk)
+		}
+
+		link.stubs[i] = toxics.NewToxicStub(last, next)
 		last = next
 	}
-	link.output = NewChanReader(last)
+	link.output = stream.NewChanReader(last)
 	return link
 }
 
@@ -75,9 +83,44 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 	}()
 }
 
-// Replace the toxic at the specified index
-func (link *ToxicLink) SetToxic(toxic Toxic, index int) {
-	if link.stubs[index].Interrupt() {
-		go link.stubs[index].Run(toxic)
+// Add a toxic to the end of the chain.
+func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
+	i := toxic.Index
+
+	// Interrupt the last toxic so that we don't have a race when moving channels
+	if link.stubs[i-1].InterruptToxic() {
+		newin := make(chan *stream.StreamChunk, toxic.BufferSize)
+		link.stubs = append(link.stubs, toxics.NewToxicStub(newin, link.stubs[i-1].Output))
+		link.stubs[i-1].Output = newin
+
+		go link.stubs[i].Run(toxic)
+		go link.stubs[i-1].Run(link.toxics.chain[i-1])
 	}
+}
+
+// Update an existing toxic in the chain.
+func (link *ToxicLink) UpdateToxic(toxic *toxics.ToxicWrapper) {
+	if link.stubs[toxic.Index].InterruptToxic() {
+		go link.stubs[toxic.Index].Run(toxic)
+	}
+}
+
+// Remove an existing toxic from the chain.
+func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
+	i := toxic.Index
+
+	// Interrupt the last toxic so that the target's buffer is empty
+	if link.stubs[i-1].InterruptToxic() && link.stubs[i].InterruptToxic() {
+		// Empty the toxic's buffer if necessary
+		for len(link.stubs[i].Input) > 0 {
+			tmp := <-link.stubs[i].Input
+			link.stubs[i].Output <- tmp
+		}
+
+		link.stubs[i-1].Output = link.stubs[i].Output
+		link.stubs = append(link.stubs[:i], link.stubs[i+1:]...)
+
+		go link.stubs[i-1].Run(link.toxics.chain[i-1])
+	}
+
 }

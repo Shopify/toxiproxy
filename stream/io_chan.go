@@ -1,4 +1,4 @@
-package main
+package stream
 
 import (
 	"io"
@@ -7,8 +7,8 @@ import (
 
 // Stores a slice of bytes with its receive timestmap
 type StreamChunk struct {
-	data      []byte
-	timestamp time.Time
+	Data      []byte
+	Timestamp time.Time
 }
 
 // Implements the io.WriteCloser interface for a chan []byte
@@ -22,7 +22,7 @@ func NewChanWriter(output chan<- *StreamChunk) *ChanWriter {
 
 func (c *ChanWriter) Write(buf []byte) (int, error) {
 	packet := &StreamChunk{make([]byte, len(buf)), time.Now()}
-	copy(packet.data, buf) // Make a copy before sending it to the channel
+	copy(packet.Data, buf) // Make a copy before sending it to the channel
 	c.output <- packet
 	return len(buf), nil
 }
@@ -58,8 +58,8 @@ func (c *ChanReader) Read(out []byte) (int, error) {
 				c.buffer = nil
 				return n, io.EOF
 			}
-			n2 := copy(out[n:], p.data)
-			c.buffer = p.data[n2:]
+			n2 := copy(out[n:], p.Data)
+			c.buffer = p.Data[n2:]
 			return n + n2, nil
 		default:
 			return n, nil
@@ -70,7 +70,7 @@ func (c *ChanReader) Read(out []byte) (int, error) {
 		c.buffer = nil
 		return 0, io.EOF
 	}
-	n2 := copy(out[n:], p.data)
-	c.buffer = p.data[n2:]
+	n2 := copy(out[n:], p.Data)
+	c.buffer = p.Data[n2:]
 	return n + n2, nil
 }

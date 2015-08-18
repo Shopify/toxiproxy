@@ -1,14 +1,15 @@
-package main
+package toxics
 
 import (
 	"math/rand"
 	"time"
+
+	"github.com/Shopify/toxiproxy/stream"
 )
 
 // The SlicerToxic slices data into multiple smaller packets
 // to simulate real-world TCP behaviour.
 type SlicerToxic struct {
-	Enabled bool `json:"enabled"`
 	// Average number of bytes to slice at
 	AverageSize int `json:"average_size"`
 	// +/- bytes to vary sliced amounts. Must be less than
@@ -17,18 +18,6 @@ type SlicerToxic struct {
 	// Microseconds to delay each packet. May be useful since there's
 	// usually some kind of buffering of network data
 	Delay int `json:"delay"`
-}
-
-func (t *SlicerToxic) Name() string {
-	return "slicer"
-}
-
-func (t *SlicerToxic) IsEnabled() bool {
-	return t.Enabled
-}
-
-func (t *SlicerToxic) SetEnabled(enabled bool) {
-	t.Enabled = enabled
 }
 
 // Returns a list of chunk offsets to slice up a packet of the
@@ -60,26 +49,26 @@ func (t *SlicerToxic) chunk(start int, end int) []int {
 func (t *SlicerToxic) Pipe(stub *ToxicStub) {
 	for {
 		select {
-		case <-stub.interrupt:
+		case <-stub.Interrupt:
 			return
-		case c := <-stub.input:
+		case c := <-stub.Input:
 			if c == nil {
 				stub.Close()
 				return
 			}
 
-			chunks := t.chunk(0, len(c.data))
+			chunks := t.chunk(0, len(c.Data))
 			for i := 1; i < len(chunks); i += 2 {
-				stub.output <- &StreamChunk{
-					data:      c.data[chunks[i-1]:chunks[i]],
-					timestamp: c.timestamp,
+				stub.Output <- &stream.StreamChunk{
+					Data:      c.Data[chunks[i-1]:chunks[i]],
+					Timestamp: c.Timestamp,
 				}
 
 				select {
-				case <-stub.interrupt:
-					stub.output <- &StreamChunk{
-						data:      c.data[chunks[i]:],
-						timestamp: c.timestamp,
+				case <-stub.Interrupt:
+					stub.Output <- &stream.StreamChunk{
+						Data:      c.Data[chunks[i]:],
+						Timestamp: c.Timestamp,
 					}
 					return
 				case <-time.After(time.Duration(t.Delay) * time.Microsecond):
@@ -87,4 +76,8 @@ func (t *SlicerToxic) Pipe(stub *ToxicStub) {
 			}
 		}
 	}
+}
+
+func init() {
+	Register("slicer", new(SlicerToxic))
 }

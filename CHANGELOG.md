@@ -1,5 +1,14 @@
-# Unreleased
+# 2.0.0 (Unreleased)
 
+* 2.0 RFC: #54 and PR #62
+    * Change toxic API endpoints to an Add/Update/Remove structure
+    * Remove `enabled` field, and add `name` and `type` fields to toxics
+    * Add global toxic fields to a wrapper struct
+    * Chain toxics together dynamically instead of in a fixed length chain
+    * Register toxics in `init()` functions instead of a hard-coded list
+    * Clean up API error codes to make them more consistent
+    * Move toxics to their own package to allow 3rd party toxics
+* Define proxy buffer sizes per-toxic (Fixes #72)
 * Fix slicer toxic testing race condition #71
 
 # 1.2.1
