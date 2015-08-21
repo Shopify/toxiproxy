@@ -36,11 +36,13 @@ func TestStubInitializaationWithToxics(t *testing.T) {
 		Type:       "latency",
 		Direction:  stream.Downstream,
 		BufferSize: 1024,
+		Toxicity:   1,
 	})
 	collection.chainAddToxic(&toxics.ToxicWrapper{
 		Toxic:     new(toxics.BandwidthToxic),
 		Type:      "bandwidth",
 		Direction: stream.Downstream,
+		Toxicity:  1,
 	})
 	link := NewToxicLink(nil, collection, stream.Downstream)
 	if len(link.stubs) != 3 {
@@ -69,12 +71,14 @@ func TestAddRemoveStubs(t *testing.T) {
 		Type:       "latency",
 		Direction:  stream.Downstream,
 		BufferSize: 1024,
+		Toxicity:   1,
 	})
 	toxic := &toxics.ToxicWrapper{
 		Toxic:      new(toxics.BandwidthToxic),
 		Type:       "bandwidth",
 		Direction:  stream.Downstream,
 		BufferSize: 2048,
+		Toxicity:   1,
 	}
 	collection.chainAddToxic(toxic)
 	if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
@@ -111,6 +115,7 @@ func TestNoDataDropped(t *testing.T) {
 		Type:       "latency",
 		Direction:  stream.Downstream,
 		BufferSize: 1024,
+		Toxicity:   1,
 	}
 
 	done := make(chan struct{})
@@ -150,5 +155,48 @@ func TestNoDataDropped(t *testing.T) {
 	n, err := link.output.Read(buf)
 	if n != 0 || err != io.EOF {
 		t.Fatalf("Expected EOF: %d %v", n, err)
+	}
+}
+
+func TestToxicity(t *testing.T) {
+	collection := NewToxicCollection(nil)
+	link := NewToxicLink(nil, collection, stream.Downstream)
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	collection.links["test"] = link
+
+	toxic := &toxics.ToxicWrapper{
+		Toxic:     new(toxics.TimeoutToxic),
+		Name:      "timeout1",
+		Type:      "timeout",
+		Direction: stream.Downstream,
+		Toxicity:  0,
+	}
+	collection.chainAddToxic(toxic)
+
+	// Toxic should be a Noop because of toxicity
+	n, err := link.input.Write([]byte{42})
+	if n != 1 || err != nil {
+		t.Fatalf("Write failed: %d %v", n, err)
+	}
+	buf := make([]byte, 2)
+	n, err = link.output.Read(buf)
+	if n != 1 || err != nil {
+		t.Fatalf("Read failed: %d %v", n, err)
+	} else if buf[0] != 42 {
+		t.Fatalf("Read wrong byte: %x", buf[0])
+	}
+
+	toxic.Toxicity = 1
+	toxic.Toxic.(*toxics.TimeoutToxic).Timeout = 100
+	collection.chainUpdateToxic(toxic)
+
+	// Toxic should timeout after 100ms
+	n, err = link.input.Write([]byte{42})
+	if n != 1 || err != nil {
+		t.Fatalf("Write failed: %d %v", n, err)
+	}
+	n, err = link.output.Read(buf)
+	if n != 0 || err != io.EOF {
+		t.Fatalf("Read did not get EOF: %d %v", n, err)
 	}
 }
