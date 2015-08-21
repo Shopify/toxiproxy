@@ -30,7 +30,7 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *toxics.LatencyToxic) {
 		if upLatency == nil {
 			upLatency = &toxics.LatencyToxic{}
 		} else {
-			_, err := proxy.UpToxics.AddToxicJson(ToxicToJson(t, "", "latency", upLatency))
+			_, err := proxy.Toxics.AddToxicJson(ToxicToJson(t, "latency_up", "latency", "upstream", upLatency))
 			if err != nil {
 				t.Error("AddToxicJson returned error:", err)
 			}
@@ -38,7 +38,7 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *toxics.LatencyToxic) {
 		if downLatency == nil {
 			downLatency = &toxics.LatencyToxic{}
 		} else {
-			_, err := proxy.DownToxics.AddToxicJson(ToxicToJson(t, "", "latency", downLatency))
+			_, err := proxy.Toxics.AddToxicJson(ToxicToJson(t, "latency_down", "latency", "downstream", downLatency))
 			if err != nil {
 				t.Error("AddToxicJson returned error:", err)
 			}
@@ -85,8 +85,8 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *toxics.LatencyToxic) {
 			time.Duration(upLatency.Jitter+downLatency.Jitter+10)*time.Millisecond,
 		)
 
-		proxy.UpToxics.RemoveToxic("latency")
-		proxy.DownToxics.RemoveToxic("latency")
+		proxy.Toxics.RemoveToxic("latency_up")
+		proxy.Toxics.RemoveToxic("latency_down")
 
 		err = conn.Close()
 		if err != nil {
@@ -142,14 +142,14 @@ func TestLatencyToxicCloseRace(t *testing.T) {
 
 	// Check for potential race conditions when interrupting toxics
 	for i := 0; i < 1000; i++ {
-		proxy.UpToxics.AddToxicJson(ToxicToJson(t, "latency", "", &toxics.LatencyToxic{Latency: 10}))
+		proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "latency", "upstream", &toxics.LatencyToxic{Latency: 10}))
 		conn, err := net.Dial("tcp", proxy.Listen)
 		if err != nil {
 			t.Error("Unable to dial TCP server", err)
 		}
 		conn.Write([]byte("hello"))
 		conn.Close()
-		proxy.UpToxics.RemoveToxic("latency")
+		proxy.Toxics.RemoveToxic("latency")
 	}
 }
 
@@ -182,7 +182,7 @@ func TestLatencyToxicBandwidth(t *testing.T) {
 		t.Error("Unable to dial TCP server", err)
 	}
 
-	proxy.DownToxics.AddToxicJson(ToxicToJson(t, "latency", "", &toxics.LatencyToxic{Latency: 100}))
+	proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "latency", "downstream", &toxics.LatencyToxic{Latency: 100}))
 
 	time.Sleep(100 * time.Millisecond) // Wait for latency toxic
 	buf2 := make([]byte, len(buf))

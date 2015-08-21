@@ -30,11 +30,11 @@ func (server *ApiServer) Listen(host string, port string) {
 	r.HandleFunc("/proxies/{proxy}", server.ProxyShow).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyUpdate).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE")
-	r.HandleFunc("/proxies/{proxy}/{stream}/toxics", server.ToxicIndex).Methods("GET")
-	r.HandleFunc("/proxies/{proxy}/{stream}/toxics", server.ToxicCreate).Methods("POST")
-	r.HandleFunc("/proxies/{proxy}/{stream}/toxics/{toxic}", server.ToxicShow).Methods("GET")
-	r.HandleFunc("/proxies/{proxy}/{stream}/toxics/{toxic}", server.ToxicUpdate).Methods("POST")
-	r.HandleFunc("/proxies/{proxy}/{stream}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE")
+	r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicIndex).Methods("GET")
+	r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicCreate).Methods("POST")
+	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicShow).Methods("GET")
+	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicUpdate).Methods("POST")
+	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE")
 
 	r.HandleFunc("/version", server.Version).Methods("GET")
 	http.Handle("/", r)
@@ -80,8 +80,7 @@ func (server *ApiServer) ResetState(response http.ResponseWriter, request *http.
 			return
 		}
 
-		proxy.UpToxics.ResetToxics()
-		proxy.DownToxics.ResetToxics()
+		proxy.Toxics.ResetToxics()
 	}
 
 	response.WriteHeader(http.StatusNoContent)
@@ -206,16 +205,8 @@ func (server *ApiServer) ToxicIndex(response http.ResponseWriter, request *http.
 		return
 	}
 
-	var data []byte
-	switch vars["stream"] {
-	case "upstream":
-		data, err = json.Marshal(proxy.UpToxics.GetToxicMap())
-	case "downstream":
-		data, err = json.Marshal(proxy.DownToxics.GetToxicMap())
-	default:
-		apiError(response, ErrInvalidStream)
-		return
-	}
+	toxics := proxy.Toxics.GetToxicMap()
+	data, err := json.Marshal(toxics)
 	if apiError(response, err) {
 		return
 	}
@@ -235,16 +226,7 @@ func (server *ApiServer) ToxicCreate(response http.ResponseWriter, request *http
 		return
 	}
 
-	var toxic toxics.Toxic
-	switch vars["stream"] {
-	case "upstream":
-		toxic, err = proxy.UpToxics.AddToxicJson(request.Body)
-	case "downstream":
-		toxic, err = proxy.DownToxics.AddToxicJson(request.Body)
-	default:
-		apiError(response, ErrInvalidStream)
-		return
-	}
+	toxic, err := proxy.Toxics.AddToxicJson(request.Body)
 	if apiError(response, err) {
 		return
 	}
@@ -269,16 +251,7 @@ func (server *ApiServer) ToxicShow(response http.ResponseWriter, request *http.R
 		return
 	}
 
-	var toxic toxics.Toxic
-	switch vars["stream"] {
-	case "upstream":
-		toxic = proxy.UpToxics.GetToxic(vars["toxic"])
-	case "downstream":
-		toxic = proxy.DownToxics.GetToxic(vars["toxic"])
-	default:
-		apiError(response, ErrInvalidStream)
-		return
-	}
+	toxic := proxy.Toxics.GetToxic(vars["toxic"])
 	if toxic == nil {
 		apiError(response, ErrToxicNotFound)
 		return
@@ -304,16 +277,7 @@ func (server *ApiServer) ToxicUpdate(response http.ResponseWriter, request *http
 		return
 	}
 
-	var toxic toxics.Toxic
-	switch vars["stream"] {
-	case "upstream":
-		toxic, err = proxy.UpToxics.UpdateToxicJson(vars["toxic"], request.Body)
-	case "downstream":
-		toxic, err = proxy.DownToxics.UpdateToxicJson(vars["toxic"], request.Body)
-	default:
-		apiError(response, ErrInvalidStream)
-		return
-	}
+	toxic, err := proxy.Toxics.UpdateToxicJson(vars["toxic"], request.Body)
 	if apiError(response, err) {
 		return
 	}
@@ -338,15 +302,7 @@ func (server *ApiServer) ToxicDelete(response http.ResponseWriter, request *http
 		return
 	}
 
-	switch vars["stream"] {
-	case "upstream":
-		err = proxy.UpToxics.RemoveToxic(vars["toxic"])
-	case "downstream":
-		err = proxy.DownToxics.RemoveToxic(vars["toxic"])
-	default:
-		apiError(response, ErrInvalidStream)
-		return
-	}
+	err = proxy.Toxics.RemoveToxic(vars["toxic"])
 	if apiError(response, err) {
 		return
 	}
@@ -420,11 +376,9 @@ func apiError(resp http.ResponseWriter, err error) bool {
 
 func proxyWithToxics(proxy *Proxy) (result struct {
 	*Proxy
-	UpstreamToxics   map[string]toxics.Toxic `json:"upstream_toxics"`
-	DownstreamToxics map[string]toxics.Toxic `json:"downstream_toxics"`
+	Toxics map[string]toxics.Toxic `json:"toxics"`
 }) {
 	result.Proxy = proxy
-	result.UpstreamToxics = proxy.UpToxics.GetToxicMap()
-	result.DownstreamToxics = proxy.DownToxics.GetToxicMap()
+	result.Toxics = proxy.Toxics.GetToxicMap()
 	return
 }

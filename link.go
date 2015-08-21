@@ -18,18 +18,20 @@ import (
 // Input > ToxicStub > ToxicStub > Output
 //
 type ToxicLink struct {
-	stubs  []*toxics.ToxicStub
-	proxy  *Proxy
-	toxics *ToxicCollection
-	input  *stream.ChanWriter
-	output *stream.ChanReader
+	stubs     []*toxics.ToxicStub
+	proxy     *Proxy
+	toxics    *ToxicCollection
+	input     *stream.ChanWriter
+	output    *stream.ChanReader
+	direction stream.Direction
 }
 
-func NewToxicLink(proxy *Proxy, collection *ToxicCollection) *ToxicLink {
+func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Direction) *ToxicLink {
 	link := &ToxicLink{
-		stubs:  make([]*toxics.ToxicStub, len(collection.chain), cap(collection.chain)),
-		proxy:  proxy,
-		toxics: collection,
+		stubs:     make([]*toxics.ToxicStub, len(collection.chain[direction]), cap(collection.chain[direction])),
+		proxy:     proxy,
+		toxics:    collection,
+		direction: direction,
 	}
 
 	// Initialize the link with ToxicStubs
@@ -38,7 +40,7 @@ func NewToxicLink(proxy *Proxy, collection *ToxicCollection) *ToxicLink {
 	for i := 0; i < len(link.stubs); i++ {
 		var next chan *stream.StreamChunk
 		if i+1 < len(link.stubs) {
-			next = make(chan *stream.StreamChunk, link.toxics.chain[i+1].BufferSize)
+			next = make(chan *stream.StreamChunk, link.toxics.chain[direction][i+1].BufferSize)
 		} else {
 			next = make(chan *stream.StreamChunk)
 		}
@@ -64,7 +66,7 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		}
 		link.input.Close()
 	}()
-	for i, toxic := range link.toxics.chain {
+	for i, toxic := range link.toxics.chain[link.direction] {
 		go link.stubs[i].Run(toxic)
 	}
 	go func() {
@@ -94,7 +96,7 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 		link.stubs[i-1].Output = newin
 
 		go link.stubs[i].Run(toxic)
-		go link.stubs[i-1].Run(link.toxics.chain[i-1])
+		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1])
 	}
 }
 
@@ -120,7 +122,7 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 		link.stubs[i-1].Output = link.stubs[i].Output
 		link.stubs = append(link.stubs[:i], link.stubs[i+1:]...)
 
-		go link.stubs[i-1].Run(link.toxics.chain[i-1])
+		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1])
 	}
 
 }

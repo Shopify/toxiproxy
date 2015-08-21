@@ -24,8 +24,7 @@ type Proxy struct {
 	Upstream string `json:"upstream"` // The upstream address to proxy to
 	Enabled  bool   `json:"enabled"`  // Whether the proxy is enabled
 
-	ToxicsUpstream   Toxics `json:"upstream_toxics"`   // Toxics in the upstream direction
-	ToxicsDownstream Toxics `json:"downstream_toxics"` // Toxics in the downstream direction
+	ActiveToxics Toxics `json:"toxics"` // The toxics active on this proxy
 
 	client *Client
 }
@@ -165,9 +164,9 @@ func (proxy *Proxy) Delete() error {
 	return checkError(resp, http.StatusNoContent, "Delete")
 }
 
-// Toxics returns a map of all the toxics and their attributes for a direction.
-func (proxy *Proxy) Toxics(direction string) (Toxics, error) {
-	resp, err := http.Get(proxy.client.endpoint + "/proxies/" + proxy.Name + "/" + direction + "/toxics")
+// Toxics returns a map of all the active toxics and their attributes.
+func (proxy *Proxy) Toxics() (Toxics, error) {
+	resp, err := http.Get(proxy.client.endpoint + "/proxies/" + proxy.Name + "/toxics")
 	if err != nil {
 		return nil, err
 	}
@@ -186,13 +185,17 @@ func (proxy *Proxy) Toxics(direction string) (Toxics, error) {
 	return toxics, nil
 }
 
-// AddToxic adds a toxic to the given direction.
+// AddToxic adds a toxic to the given stream direction.
 // If a name is not specified, it will default to the same as the type.
+// If a stream is not specified, it will default to downstream.
 // See https://github.com/Shopify/toxiproxy#toxics for a list of all Toxic types.
-func (proxy *Proxy) AddToxic(name, typeName, direction string, toxic Toxic) (Toxic, error) {
+func (proxy *Proxy) AddToxic(name, typeName, stream string, toxic Toxic) (Toxic, error) {
 	toxic["type"] = typeName
 	if name != "" {
 		toxic["name"] = name
+	}
+	if stream != "" {
+		toxic["stream"] = stream
 	}
 
 	request, err := json.Marshal(toxic)
@@ -200,7 +203,7 @@ func (proxy *Proxy) AddToxic(name, typeName, direction string, toxic Toxic) (Tox
 		return nil, err
 	}
 
-	resp, err := http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name+"/"+direction+"/toxics", "application/json", bytes.NewReader(request))
+	resp, err := http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics", "application/json", bytes.NewReader(request))
 	if err != nil {
 		return nil, err
 	}
@@ -219,14 +222,14 @@ func (proxy *Proxy) AddToxic(name, typeName, direction string, toxic Toxic) (Tox
 	return toxics, nil
 }
 
-// UpdateToxic sets the parameters for an existing toxic with the given name and direction.
-func (proxy *Proxy) UpdateToxic(name, direction string, toxic Toxic) (Toxic, error) {
+// UpdateToxic sets the parameters for an existing toxic with the given name.
+func (proxy *Proxy) UpdateToxic(name string, toxic Toxic) (Toxic, error) {
 	request, err := json.Marshal(toxic)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name+"/"+direction+"/toxics/"+name, "application/json", bytes.NewReader(request))
+	resp, err := http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics/"+name, "application/json", bytes.NewReader(request))
 	if err != nil {
 		return nil, err
 	}
@@ -245,10 +248,10 @@ func (proxy *Proxy) UpdateToxic(name, direction string, toxic Toxic) (Toxic, err
 	return toxics, nil
 }
 
-// RemoveToxic renives the toxic with the given name and direction.
-func (proxy *Proxy) RemoveToxic(name, direction string) error {
+// RemoveToxic renives the toxic with the given name.
+func (proxy *Proxy) RemoveToxic(name string) error {
 	httpClient := &http.Client{}
-	req, err := http.NewRequest("DELETE", proxy.client.endpoint+"/proxies/"+proxy.Name+"/"+direction+"/toxics/"+name, nil)
+	req, err := http.NewRequest("DELETE", proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics/"+name, nil)
 	if err != nil {
 		return err
 	}
