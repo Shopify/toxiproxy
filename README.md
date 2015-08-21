@@ -377,6 +377,7 @@ back to `true` to reenable it.
  - `name`: toxic name (string, defaults to `type`)
  - `type`: toxic type (string)
  - `stream`: link direction to affect (defaults to `downstream`)
+ - `toxicity`: probability of the toxic being applied to a link (defaults to 1.0, 100%)
 
 See [Toxics](#toxics) for available types. Each toxic type has its own parameters that
 can also be specified.
