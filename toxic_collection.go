@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"strings"
 	"sync"
 
+	"github.com/Shopify/toxiproxy/stream"
 	"github.com/Shopify/toxiproxy/toxics"
 )
 
@@ -14,8 +16,8 @@ type ToxicCollection struct {
 
 	noop   *toxics.ToxicWrapper
 	proxy  *Proxy
-	chain  []*toxics.ToxicWrapper
-	toxics []*toxics.ToxicWrapper
+	chain  [][]*toxics.ToxicWrapper
+	toxics [][]*toxics.ToxicWrapper
 	links  map[string]*ToxicLink
 }
 
@@ -26,11 +28,16 @@ func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 			Type:  "noop",
 		},
 		proxy:  proxy,
-		chain:  make([]*toxics.ToxicWrapper, 1, toxics.Count()+1),
-		toxics: make([]*toxics.ToxicWrapper, 0, toxics.Count()),
+		chain:  make([][]*toxics.ToxicWrapper, stream.NumDirections),
+		toxics: make([][]*toxics.ToxicWrapper, stream.NumDirections),
 		links:  make(map[string]*ToxicLink),
 	}
-	collection.chain[0] = collection.noop
+	for dir := range collection.chain {
+		collection.chain[dir] = make([]*toxics.ToxicWrapper, 1, toxics.Count()+1)
+		collection.chain[dir][0] = collection.noop
+
+		collection.toxics[dir] = make([]*toxics.ToxicWrapper, 0, toxics.Count())
+	}
 	return collection
 }
 
@@ -38,20 +45,24 @@ func (c *ToxicCollection) ResetToxics() {
 	c.Lock()
 	defer c.Unlock()
 
-	for _, toxic := range c.toxics {
-		// TODO do this in bulk
-		c.chainRemoveToxic(toxic)
+	for dir := range c.toxics {
+		for _, toxic := range c.toxics[dir] {
+			// TODO do this in bulk
+			c.chainRemoveToxic(toxic)
+		}
+		c.toxics[dir] = c.toxics[dir][:0]
 	}
-	c.toxics = c.toxics[:0]
 }
 
 func (c *ToxicCollection) GetToxic(name string) toxics.Toxic {
 	c.Lock()
 	defer c.Unlock()
 
-	for _, toxic := range c.toxics {
-		if toxic.Name == name {
-			return toxic
+	for dir := range c.toxics {
+		for _, toxic := range c.toxics[dir] {
+			if toxic.Name == name {
+				return toxic
+			}
 		}
 	}
 	return nil
@@ -62,8 +73,10 @@ func (c *ToxicCollection) GetToxicMap() map[string]toxics.Toxic {
 	defer c.Unlock()
 
 	result := make(map[string]toxics.Toxic)
-	for _, toxic := range c.toxics {
-		result[toxic.Name] = toxic
+	for dir := range c.toxics {
+		for _, toxic := range c.toxics[dir] {
+			result[toxic.Name] = toxic
+		}
 	}
 	return result
 }
@@ -74,7 +87,11 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (toxics.Toxic, error) {
 
 	var buffer bytes.Buffer
 
-	wrapper := new(toxics.ToxicWrapper)
+	// Default to a downstream toxic
+	wrapper := &toxics.ToxicWrapper{
+		Stream: "downstream",
+	}
+
 	err := json.NewDecoder(io.TeeReader(data, &buffer)).Decode(wrapper)
 	if err != nil {
 		return nil, joinError(err, ErrBadRequestBody)
@@ -82,14 +99,24 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (toxics.Toxic, error) {
 	if wrapper.Name == "" {
 		wrapper.Name = wrapper.Type
 	}
+	switch strings.ToLower(wrapper.Stream) {
+	case "downstream":
+		wrapper.Direction = stream.Downstream
+	case "upstream":
+		wrapper.Direction = stream.Upstream
+	default:
+		return nil, ErrInvalidStream
+	}
 
 	if toxics.New(wrapper) == nil {
 		return nil, ErrInvalidToxicType
 	}
 
-	for _, toxic := range c.toxics {
-		if toxic.Name == wrapper.Name {
-			return nil, ErrToxicAlreadyExists
+	for dir := range c.toxics {
+		for _, toxic := range c.toxics[dir] {
+			if toxic.Name == wrapper.Name {
+				return nil, ErrToxicAlreadyExists
+			}
 		}
 	}
 	err = json.NewDecoder(&buffer).Decode(wrapper.Toxic)
@@ -97,7 +124,7 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (toxics.Toxic, error) {
 		return nil, joinError(err, ErrBadRequestBody)
 	}
 
-	c.toxics = append(c.toxics, wrapper)
+	c.toxics[wrapper.Direction] = append(c.toxics[wrapper.Direction], wrapper)
 	c.chainAddToxic(wrapper)
 	return wrapper.Toxic, nil
 }
@@ -106,15 +133,17 @@ func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (toxics.T
 	c.Lock()
 	defer c.Unlock()
 
-	for _, toxic := range c.toxics {
-		if toxic.Name == name {
-			err := json.NewDecoder(data).Decode(toxic.Toxic)
-			if err != nil {
-				return nil, joinError(err, ErrBadRequestBody)
-			}
+	for dir := range c.toxics {
+		for _, toxic := range c.toxics[dir] {
+			if toxic.Name == name {
+				err := json.NewDecoder(data).Decode(toxic.Toxic)
+				if err != nil {
+					return nil, joinError(err, ErrBadRequestBody)
+				}
 
-			c.chainUpdateToxic(toxic)
-			return toxic.Toxic, nil
+				c.chainUpdateToxic(toxic)
+				return toxic.Toxic, nil
+			}
 		}
 	}
 	return nil, ErrToxicNotFound
@@ -124,22 +153,24 @@ func (c *ToxicCollection) RemoveToxic(name string) error {
 	c.Lock()
 	defer c.Unlock()
 
-	for index, toxic := range c.toxics {
-		if toxic.Name == name {
-			c.toxics = append(c.toxics[:index], c.toxics[index+1:]...)
+	for dir := range c.toxics {
+		for index, toxic := range c.toxics[dir] {
+			if toxic.Name == name {
+				c.toxics[dir] = append(c.toxics[dir][:index], c.toxics[dir][index+1:]...)
 
-			c.chainRemoveToxic(toxic)
-			return nil
+				c.chainRemoveToxic(toxic)
+				return nil
+			}
 		}
 	}
 	return ErrToxicNotFound
 }
 
-func (c *ToxicCollection) StartLink(name string, input io.Reader, output io.WriteCloser) {
+func (c *ToxicCollection) StartLink(name string, input io.Reader, output io.WriteCloser, direction stream.Direction) {
 	c.Lock()
 	defer c.Unlock()
 
-	link := NewToxicLink(c.proxy, c)
+	link := NewToxicLink(c.proxy, c, direction)
 	link.Start(name, input, output)
 	c.links[name] = link
 }
@@ -152,50 +183,58 @@ func (c *ToxicCollection) RemoveLink(name string) {
 
 // All following functions assume the lock is already grabbed
 func (c *ToxicCollection) chainAddToxic(toxic *toxics.ToxicWrapper) {
-	toxic.Index = len(c.chain)
-	c.chain = append(c.chain, toxic)
+	dir := toxic.Direction
+	toxic.Index = len(c.chain[dir])
+	c.chain[dir] = append(c.chain[dir], toxic)
 
 	// Asynchronously add the toxic to each link
 	group := sync.WaitGroup{}
 	for _, link := range c.links {
-		group.Add(1)
-		go func(link *ToxicLink) {
-			defer group.Done()
-			link.AddToxic(toxic)
-		}(link)
+		if link.direction == dir {
+			group.Add(1)
+			go func(link *ToxicLink) {
+				defer group.Done()
+				link.AddToxic(toxic)
+			}(link)
+		}
 	}
 	group.Wait()
 }
 
 func (c *ToxicCollection) chainUpdateToxic(toxic *toxics.ToxicWrapper) {
-	c.chain[toxic.Index] = toxic
+	c.chain[toxic.Direction][toxic.Index] = toxic
 
 	// Asynchronously update the toxic in each link
 	group := sync.WaitGroup{}
 	for _, link := range c.links {
-		group.Add(1)
-		go func(link *ToxicLink) {
-			defer group.Done()
-			link.UpdateToxic(toxic)
-		}(link)
+		if link.direction == toxic.Direction {
+			group.Add(1)
+			go func(link *ToxicLink) {
+				defer group.Done()
+				link.UpdateToxic(toxic)
+			}(link)
+		}
 	}
 	group.Wait()
 }
 
 func (c *ToxicCollection) chainRemoveToxic(toxic *toxics.ToxicWrapper) {
-	c.chain = append(c.chain[:toxic.Index], c.chain[toxic.Index+1:]...)
-	for i := toxic.Index; i < len(c.chain); i++ {
-		c.chain[i].Index = i
+	dir := toxic.Direction
+	c.chain[dir] = append(c.chain[dir][:toxic.Index], c.chain[dir][toxic.Index+1:]...)
+	for i := toxic.Index; i < len(c.chain[dir]); i++ {
+		c.chain[dir][i].Index = i
 	}
 
 	// Asynchronously remove the toxic from each link
 	group := sync.WaitGroup{}
 	for _, link := range c.links {
-		group.Add(1)
-		go func(link *ToxicLink) {
-			defer group.Done()
-			link.RemoveToxic(toxic)
-		}(link)
+		if link.direction == dir {
+			group.Add(1)
+			go func(link *ToxicLink) {
+				defer group.Done()
+				link.RemoveToxic(toxic)
+			}(link)
+		}
 	}
 	group.Wait()
 
