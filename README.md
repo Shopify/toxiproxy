@@ -291,9 +291,9 @@ Please consult your respective client library on usage.
 
 ### Toxics
 
-Toxics manipulate the pipe between the client and upstream. If the `enabled`
-field is not provided when creating the toxic, it will default to being
-disabled.
+Toxics manipulate the pipe between the client and upstream. They can be added
+and removed from proxies using the [HTTP api](#http-api). Each toxic has its own parameters
+to change how it affects the proxy links.
 
 #### latency
 
@@ -301,7 +301,6 @@ Add a delay to all data going through the proxy. The delay is equal to `latency`
 
 Fields:
 
- - `enabled`: true/false
  - `latency`: time in milliseconds
  - `jitter`: time in milliseconds
 
@@ -317,7 +316,6 @@ Limit a connection to a maximum number of kilobytes per second.
 
 Fields:
 
- - `enabled`: true/false
  - `rate`: rate in KB/s
 
 #### slow_close
@@ -326,18 +324,16 @@ Delay the TCP socket from closing until `delay` has elapsed.
 
 Fields:
 
- - `enabled`: true/false
  - `delay`: time in milliseconds
 
 #### timeout
 
-Stops all data from getting through, and close the connection after `timeout`. If
+Stops all data from getting through, and closes the connection after `timeout`. If
 `timeout` is 0, the connection won't close, and data will be delayed until the
-toxic is disabled.
+toxic is removed.
 
 Fields:
 
- - `enabled`: true/false
  - `timeout`: time in milliseconds
 
 #### slicer
@@ -347,7 +343,6 @@ sliced "packet".
 
 Fields:
 
- - `enabled`: true/false
  - `average_size`: size in bytes of an average packet
  - `size_variation`: variation in bytes of an average packet (should be smaller than average_size)
  - `delay`: time in microseconds to delay each packet by
@@ -374,21 +369,33 @@ Changing the `listen` or `upstream` fields will restart the proxy and drop any a
 If `listen` is specified with a port of 0, toxiproxy will pick an ephemeral port. The `listen` field
 in the response will be updated with the actual port.
 
-If you change `enabled` to `false`, it'll take down the proxy. You can switch it
+If you change `enabled` to `false`, it will take down the proxy. You can switch it
 back to `true` to reenable it.
+
+#### Toxic Fields:
+
+ - `name`: toxic name (string, defaults to `type`)
+ - `type`: toxic type (string)
+ - `stream`: link direction to affect (defaults to `downstream`)
+
+See [Toxics](#toxics) for available types. Each toxic type has its own parameters that
+can also be specified.
+
+The `stream` direction must be either `upstream` or `downstream`.
+
+#### Endpoints
 
 All endpoints are JSON.
 
  - **GET /proxies** - List existing proxies and their toxics
  - **POST /proxies** - Create a new proxy
- - **GET /proxies/{proxy}** - Show the proxy with both its upstream and downstream toxics
+ - **GET /proxies/{proxy}** - Show the proxy with all its active toxics
  - **POST /proxies/{proxy}** - Update a proxy's fields
  - **DELETE /proxies/{proxy}** - Delete an existing proxy
- - **GET /proxies/{proxy}/upstream/toxics** - List upstream toxics
- - **GET /proxies/{proxy}/downstream/toxics** - List downstream toxics
- - **POST /proxies/{proxy}/upstream/toxics/{toxic}** - Update upstream toxic
- - **POST /proxies/{proxy}/downstream/toxics/{toxic}** - Update downstream toxic
- - **GET /reset** - Enable all proxies and disable all toxics
+ - **GET /proxies/{proxy}/toxics** - List active toxics
+ - **POST /proxies/{proxy}/toxics/{toxic}** - Update an active toxic
+ - **DELETE /proxies/{proxy}/toxics/{toxic}** - Remove an active toxic
+ - **GET /reset** - Enable all proxies and remove all active toxics
 
 ### Curl Example
 
@@ -396,10 +403,10 @@ All endpoints are JSON.
 $ curl -i -d '{"name": "redis", "upstream": "localhost:6379", "listen": "localhost:26379"}' localhost:8474/proxies
 HTTP/1.1 201 Created
 Content-Type: application/json
-Date: Sun, 12 Apr 2015 19:52:08 GMT
-Content-Length: 392
+Date: Fri, 21 Aug 2015 19:03:02 GMT
+Content-Length: 98
 
-{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true,"upstream_toxics":{"latency":{"enabled":false,"latency":0,"jitter":0},"slow_close":{"enabled":false,"delay":0},"timeout":{"enabled":false,"timeout":0}},"downstream_toxics":{"latency":{"enabled":false,"latency":0,"jitter":0},"slow_close":{"enabled":false,"delay":0},"timeout":{"enabled":false,"timeout":0}}}
+{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true,"toxics":{}}
 ```
 
 ```bash
@@ -414,52 +421,48 @@ OK
 $ curl -i localhost:8474/proxies
 HTTP/1.1 200 OK
 Content-Type: application/json
-Date: Sun, 12 Apr 2015 19:52:49 GMT
-Content-Length: 96
+Date: Fri, 21 Aug 2015 19:04:23 GMT
+Content-Length: 108
 
-{"redis":{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true}}
+{"redis":{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true,"toxics":{}}}
 ```
 
 ```bash
-$ curl -i -d '{"enabled":true, "latency":1000}' localhost:8474/proxies/redis/downstream/toxics/latency
+$ curl -i -d '{"type":"latency", "latency":1000}' localhost:8474/proxies/redis/toxics 
 HTTP/1.1 200 OK
 Content-Type: application/json
-Date: Mon, 10 Nov 2014 16:37:25 GMT
-Content-Length: 42
+Date: Fri, 21 Aug 2015 19:05:19 GMT
+Content-Length: 27
 
-{"enabled":true,"latency":1000,"jitter":0}
+{"latency":1000,"jitter":0}
 ```
 
 ```bash
 $ redis-cli -p 26379
-127.0.0.1:26379> GET "omg"
+127.0.0.1:26379> GET omg
 "pandas"
 (1.00s)
-127.0.0.1:26379> DEL "omg"
+127.0.0.1:26379> DEL omg
 (integer) 1
 (1.00s)
 ```
 
 ```bash
-$ curl -i -d '{"enabled":false}' localhost:8474/proxies/redis/downstream/toxics/latency
-HTTP/1.1 200 OK
-Content-Type: application/json
-Date: Mon, 10 Nov 2014 16:39:49 GMT
-Content-Length: 43
-
-{"enabled":false,"latency":1000,"jitter":0}
+$ curl -i -X DELETE localhost:8474/proxies/redis/toxics/latency
+HTTP/1.1 204 No Content
+Date: Fri, 21 Aug 2015 19:06:28 GMT
 ```
 
 ```bash
 $ redis-cli -p 26379
-127.0.0.1:26379> GET "omg"
+127.0.0.1:26379> GET omg
 (nil)
 ```
 
 ```bash
 $ curl -i -X DELETE localhost:8474/proxies/redis
 HTTP/1.1 204 No Content
-Date: Mon, 10 Nov 2014 16:07:36 GMT
+Date: Fri, 21 Aug 2015 19:07:07 GMT
 ```
 
 ```bash
@@ -471,7 +474,7 @@ Could not connect to Redis at 127.0.0.1:26379: Connection refused
 
 **How fast is Toxiproxy?** The speed of Toxiproxy depends largely on your hardware,
 but you can expect a latency of *< 100µs* when no toxics are enabled. When running
-with `GOMAXPROCS=4` on a Macbook Pro we acheived *~1000MB/s* throuput, and as high
+with `GOMAXPROCS=4` on a Macbook Pro we acheived *~1000MB/s* throughput, and as high
 as *2400MB/s* on a higher end desktop. Basically, you can expect Toxiproxy to move
 data around at least as fast the app you're testing.
 
