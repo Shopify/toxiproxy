@@ -424,7 +424,6 @@ func TestAddMultipleToxics(t *testing.T) {
 	})
 }
 
-// TODO test on opposite streams as well
 func TestAddConflictingToxic(t *testing.T) {
 	WithServer(t, func(addr string) {
 		err := testProxy.Create()
@@ -455,6 +454,39 @@ func TestAddConflictingToxic(t *testing.T) {
 			t.Fatal("Error returning toxics:", err)
 		}
 		AssertToxicExists(t, toxics, "foobar", "", "upstream", false)
+	})
+}
+
+func TestAddConflictingToxicsMultistream(t *testing.T) {
+	WithServer(t, func(addr string) {
+		err := testProxy.Create()
+		if err != nil {
+			t.Fatal("Unable to create proxy:", err)
+		}
+
+		_, err = testProxy.AddToxic("", "latency", "upstream", tclient.Toxic{})
+		if err != nil {
+			t.Fatal("Error setting toxic:", err)
+		}
+
+		_, err = testProxy.AddToxic("", "latency", "downstream", tclient.Toxic{})
+		if err == nil {
+			t.Fatal("Toxic did not result in conflict.")
+		} else if err.Error() != "AddToxic: HTTP 409: toxic already exists" {
+			t.Fatal("Incorrect error setting toxic:", err)
+		}
+
+		toxics, err := testProxy.Toxics()
+		if err != nil {
+			t.Fatal("Error returning toxics:", err)
+		}
+		AssertToxicExists(t, toxics, "latency", "latency", "upstream", true)
+
+		toxics, err = testProxy.Toxics()
+		if err != nil {
+			t.Fatal("Error returning toxics:", err)
+		}
+		AssertToxicExists(t, toxics, "latency", "", "downstream", false)
 	})
 }
 
