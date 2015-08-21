@@ -182,9 +182,9 @@ func TestLatencyToxicBandwidth(t *testing.T) {
 		t.Error("Unable to dial TCP server", err)
 	}
 
-	proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "latency", "downstream", &toxics.LatencyToxic{Latency: 100}))
+	proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "latency", "", &toxics.LatencyToxic{Latency: 100}))
 
-	time.Sleep(100 * time.Millisecond) // Wait for latency toxic
+	time.Sleep(150 * time.Millisecond) // Wait for latency toxic
 	buf2 := make([]byte, len(buf))
 
 	start := time.Now()
