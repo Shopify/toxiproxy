@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/Shopify/toxiproxy/stream"
 	"github.com/Shopify/toxiproxy/toxics"
 )
 
@@ -16,7 +17,7 @@ func TestToxicsAreLoaded(t *testing.T) {
 
 func TestStubInitializaation(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection)
+	link := NewToxicLink(nil, collection, stream.Downstream)
 	if len(link.stubs) != 1 {
 		t.Fatalf("Link created with wrong number of stubs: %d != 1", len(link.stubs))
 	} else if cap(link.stubs) != toxics.Count()+1 {
@@ -33,21 +34,23 @@ func TestStubInitializaationWithToxics(t *testing.T) {
 	collection.chainAddToxic(&toxics.ToxicWrapper{
 		Toxic:      new(toxics.LatencyToxic),
 		Type:       "latency",
+		Direction:  stream.Downstream,
 		BufferSize: 1024,
 	})
 	collection.chainAddToxic(&toxics.ToxicWrapper{
-		Toxic: new(toxics.BandwidthToxic),
-		Type:  "bandwidth",
+		Toxic:     new(toxics.BandwidthToxic),
+		Type:      "bandwidth",
+		Direction: stream.Downstream,
 	})
-	link := NewToxicLink(nil, collection)
+	link := NewToxicLink(nil, collection, stream.Downstream)
 	if len(link.stubs) != 3 {
-		t.Fatalf("Link created with wrong number of stubs: %d != 1", len(link.stubs))
+		t.Fatalf("Link created with wrong number of stubs: %d != 3", len(link.stubs))
 	} else if cap(link.stubs) != toxics.Count()+1 {
 		t.Fatalf("Link created with wrong capacity: %d != %d", cap(link.stubs), toxics.Count()+1)
 	} else if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
 		t.Fatalf("Link output buffer was not initialized as 0: %d", cap(link.stubs[0].Output))
 	}
-	for i, toxic := range collection.chain {
+	for i, toxic := range collection.chain[stream.Downstream] {
 		if cap(link.stubs[i].Input) != toxic.BufferSize {
 			t.Fatalf("%s buffer was not initialized as %d: %d", toxic.Type, toxic.BufferSize, cap(link.stubs[i].Input))
 		}
@@ -56,26 +59,28 @@ func TestStubInitializaationWithToxics(t *testing.T) {
 
 func TestAddRemoveStubs(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection)
-	go link.stubs[0].Run(collection.chain[0])
+	link := NewToxicLink(nil, collection, stream.Downstream)
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 
 	// Add stubs
 	collection.chainAddToxic(&toxics.ToxicWrapper{
 		Toxic:      new(toxics.LatencyToxic),
 		Type:       "latency",
+		Direction:  stream.Downstream,
 		BufferSize: 1024,
 	})
 	toxic := &toxics.ToxicWrapper{
 		Toxic:      new(toxics.BandwidthToxic),
 		Type:       "bandwidth",
+		Direction:  stream.Downstream,
 		BufferSize: 2048,
 	}
 	collection.chainAddToxic(toxic)
 	if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
 		t.Fatalf("Link output buffer was not initialized as 0: %d", cap(link.stubs[0].Output))
 	}
-	for i, toxic := range collection.chain {
+	for i, toxic := range collection.chain[stream.Downstream] {
 		if cap(link.stubs[i].Input) != toxic.BufferSize {
 			t.Fatalf("%s buffer was not initialized as %d: %d", toxic.Type, toxic.BufferSize, cap(link.stubs[i].Input))
 		}
@@ -86,7 +91,7 @@ func TestAddRemoveStubs(t *testing.T) {
 	if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
 		t.Fatalf("Link output buffer was not initialized as 0: %d", cap(link.stubs[0].Output))
 	}
-	for i, toxic := range collection.chain {
+	for i, toxic := range collection.chain[stream.Downstream] {
 		if cap(link.stubs[i].Input) != toxic.BufferSize {
 			t.Fatalf("%s buffer was not initialized as %d: %d", toxic.Type, toxic.BufferSize, cap(link.stubs[i].Input))
 		}
@@ -95,8 +100,8 @@ func TestAddRemoveStubs(t *testing.T) {
 
 func TestNoDataDropped(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection)
-	go link.stubs[0].Run(collection.chain[0])
+	link := NewToxicLink(nil, collection, stream.Downstream)
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 
 	toxic := &toxics.ToxicWrapper{
@@ -104,6 +109,7 @@ func TestNoDataDropped(t *testing.T) {
 			Latency: 1000,
 		},
 		Type:       "latency",
+		Direction:  stream.Downstream,
 		BufferSize: 1024,
 	}
 

@@ -32,10 +32,12 @@ type BufferedToxic interface {
 
 type ToxicWrapper struct {
 	Toxic      `json:"-"`
-	Name       string `json:"name"`
-	Type       string `json:"type"`
-	Index      int    `json:"-"`
-	BufferSize int    `json:"-"`
+	Name       string           `json:"name"`
+	Type       string           `json:"type"`
+	Stream     string           `json:"stream"`
+	Direction  stream.Direction `json:"-"`
+	Index      int              `json:"-"`
+	BufferSize int              `json:"-"`
 }
 
 type ToxicStub struct {

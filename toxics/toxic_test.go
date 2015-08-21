@@ -89,7 +89,7 @@ func WithEchoProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, pr
 	})
 }
 
-func ToxicToJson(t *testing.T, name, typeName string, toxic toxics.Toxic) io.Reader {
+func ToxicToJson(t *testing.T, name, typeName, stream string, toxic toxics.Toxic) io.Reader {
 	// Hack to add fields to an interface, json will nest otherwise, not embed
 	data, err := json.Marshal(toxic)
 	if err != nil {
@@ -107,9 +107,12 @@ func ToxicToJson(t *testing.T, name, typeName string, toxic toxics.Toxic) io.Rea
 		}
 		return nil
 	}
-	marshal["name"] = name
-	if typeName != "" {
-		marshal["type"] = typeName
+	marshal["type"] = typeName
+	if name != "" {
+		marshal["name"] = name
+	}
+	if stream != "" {
+		marshal["stream"] = stream
 	}
 
 	data, err = json.Marshal(marshal)
@@ -185,18 +188,16 @@ func TestPersistentConnections(t *testing.T) {
 
 	serverConn := <-serverConnRecv
 
-	proxy.UpToxics.AddToxicJson(ToxicToJson(t, "", "noop", &toxics.NoopToxic{}))
-	proxy.DownToxics.AddToxicJson(ToxicToJson(t, "", "noop", &toxics.NoopToxic{}))
+	proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_up", "noop", "upstream", &toxics.NoopToxic{}))
+	proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}))
 
 	AssertEchoResponse(t, conn, serverConn)
 
-	proxy.UpToxics.ResetToxics()
-	proxy.DownToxics.ResetToxics()
+	proxy.Toxics.ResetToxics()
 
 	AssertEchoResponse(t, conn, serverConn)
 
-	proxy.UpToxics.ResetToxics()
-	proxy.DownToxics.ResetToxics()
+	proxy.Toxics.ResetToxics()
 
 	AssertEchoResponse(t, conn, serverConn)
 
@@ -244,11 +245,11 @@ func TestToxicAddRemove(t *testing.T) {
 				return
 			default:
 				if enabled {
-					proxy.UpToxics.AddToxicJson(ToxicToJson(t, "", "noop", &toxics.NoopToxic{}))
-					proxy.DownToxics.RemoveToxic("noop")
+					proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_up", "noop", "upstream", &toxics.NoopToxic{}))
+					proxy.Toxics.RemoveToxic("noop_down")
 				} else {
-					proxy.UpToxics.RemoveToxic("noop")
-					proxy.DownToxics.AddToxicJson(ToxicToJson(t, "", "noop", &toxics.NoopToxic{}))
+					proxy.Toxics.RemoveToxic("noop_up")
+					proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}))
 				}
 				enabled = !enabled
 			}
