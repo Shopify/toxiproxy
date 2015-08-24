@@ -58,6 +58,7 @@ proxy.UpdateToxic("latency_down", toxiproxy.Toxic{
 proxy.RemoveToxic("latency_down")
 ```
 
+
 The proxy can be taken down using `Disable()`:
 ```go
 proxy.Disable()
@@ -67,3 +68,5 @@ When a proxy is no longer needed, it can be cleaned up with `Delete()`:
 ```go
 proxy.Delete()
 ```
+
+See [example_test.go](https://github.com/Shopify/toxiproxy/blob/master/client/example_test.go) for a full testing example.
