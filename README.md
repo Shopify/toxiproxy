@@ -479,6 +479,12 @@ with `GOMAXPROCS=4` on a Macbook Pro we acheived *~1000MB/s* throughput, and as 
 as *2400MB/s* on a higher end desktop. Basically, you can expect Toxiproxy to move
 data around at least as fast the app you're testing.
 
+**Can Toxiproxy do randomized testing?** Many of the available toxics can be configured
+to have randomness, such as `jitter` in the `latency` toxic. There is also a
+global `toxicity` parameter that specifies the percentage of connections a toxic
+will affect. This is most useful for things like the `timeout` toxic, which would
+allow X% of connections to timeout.
+
 **I am not seeing my Toxiproxy actions reflected for MySQL**. MySQL will prefer
 the local Unix domain socket for some clients, no matter which port you pass it
 if the host is set to `localhost`. Configure your MySQL server to not create a
