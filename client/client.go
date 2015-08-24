@@ -26,7 +26,8 @@ type Proxy struct {
 
 	ActiveToxics Toxics `json:"toxics"` // The toxics active on this proxy
 
-	client *Client
+	client  *Client
+	created bool // True if this proxy exists on the server
 }
 
 // NewClient creates a new client which provides the base of all communication
@@ -55,47 +56,37 @@ func (client *Client) Proxies() (map[string]*Proxy, error) {
 	}
 	for _, proxy := range proxies {
 		proxy.client = client
+		proxy.created = true
 	}
 
 	return proxies, nil
 }
 
-// NewProxy instantiates a new proxy instance. Note Create() must be called on
-// it to create it. The Enabled field must be set to true, otherwise the Proxy
-// will not be enabled when created.
-func (client *Client) NewProxy(proxy *Proxy) *Proxy {
-	if proxy == nil {
-		proxy = &Proxy{}
+// Generates a new uncommitted proxy instance. In order to use the result, the
+// proxy fields will need to be set and have `Save()` called.
+func (client *Client) NewProxy() *Proxy {
+	return &Proxy{
+		client: client,
 	}
-
-	proxy.client = client
-	return proxy
 }
 
-// Create creates a new proxy.
-func (proxy *Proxy) Create() error {
-	request, err := json.Marshal(proxy)
-	if err != nil {
-		return err
+// CreateProxy instantiates a new proxy and starts listening on the specified address.
+// This is an alias for `NewProxy()` + `proxy.Save()`
+func (client *Client) CreateProxy(name, listen, upstream string) (*Proxy, error) {
+	proxy := &Proxy{
+		Name:     name,
+		Listen:   listen,
+		Upstream: upstream,
+		Enabled:  true,
+		client:   client,
 	}
 
-	resp, err := http.Post(proxy.client.endpoint+"/proxies", "application/json", bytes.NewReader(request))
+	err := proxy.Save()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = checkError(resp, http.StatusCreated, "Create")
-	if err != nil {
-		return err
-	}
-
-	proxy = new(Proxy)
-	err = json.NewDecoder(resp.Body).Decode(&proxy)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return proxy, nil
 }
 
 // Proxy returns a proxy by name.
@@ -111,28 +102,39 @@ func (client *Client) Proxy(name string) (*Proxy, error) {
 		return nil, err
 	}
 
-	proxy := client.NewProxy(nil)
+	proxy := new(Proxy)
 	err = json.NewDecoder(resp.Body).Decode(proxy)
 	if err != nil {
 		return nil, err
 	}
+	proxy.client = client
+	proxy.created = true
 
 	return proxy, nil
 }
 
-// Save saves changes to a proxy such as its enabled status.
+// Save saves changes to a proxy such as its enabled status or upstream port.
 func (proxy *Proxy) Save() error {
 	request, err := json.Marshal(proxy)
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name, "application/json", bytes.NewReader(request))
+	var resp *http.Response
+	if proxy.created {
+		resp, err = http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name, "application/json", bytes.NewReader(request))
+	} else {
+		resp, err = http.Post(proxy.client.endpoint+"/proxies", "application/json", bytes.NewReader(request))
+	}
 	if err != nil {
 		return err
 	}
 
-	err = checkError(resp, http.StatusOK, "Save")
+	if proxy.created {
+		err = checkError(resp, http.StatusOK, "Save")
+	} else {
+		err = checkError(resp, http.StatusCreated, "Create")
+	}
 	if err != nil {
 		return err
 	}
@@ -141,13 +143,26 @@ func (proxy *Proxy) Save() error {
 	if err != nil {
 		return err
 	}
+	proxy.created = true
 
 	return nil
 }
 
-// Delete a proxy which will cause it to stop listening and delete all
-// information associated with it. If you just wish to stop and later enable a
-// proxy, set the `Enabled` field to `false` and call `Save()`.
+// Enable a proxy again after it has been disabled.
+func (proxy *Proxy) Enable() error {
+	proxy.Enabled = true
+	return proxy.Save()
+}
+
+// Disable a proxy so that no connections can pass through. This will drop all active connections.
+func (proxy *Proxy) Disable() error {
+	proxy.Enabled = false
+	return proxy.Save()
+}
+
+// Delete a proxy complete and close all existing connections through it. All information about
+// the proxy such as listen port and active toxics will be deleted as well. If you just wish to
+// stop and later enable a proxy, use `Enable()` and `Disable()`.
 func (proxy *Proxy) Delete() error {
 	httpClient := &http.Client{}
 	req, err := http.NewRequest("DELETE", proxy.client.endpoint+"/proxies/"+proxy.Name, nil)

@@ -13,12 +13,6 @@ import (
 var testServer *toxiproxy.ApiServer
 
 var client = tclient.NewClient("http://127.0.0.1:8475")
-var testProxy = client.NewProxy(&tclient.Proxy{
-	Name:     "mysql_master",
-	Listen:   "localhost:3310",
-	Upstream: "localhost:20001",
-	Enabled:  true,
-})
 
 func WithServer(t *testing.T, f func(string)) {
 	// Make sure only one server is running at a time. Apparently there's no clean
@@ -55,19 +49,9 @@ func TestIndexWithNoProxies(t *testing.T) {
 	})
 }
 
-func TestCreateProxy(t *testing.T) {
-	WithServer(t, func(addr string) {
-		err := testProxy.Create()
-		if err != nil {
-			t.Fatal("Unable to create proxy:", err)
-		}
-	})
-}
-
 func TestCreateProxyBlankName(t *testing.T) {
 	WithServer(t, func(addr string) {
-		blankProxy := client.NewProxy(&tclient.Proxy{})
-		err := blankProxy.Create()
+		_, err := client.CreateProxy("", "", "")
 		if err == nil {
 			t.Fatal("Expected error creating proxy, got nil")
 		} else if err.Error() != "Create: HTTP 400: missing required field: name" {
@@ -78,8 +62,7 @@ func TestCreateProxyBlankName(t *testing.T) {
 
 func TestCreateProxyBlankUpstream(t *testing.T) {
 	WithServer(t, func(addr string) {
-		blankProxy := client.NewProxy(&tclient.Proxy{Name: "test"})
-		err := blankProxy.Create()
+		_, err := client.CreateProxy("test", "", "")
 		if err == nil {
 			t.Fatal("Expected error creating proxy, got nil")
 		} else if err.Error() != "Create: HTTP 400: missing required field: upstream" {
@@ -88,9 +71,9 @@ func TestCreateProxyBlankUpstream(t *testing.T) {
 	})
 }
 
-func TestIndexWithToxics(t *testing.T) {
+func TestListingProxies(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		_, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -114,9 +97,9 @@ func TestIndexWithToxics(t *testing.T) {
 	})
 }
 
-func TestGetProxy(t *testing.T) {
+func TestCreateAndGetProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		_, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -134,12 +117,40 @@ func TestGetProxy(t *testing.T) {
 	})
 }
 
+func TestCreateProxyWithSave(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxy := client.NewProxy()
+		testProxy.Name = "mysql_master"
+		testProxy.Listen = "localhost:3310"
+		testProxy.Upstream = "localhost:20001"
+		testProxy.Enabled = true
+
+		err := testProxy.Save()
+		if err != nil {
+			t.Fatal("Unable to create proxy:", err)
+		}
+
+		proxy, err := client.Proxy("mysql_master")
+		if err != nil {
+			t.Fatal("Unable to retriecve proxy:", err)
+		}
+
+		if proxy.Name != "mysql_master" || proxy.Listen != "127.0.0.1:3310" || proxy.Upstream != "localhost:20001" || !proxy.Enabled {
+			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
+		}
+
+		AssertProxyUp(t, proxy.Listen, true)
+	})
+}
+
 func TestCreateDisabledProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
-		disabledProxy := *testProxy
-		disabledProxy.Enabled = false
+		disabledProxy := client.NewProxy()
+		disabledProxy.Name = "mysql_master"
+		disabledProxy.Listen = "localhost:3310"
+		disabledProxy.Upstream = "localhost:20001"
 
-		err := disabledProxy.Create()
+		err := disabledProxy.Save()
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -159,10 +170,12 @@ func TestCreateDisabledProxy(t *testing.T) {
 
 func TestCreateDisabledProxyAndEnable(t *testing.T) {
 	WithServer(t, func(addr string) {
-		disabledProxy := *testProxy
-		disabledProxy.Enabled = false
+		disabledProxy := client.NewProxy()
+		disabledProxy.Name = "mysql_master"
+		disabledProxy.Listen = "localhost:3310"
+		disabledProxy.Upstream = "localhost:20001"
 
-		err := disabledProxy.Create()
+		err := disabledProxy.Save()
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -198,7 +211,7 @@ func TestCreateDisabledProxyAndEnable(t *testing.T) {
 
 func TestDeleteProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -229,19 +242,24 @@ func TestDeleteProxy(t *testing.T) {
 		if len(proxies) > 0 {
 			t.Fatal("Expected proxy to be deleted from list")
 		}
+
+		err = testProxy.Delete()
+		if err == nil {
+			t.Fatal("Proxy did not result in not found.")
+		} else if err.Error() != "Delete: HTTP 404: proxy not found" {
+			t.Fatal("Incorrect error removing proxy:", err)
+		}
 	})
 }
 
 func TestCreateProxyPortConflict(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
 
-		testProxy2 := *testProxy
-		testProxy2.Name = "test"
-		err = testProxy2.Create()
+		_, err = client.CreateProxy("test", "localhost:3310", "localhost:20001")
 		if err == nil {
 			t.Fatal("Proxy did not result in conflict.")
 		} else if err.Error() != "Create: HTTP 500: listen tcp 127.0.0.1:3310: bind: address already in use" {
@@ -252,7 +270,7 @@ func TestCreateProxyPortConflict(t *testing.T) {
 		if err != nil {
 			t.Fatal("Unable to delete proxy:", err)
 		}
-		err = testProxy2.Create()
+		_, err = client.CreateProxy("test", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -261,14 +279,12 @@ func TestCreateProxyPortConflict(t *testing.T) {
 
 func TestCreateProxyNameConflict(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
 
-		testProxy2 := *testProxy
-		testProxy2.Listen = "localhost:3311"
-		err = testProxy2.Create()
+		_, err = client.CreateProxy("mysql_master", "localhost:3311", "localhost:20001")
 		if err == nil {
 			t.Fatal("Proxy did not result in conflict.")
 		} else if err.Error() != "Create: HTTP 409: proxy already exists" {
@@ -279,35 +295,21 @@ func TestCreateProxyNameConflict(t *testing.T) {
 		if err != nil {
 			t.Fatal("Unable to delete proxy:", err)
 		}
-		err = testProxy2.Create()
+		_, err = client.CreateProxy("mysql_master", "localhost:3311", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
-		}
-	})
-}
-
-func TestDeleteNonExistantProxy(t *testing.T) {
-	WithServer(t, func(addr string) {
-		err := testProxy.Delete()
-		if err == nil {
-			t.Fatal("Proxy did not result in not found.")
-		} else if err.Error() != "Delete: HTTP 404: proxy not found" {
-			t.Fatal("Incorrect error removing proxy:", err)
 		}
 	})
 }
 
 func TestResetState(t *testing.T) {
 	WithServer(t, func(addr string) {
-		disabledProxy := *testProxy
-		disabledProxy.Enabled = false
-
-		err := disabledProxy.Create()
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
 
-		latency, err := disabledProxy.AddToxic("", "latency", "downstream", tclient.Toxic{
+		latency, err := testProxy.AddToxic("", "latency", "downstream", tclient.Toxic{
 			"latency": 100,
 			"jitter":  10,
 		})
@@ -350,7 +352,7 @@ func TestResetState(t *testing.T) {
 
 func TestListingToxics(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -366,7 +368,7 @@ func TestListingToxics(t *testing.T) {
 
 func TestAddToxic(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -393,7 +395,7 @@ func TestAddToxic(t *testing.T) {
 
 func TestAddMultipleToxics(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -414,11 +416,6 @@ func TestAddMultipleToxics(t *testing.T) {
 		}
 		AssertToxicExists(t, toxics, "latency1", "latency", "downstream", true)
 		AssertToxicExists(t, toxics, "latency2", "latency", "downstream", true)
-
-		toxics, err = testProxy.Toxics()
-		if err != nil {
-			t.Fatal("Error returning toxics:", err)
-		}
 		AssertToxicExists(t, toxics, "latency1", "", "upstream", false)
 		AssertToxicExists(t, toxics, "latency2", "", "upstream", false)
 	})
@@ -426,7 +423,7 @@ func TestAddMultipleToxics(t *testing.T) {
 
 func TestAddConflictingToxic(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -448,18 +445,13 @@ func TestAddConflictingToxic(t *testing.T) {
 			t.Fatal("Error returning toxics:", err)
 		}
 		AssertToxicExists(t, toxics, "foobar", "latency", "downstream", true)
-
-		toxics, err = testProxy.Toxics()
-		if err != nil {
-			t.Fatal("Error returning toxics:", err)
-		}
 		AssertToxicExists(t, toxics, "foobar", "", "upstream", false)
 	})
 }
 
 func TestAddConflictingToxicsMultistream(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -481,18 +473,13 @@ func TestAddConflictingToxicsMultistream(t *testing.T) {
 			t.Fatal("Error returning toxics:", err)
 		}
 		AssertToxicExists(t, toxics, "latency", "latency", "upstream", true)
-
-		toxics, err = testProxy.Toxics()
-		if err != nil {
-			t.Fatal("Error returning toxics:", err)
-		}
 		AssertToxicExists(t, toxics, "latency", "", "downstream", false)
 	})
 }
 
 func TestUpdateToxics(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
@@ -524,7 +511,7 @@ func TestUpdateToxics(t *testing.T) {
 
 func TestRemoveToxic(t *testing.T) {
 	WithServer(t, func(addr string) {
-		err := testProxy.Create()
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
