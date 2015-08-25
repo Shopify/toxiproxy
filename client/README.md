@@ -42,6 +42,21 @@ You can then create a new proxy using the client:
 proxy := client.CreateProxy("redis", "localhost:26379", "localhost:6379")
 ```
 
+For large amounts of proxies, they can also be created using a configuration file:
+```go
+var config []toxiproxy.Proxy
+data, _ := ioutil.ReadFile("config.json")
+json.Unmarshal(data, &config)
+proxies, err = client.Populate(config)
+```
+```json
+[{
+  "name": "redis",
+  "listen": "localhost:26379",
+  "upstream": "localhost:6379"
+}]
+```
+
 Toxics can be added as follows:
 ```go
 // Add 1s latency to the downstream
@@ -69,4 +84,78 @@ When a proxy is no longer needed, it can be cleaned up with `Delete()`:
 proxy.Delete()
 ```
 
-See [example_test.go](https://github.com/Shopify/toxiproxy/blob/master/client/example_test.go) for a full testing example.
+## Full Example
+
+```go
+import (
+    "net/http"
+    "testing"
+    "time"
+
+    "github.com/Shopify/toxiproxy/client"
+    "github.com/garyburd/redigo/redis"
+)
+
+var toxiClient *toxiproxy.Client
+var proxies map[string]*toxiproxy.Proxy
+
+func init() {
+    var err error
+    toxiClient = toxiproxy.NewClient("localhost:8474")
+    proxies, err = toxiClient.Populate([]toxiproxy.Proxy{{
+        Name:     "redis",
+        Listen:   "localhost:26379",
+        Upstream: "localhost:6379",
+    }})
+    if err != nil {
+        panic(err)
+    }
+    // Alternatively, create the proxies manually with
+    // toxiClient.CreateProxy("redis", "localhost:26379", "localhost:6379")
+}
+
+func TestRedisBackendDown(t *testing.T) {
+    proxies["redis"].Disable()
+    defer proxies["redis"].Enable()
+
+    // Test that redis is down
+    _, err := redis.Dial("tcp", ":26379")
+    if err == nil {
+        t.Fatal("Connection to redis did not fail")
+    }
+}
+
+func TestRedisBackendSlow(t *testing.T) {
+    proxies["redis"].AddToxic("", "latency", "", toxiproxy.Toxic{
+        "latency": 1000,
+    })
+    defer proxies["redis"].RemoveToxic("latency")
+
+    // Test that redis is slow
+    start := time.Now()
+    conn, err := redis.Dial("tcp", ":26379")
+    if err != nil {
+        t.Fatal("Connection to redis failed", err)
+    }
+
+    _, err = conn.Do("GET", "test")
+    if err != nil {
+        t.Fatal("Redis command failed", err)
+    } else if time.Since(start) < 900*time.Millisecond {
+        t.Fatal("Redis command did not take long enough:", time.Since(start))
+    }
+}
+
+func TestEphemeralProxy(t *testing.T) {
+    proxy, _ := toxiClient.CreateProxy("test", "", "google.com:80")
+    defer proxy.Delete()
+
+    // Test connection through proxy.Listen
+    resp, err := http.Get("http://" + proxy.Listen)
+    if err != nil {
+        t.Fatal(err)
+    } else if resp.StatusCode != 200 {
+        t.Fatal("Proxy to google failed:", resp.StatusCode)
+    }
+}
+```
