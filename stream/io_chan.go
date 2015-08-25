@@ -29,7 +29,8 @@ func NewChanWriter(output chan<- *StreamChunk) *ChanWriter {
 	return &ChanWriter{output}
 }
 
-// Write `buf` as a StreamChunk to the channel
+// Write `buf` as a StreamChunk to the channel. The full buffer is always written, and error
+// will always be nil. Calling `Write()` after closing the channel will panic.
 func (c *ChanWriter) Write(buf []byte) (int, error) {
 	packet := &StreamChunk{make([]byte, len(buf)), time.Now()}
 	copy(packet.Data, buf) // Make a copy before sending it to the channel
@@ -62,7 +63,8 @@ func (c *ChanReader) SetInterrupt(interrupt <-chan struct{}) {
 }
 
 // Read from the channel into `out`. This will block until data is available,
-// and can be interrupted with a channel using `SetInterrupt()`
+// and can be interrupted with a channel using `SetInterrupt()`. If the read
+// was interrupted, `ErrInterrupted` will be returned.
 func (c *ChanReader) Read(out []byte) (int, error) {
 	if c.buffer == nil {
 		return 0, io.EOF
