@@ -46,18 +46,21 @@ stopping you from creating a client in any other language (see
   1. [Installing](#1-installing-toxiproxy)
   2. [Populating](#2-populating-toxiproxy)
   3. [Using](#3-using-toxiproxy)
-5. [Toxics](#toxics)
+5. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
+6. [Toxics](#toxics)
   1. [Latency](#latency)
   2. [Down](#down)
   3. [Bandwidth](#bandwidth)
   4. [Slow close](#slow_close)
   5. [Timeout](#timeout)
   6. [Slicer](#slicer)
-6. [HTTP API](#http-api)
+7. [HTTP API](#http-api)
   1. [Proxy fields](#proxy-fields)
+  1. [Toxic fields](#toxic-fields)
+  1. [Endpoints](#endpoints)
   2. [Curl example](#curl-example)
-7. [FAQ](#frequently-asked-questions)
-8. [Development](#development)
+8. [FAQ](#frequently-asked-questions)
+9. [Development](#development)
 
 ## Why yet another chaotic TCP proxy?
 
@@ -289,6 +292,16 @@ end
 
 Please consult your respective client library on usage.
 
+### Upgrading from Toxiproxy 1.x
+
+In Toxiproxy 2.0 several changes were made to the API that make it incompatible with version 1.x.
+In order to use version 2.x of the Toxiproxy server, you will need to make sure your client
+library supports the same version. You can check which version of Toxiproxy you are running by
+looking at the `/version` endpoint.
+
+See the documentation for your client library for specific library changes. Detailed changes
+for the Toxiproxy server can been found in [CHANGELOG.md](https://github.com/Shopify/toxiproxy/blob/master/CHANGELOG.md).
+
 ### Toxics
 
 Toxics manipulate the pipe between the client and upstream. They can be added
@@ -397,6 +410,7 @@ All endpoints are JSON.
  - **POST /proxies/{proxy}/toxics/{toxic}** - Update an active toxic
  - **DELETE /proxies/{proxy}/toxics/{toxic}** - Remove an active toxic
  - **GET /reset** - Enable all proxies and remove all active toxics
+ - **GET /version** - Returns the server version number
 
 ### Curl Example
 
