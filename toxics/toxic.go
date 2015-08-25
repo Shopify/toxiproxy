@@ -1,6 +1,7 @@
 package toxics
 
 import (
+	"math/rand"
 	"reflect"
 	"sync"
 
@@ -35,6 +36,7 @@ type ToxicWrapper struct {
 	Name       string           `json:"name"`
 	Type       string           `json:"type"`
 	Stream     string           `json:"stream"`
+	Toxicity   float32          `json:"toxicity"`
 	Direction  stream.Direction `json:"-"`
 	Index      int              `json:"-"`
 	BufferSize int              `json:"-"`
@@ -58,10 +60,15 @@ func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.Stream
 }
 
 // Begin running a toxic on this stub, can be interrupted.
-func (s *ToxicStub) Run(toxic Toxic) {
+// Runs a noop toxic randomly depending on toxicity
+func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 	s.running = make(chan struct{})
 	defer close(s.running)
-	toxic.Pipe(s)
+	if rand.Float32() < toxic.Toxicity {
+		toxic.Pipe(s)
+	} else {
+		new(NoopToxic).Pipe(s)
+	}
 }
 
 // Interrupt the flow of data so that the toxic controlling the stub can be replaced.
