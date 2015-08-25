@@ -119,6 +119,25 @@ func (client *Client) Proxy(name string) (*Proxy, error) {
 	return proxy, nil
 }
 
+// Create a list of proxies using a configuration list. If a proxy already exists, it will be replaced
+// with the specified configuration. For large amounts of proxies, `config` can be loaded from a file.
+func (client *Client) Populate(config []Proxy) (map[string]*Proxy, error) {
+	proxies := make(map[string]*Proxy, len(config))
+	for _, proxy := range config {
+		existing, err := client.Proxy(proxy.Name)
+		if err != nil && err.Error() != "Proxy: HTTP 404: proxy not found" {
+			return nil, err
+		} else if existing != nil && (existing.Listen != proxy.Listen || existing.Upstream != proxy.Upstream) {
+			existing.Delete()
+		}
+		proxies[proxy.Name], err = client.CreateProxy(proxy.Name, proxy.Listen, proxy.Upstream)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return proxies, nil
+}
+
 // Save saves changes to a proxy such as its enabled status or upstream port.
 func (proxy *Proxy) Save() error {
 	request, err := json.Marshal(proxy)
