@@ -8,6 +8,10 @@
     * Register toxics in `init()` functions instead of a hard-coded list
     * Clean up API error codes to make them more consistent
     * Move toxics to their own package to allow 3rd party toxics
+* Remove stream direction from API urls #73
+* Add `toxicity` field for toxics #75
+* Refactor Go client to make usage easier with 2.0 #76
+* Make `ChanReader` in the `stream` package interruptible #77
 * Define proxy buffer sizes per-toxic (Fixes #72)
 * Fix slicer toxic testing race condition #71
 
