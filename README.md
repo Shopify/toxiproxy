@@ -54,13 +54,14 @@ stopping you from creating a client in any other language (see
   4. [Slow close](#slow_close)
   5. [Timeout](#timeout)
   6. [Slicer](#slicer)
-7. [HTTP API](#http-api)
+7. [Writing custom toxics](#writing-custom-toxics)
+8. [HTTP API](#http-api)
   1. [Proxy fields](#proxy-fields)
-  1. [Toxic fields](#toxic-fields)
-  1. [Endpoints](#endpoints)
-  2. [Curl example](#curl-example)
-8. [FAQ](#frequently-asked-questions)
-9. [Development](#development)
+  2. [Toxic fields](#toxic-fields)
+  3. [Endpoints](#endpoints)
+  4. [Curl example](#curl-example)
+9. [FAQ](#frequently-asked-questions)
+10. [Development](#development)
 
 ## Why yet another chaotic TCP proxy?
 
@@ -361,6 +362,17 @@ Fields:
  - `size_variation`: variation in bytes of an average packet (should be smaller than average_size)
  - `delay`: time in microseconds to delay each packet by
 
+### Writing custom toxics
+
+Writing your own toxics for Toxiproxy can be done by copying [toxiproxy.go](https://github.com/Shopify/toxiproxy/blob/master/cmd/toxiproxy.go)
+into a new project and registering your toxic with the server. This will allow you to build your own Toxiproxy
+binary without having to make a full fork of the project. If you think your toxics will be useful to others,
+contribute them back with a Pull Request.
+
+For detailed documentation on implementing toxics, see [CREATING_TOXICS.md](https://github.com/Shopify/toxiproxy/blob/master/CREATING_TOXICS.md)
+
+An example project for building a separate binary can be found here:  
+https://github.com/xthexder/toxic-example
 
 ### HTTP API
 
@@ -369,7 +381,7 @@ HTTP interface, which is described here.
 
 Toxiproxy listens for HTTP on port **8474**.
 
-#### Proxy Fields:
+#### Proxy fields:
 
  - `name`: proxy name (string)
  - `listen`: listen address (string)
@@ -386,7 +398,7 @@ in the response will be updated with the actual port.
 If you change `enabled` to `false`, it will take down the proxy. You can switch it
 back to `true` to reenable it.
 
-#### Toxic Fields:
+#### Toxic fields:
 
  - `name`: toxic name (string, defaults to `type`)
  - `type`: toxic type (string)
