@@ -8,7 +8,7 @@ COMBINED_GOPATH=$(GODEP_PATH):$(ORIGINAL_PATH)
 .PHONY: packages deb test linux darwin windows
 
 build:
-	GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version git-`git rev-parse --short HEAD`" -o toxiproxy ./cmd
+	GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version git-$(git rev-parse --short HEAD)" -o toxiproxy ./cmd
 
 all: deb linux darwin windows
 deb: $(DEB)
