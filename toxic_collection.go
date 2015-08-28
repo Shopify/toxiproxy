@@ -54,7 +54,7 @@ func (c *ToxicCollection) ResetToxics() {
 	}
 }
 
-func (c *ToxicCollection) GetToxic(name string) toxics.Toxic {
+func (c *ToxicCollection) GetToxic(name string) *toxics.ToxicWrapper {
 	c.Lock()
 	defer c.Unlock()
 
@@ -68,20 +68,20 @@ func (c *ToxicCollection) GetToxic(name string) toxics.Toxic {
 	return nil
 }
 
-func (c *ToxicCollection) GetToxicMap() map[string]toxics.Toxic {
+func (c *ToxicCollection) GetToxicMap() map[string]interface{} {
 	c.Lock()
 	defer c.Unlock()
 
-	result := make(map[string]toxics.Toxic)
+	result := make(map[string]interface{})
 	for dir := range c.toxics {
 		for _, toxic := range c.toxics[dir] {
-			result[toxic.Name] = toxic
+			result[toxic.Name] = toxic.GetMap()
 		}
 	}
 	return result
 }
 
-func (c *ToxicCollection) AddToxicJson(data io.Reader) (toxics.Toxic, error) {
+func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -127,23 +127,35 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (toxics.Toxic, error) {
 
 	c.toxics[wrapper.Direction] = append(c.toxics[wrapper.Direction], wrapper)
 	c.chainAddToxic(wrapper)
-	return wrapper.Toxic, nil
+	return wrapper, nil
 }
 
-func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (toxics.Toxic, error) {
+func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (*toxics.ToxicWrapper, error) {
 	c.Lock()
 	defer c.Unlock()
+
+	var buffer bytes.Buffer
+	all := make(map[string]interface{})
+	err := json.NewDecoder(io.TeeReader(data, &buffer)).Decode(&all)
+	if err != nil {
+		return nil, joinError(err, ErrBadRequestBody)
+	}
 
 	for dir := range c.toxics {
 		for _, toxic := range c.toxics[dir] {
 			if toxic.Name == name {
-				err := json.NewDecoder(data).Decode(toxic.Toxic)
+				err := json.NewDecoder(&buffer).Decode(toxic.Toxic)
 				if err != nil {
 					return nil, joinError(err, ErrBadRequestBody)
 				}
+				if val, ok := all["toxicity"]; ok {
+					if toxicity, ok := val.(float64); ok {
+						toxic.Toxicity = float32(toxicity)
+					}
+				}
 
 				c.chainUpdateToxic(toxic)
-				return toxic.Toxic, nil
+				return toxic, nil
 			}
 		}
 	}

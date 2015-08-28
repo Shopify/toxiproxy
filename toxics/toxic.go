@@ -32,14 +32,28 @@ type BufferedToxic interface {
 }
 
 type ToxicWrapper struct {
-	Toxic      `json:"-"`
-	Name       string           `json:"name"`
-	Type       string           `json:"type"`
-	Stream     string           `json:"stream"`
-	Toxicity   float32          `json:"toxicity"`
-	Direction  stream.Direction `json:"-"`
-	Index      int              `json:"-"`
-	BufferSize int              `json:"-"`
+	Toxic
+	Name       string
+	Type       string
+	Stream     string
+	Toxicity   float32
+	Direction  stream.Direction
+	Index      int
+	BufferSize int
+}
+
+// Returns a flattened map of the toxic for use with json
+func (w *ToxicWrapper) GetMap() map[string]interface{} {
+	result := make(map[string]interface{})
+	ref := reflect.ValueOf(w.Toxic).Elem()
+	for i := 0; i < ref.NumField(); i++ {
+		result[ref.Type().Field(i).Tag.Get("json")] = ref.Field(i).Interface()
+	}
+	result["name"] = w.Name
+	result["type"] = w.Type
+	result["stream"] = w.Stream
+	result["toxicity"] = w.Toxicity
+	return result
 }
 
 type ToxicStub struct {
