@@ -44,24 +44,24 @@ stopping you from creating a client in any other language (see
 3. [Example](#example)
 4. [Usage](#usage)
   1. [Installing](#1-installing-toxiproxy)
+    1. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
   2. [Populating](#2-populating-toxiproxy)
   3. [Using](#3-using-toxiproxy)
-5. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
-6. [Toxics](#toxics)
+5. [Toxics](#toxics)
   1. [Latency](#latency)
   2. [Down](#down)
   3. [Bandwidth](#bandwidth)
   4. [Slow close](#slow_close)
   5. [Timeout](#timeout)
   6. [Slicer](#slicer)
-7. [Writing custom toxics](#writing-custom-toxics)
-8. [HTTP API](#http-api)
+6. [Writing custom toxics](#writing-custom-toxics)
+7. [HTTP API](#http-api)
   1. [Proxy fields](#proxy-fields)
   2. [Toxic fields](#toxic-fields)
   3. [Endpoints](#endpoints)
   4. [Curl example](#curl-example)
-9. [FAQ](#frequently-asked-questions)
-10. [Development](#development)
+8. [FAQ](#frequently-asked-questions)
+9. [Development](#development)
 
 ## Why yet another chaotic TCP proxy?
 
@@ -221,6 +221,24 @@ $ docker pull shopify/toxiproxy
 $ docker run -it shopify/toxiproxy
 ```
 
+**Source**
+
+If you have Go installed, you can build Toxiproxy from source using the make file:
+```bash
+$ make build
+$ ./toxiproxy
+```
+
+#### Upgrading from Toxiproxy 1.x
+
+In Toxiproxy 2.0 several changes were made to the API that make it incompatible with version 1.x.
+In order to use version 2.x of the Toxiproxy server, you will need to make sure your client
+library supports the same version. You can check which version of Toxiproxy you are running by
+looking at the `/version` endpoint.
+
+See the documentation for your client library for specific library changes. Detailed changes
+for the Toxiproxy server can been found in [CHANGELOG.md](https://github.com/Shopify/toxiproxy/blob/master/CHANGELOG.md).
+
 ### 2. Populating Toxiproxy
 
 When your application boots, it needs to make sure that Toxiproxy knows which
@@ -293,16 +311,6 @@ end
 ```
 
 Please consult your respective client library on usage.
-
-### Upgrading from Toxiproxy 1.x
-
-In Toxiproxy 2.0 several changes were made to the API that make it incompatible with version 1.x.
-In order to use version 2.x of the Toxiproxy server, you will need to make sure your client
-library supports the same version. You can check which version of Toxiproxy you are running by
-looking at the `/version` endpoint.
-
-See the documentation for your client library for specific library changes. Detailed changes
-for the Toxiproxy server can been found in [CHANGELOG.md](https://github.com/Shopify/toxiproxy/blob/master/CHANGELOG.md).
 
 ### Toxics
 
@@ -405,10 +413,13 @@ back to `true` to reenable it.
  - `stream`: link direction to affect (defaults to `downstream`)
  - `toxicity`: probability of the toxic being applied to a link (defaults to 1.0, 100%)
 
-See [Toxics](#toxics) for available types. Each toxic type has its own parameters that
-can also be specified.
+These are global fields that are applied to all toxics. Each toxic type has its own
+parameters that can be specified as well. See [Toxics](#toxics) for available types.
 
-The `stream` direction must be either `upstream` or `downstream`.
+The `stream` direction must be either `upstream` or `downstream`. `upstream` applies
+the toxic on the `client -> server` connection, while `downstream` applies the toxic
+on the `server -> client` connection. This can be used to modify requests and responses
+separately.
 
 #### Endpoints
 
@@ -420,6 +431,7 @@ All endpoints are JSON.
  - **POST /proxies/{proxy}** - Update a proxy's fields
  - **DELETE /proxies/{proxy}** - Delete an existing proxy
  - **GET /proxies/{proxy}/toxics** - List active toxics
+ - **GET /proxies/{proxy}/toxics/{toxic}** - Get an active toxic's fields
  - **POST /proxies/{proxy}/toxics/{toxic}** - Update an active toxic
  - **DELETE /proxies/{proxy}/toxics/{toxic}** - Remove an active toxic
  - **GET /reset** - Enable all proxies and remove all active toxics
