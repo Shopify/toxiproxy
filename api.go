@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/Shopify/toxiproxy/toxics"
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 )
@@ -231,7 +230,7 @@ func (server *ApiServer) ToxicCreate(response http.ResponseWriter, request *http
 		return
 	}
 
-	data, err := json.Marshal(toxic)
+	data, err := json.Marshal(toxic.GetMap())
 	if apiError(response, err) {
 		return
 	}
@@ -257,7 +256,7 @@ func (server *ApiServer) ToxicShow(response http.ResponseWriter, request *http.R
 		return
 	}
 
-	data, err := json.Marshal(toxic)
+	data, err := json.Marshal(toxic.GetMap())
 	if apiError(response, err) {
 		return
 	}
@@ -282,7 +281,7 @@ func (server *ApiServer) ToxicUpdate(response http.ResponseWriter, request *http
 		return
 	}
 
-	data, err := json.Marshal(toxic)
+	data, err := json.Marshal(toxic.GetMap())
 	if apiError(response, err) {
 		return
 	}
@@ -376,7 +375,7 @@ func apiError(resp http.ResponseWriter, err error) bool {
 
 func proxyWithToxics(proxy *Proxy) (result struct {
 	*Proxy
-	Toxics map[string]toxics.Toxic `json:"toxics"`
+	Toxics map[string]interface{} `json:"toxics"`
 }) {
 	result.Proxy = proxy
 	result.Toxics = proxy.Toxics.GetToxicMap()
