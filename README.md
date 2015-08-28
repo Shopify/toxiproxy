@@ -503,7 +503,7 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 ### Release
 
 1. Update `CHANGELOG.md`
-2. Bump `VERSION` and `toxiproxy.go`
+2. Bump `VERSION`
 3. Change versions in `README.md`
 4. Commit
 5. Tag
