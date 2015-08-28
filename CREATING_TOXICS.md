@@ -16,6 +16,8 @@ toxic.
 The input and output channels in a `ToxicStub` send and receive `StreamChunk` structs,
 which are similar to network packets. A `StreamChunk` contains a `byte[]` of stream
 data, and a timestamp of when Toxiproxy received the data from the client or server.
+This is used instead of just a plain `byte[]` so that toxics like latency can find out
+how long a chunk of data has been waiting in the proxy.
 
 Toxics are registered in an `init()` function so that they can be used by the server:
 ```go
