@@ -54,14 +54,13 @@ stopping you from creating a client in any other language (see
   4. [Slow close](#slow_close)
   5. [Timeout](#timeout)
   6. [Slicer](#slicer)
-6. [Writing custom toxics](#writing-custom-toxics)
-7. [HTTP API](#http-api)
+6. [HTTP API](#http-api)
   1. [Proxy fields](#proxy-fields)
   2. [Toxic fields](#toxic-fields)
   3. [Endpoints](#endpoints)
   4. [Curl example](#curl-example)
-8. [FAQ](#frequently-asked-questions)
-9. [Development](#development)
+7. [FAQ](#frequently-asked-questions)
+8. [Development](#development)
 
 ## Why yet another chaotic TCP proxy?
 
@@ -317,6 +316,8 @@ Toxics manipulate the pipe between the client and upstream. They can be added
 and removed from proxies using the [HTTP api](#http-api). Each toxic has its own parameters
 to change how it affects the proxy links.
 
+For documentation on implementing custom toxics, see [CREATING_TOXICS.md](https://github.com/Shopify/toxiproxy/blob/master/CREATING_TOXICS.md)
+
 #### latency
 
 Add a delay to all data going through the proxy. The delay is equal to `latency` +/- `jitter`.
@@ -368,18 +369,6 @@ Fields:
  - `average_size`: size in bytes of an average packet
  - `size_variation`: variation in bytes of an average packet (should be smaller than average_size)
  - `delay`: time in microseconds to delay each packet by
-
-### Writing custom toxics
-
-Writing your own toxics for Toxiproxy can be done by copying [toxiproxy.go](https://github.com/Shopify/toxiproxy/blob/master/cmd/toxiproxy.go)
-into a new project and registering your toxic with the server. This will allow you to build your own Toxiproxy
-binary without having to make a full fork of the project. If you think your toxics will be useful to others,
-contribute them back with a Pull Request.
-
-For detailed documentation on implementing toxics, see [CREATING_TOXICS.md](https://github.com/Shopify/toxiproxy/blob/master/CREATING_TOXICS.md)
-
-An example project for building a separate binary can be found here:  
-https://github.com/xthexder/toxic-example
 
 ### HTTP API
 

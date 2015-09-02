@@ -26,6 +26,15 @@ func init() {
 }
 ```
 
+In order to use your own toxics, you will need to compile your own binary. This can be
+done by copying [toxiproxy.go](https://github.com/Shopify/toxiproxy/blob/master/cmd/toxiproxy.go)
+into a new project and registering your toxic with the server. This will allow you to add toxics
+without having to make a full fork of the project. If you think your toxics will be useful
+to others, contribute them back with a Pull Request.
+
+An example project for building a separate binary can be found here:  
+https://github.com/xthexder/toxic-example
+
 ## A basic toxic
 
 The most basic implementation of a toxic is the [noop toxic](https://github.com/Shopify/toxiproxy/blob/master/toxics/noop.go),
@@ -61,8 +70,8 @@ function after it has written any "in-flight" data back to `stub.Output`. It is 
 all data read from `stub.Input` is passed along to `stub.Output`, otherwise the stream will be
 missing bytes and become corrupted.
 
-When an `end of stream` is reached, `stub.Input` will begin returning `nil` chunks. Whenever a
-nil chunk is returned, the toxic should call `Close()` on the stub, and return.
+When an `end of stream` is reached, `stub.Input` will return a `nil` chunk. Whenever a
+nil chunk is returned, the toxic should call `Close()` on the stub, and return from `Pipe()`.
 
 ## Toxic configuration
 
