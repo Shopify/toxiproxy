@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/Shopify/toxiproxy/toxics"
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 )
@@ -375,7 +376,7 @@ func apiError(resp http.ResponseWriter, err error) bool {
 
 func proxyWithToxics(proxy *Proxy) (result struct {
 	*Proxy
-	Toxics map[string]interface{} `json:"toxics"`
+	Toxics map[string]toxics.Toxic `json:"toxics"`
 }) {
 	result.Proxy = proxy
 	result.Toxics = proxy.Toxics.GetToxicMap()
