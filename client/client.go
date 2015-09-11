@@ -230,6 +230,9 @@ func (proxy *Proxy) Toxics() (Toxics, error) {
 // If a stream is not specified, it will default to downstream.
 // See https://github.com/Shopify/toxiproxy#toxics for a list of all Toxic types.
 func (proxy *Proxy) AddToxic(name, typeName, stream string, toxic Toxic) (Toxic, error) {
+	if toxic == nil {
+		toxic = make(Toxic)
+	}
 	toxic["type"] = typeName
 	if name != "" {
 		toxic["name"] = name
