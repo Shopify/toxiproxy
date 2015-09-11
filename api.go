@@ -230,7 +230,7 @@ func (server *ApiServer) ToxicCreate(response http.ResponseWriter, request *http
 		return
 	}
 
-	data, err := json.Marshal(toxic.GetMap())
+	data, err := json.Marshal(toxic)
 	if apiError(response, err) {
 		return
 	}
@@ -256,7 +256,7 @@ func (server *ApiServer) ToxicShow(response http.ResponseWriter, request *http.R
 		return
 	}
 
-	data, err := json.Marshal(toxic.GetMap())
+	data, err := json.Marshal(toxic)
 	if apiError(response, err) {
 		return
 	}
@@ -281,7 +281,7 @@ func (server *ApiServer) ToxicUpdate(response http.ResponseWriter, request *http
 		return
 	}
 
-	data, err := json.Marshal(toxic.GetMap())
+	data, err := json.Marshal(toxic)
 	if apiError(response, err) {
 		return
 	}

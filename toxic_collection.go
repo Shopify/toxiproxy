@@ -75,7 +75,7 @@ func (c *ToxicCollection) GetToxicMap() map[string]interface{} {
 	result := make(map[string]interface{})
 	for dir := range c.toxics {
 		for _, toxic := range c.toxics[dir] {
-			result[toxic.Name] = toxic.GetMap()
+			result[toxic.Name] = toxic
 		}
 	}
 	return result

@@ -520,6 +520,33 @@ func TestAddToxicWithToxicity(t *testing.T) {
 	})
 }
 
+func TestAddNoop(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
+		if err != nil {
+			t.Fatal("Unable to create proxy:", err)
+		}
+
+		noop, err := testProxy.AddToxic("foobar", "noop", "", nil)
+		if err != nil {
+			t.Fatal("Error setting toxic:", err)
+		}
+
+		if noop["toxicity"] != 1.0 || noop["name"] != "foobar" || noop["type"] != "noop" || noop["stream"] != "downstream" {
+			t.Fatal("Noop toxic did not start up with correct settings:", noop)
+		}
+
+		toxics, err := testProxy.Toxics()
+		if err != nil {
+			t.Fatal("Error returning toxics:", err)
+		}
+		toxic := AssertToxicExists(t, toxics, "foobar", "noop", "downstream", true)
+		if toxic["toxicity"] != 1.0 {
+			t.Fatal("Toxic was not read back correctly:", toxic)
+		}
+	})
+}
+
 func TestUpdateToxics(t *testing.T) {
 	WithServer(t, func(addr string) {
 		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
