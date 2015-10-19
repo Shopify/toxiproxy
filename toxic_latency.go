@@ -11,6 +11,9 @@ type LatencyToxic struct {
 	// Times in milliseconds
 	Latency int64 `json:"latency"`
 	Jitter  int64 `json:"jitter"`
+	// Percent of requests that will be passed without any effect of this latency feature.
+	// Between 0-100 . 
+	Skip int32 `json:"skip"`
 }
 
 func (t *LatencyToxic) Name() string {
@@ -29,9 +32,23 @@ func (t *LatencyToxic) delay() time.Duration {
 	// Delay = t.Latency +/- t.Jitter
 	delay := t.Latency
 	jitter := int64(t.Jitter)
+	
+	// Percent of messages that will be passed without any effect of this latency feature.
+	// When not set, skip = 0 by default, all messages are affected as usual.
+	skip := int32(t.Skip)
+	
 	if jitter > 0 {
 		delay += rand.Int63n(jitter*2) - jitter
 	}
+
+	// Do not apply this latency to this percent of packages.
+	if(skip>0){
+		var randValue = rand.Int31n(100);
+		if((randValue+1) <= skip){
+			delay = 0
+		}
+	}
+	
 	return time.Duration(delay) * time.Millisecond
 }
 
