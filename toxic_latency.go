@@ -43,22 +43,10 @@ func (t *LatencyToxic) delay() time.Duration {
 
 	// Do not apply this latency to this percent of packages.
 	if(skip>0){
-
-		if(skip>100) { // do not allow percentages bigger than 100
-			skip = 100
-			logrus.WithFields(logrus.Fields{
-				"skip":  skip,
-			}).Warn("Attempted to set a skip value > 100. Resetting to 100.")
-		}
-
 		var randValue = rand.Int31n(100);
 		if((randValue+1) <= skip){
 			delay = 0
 		}
-	} else if (skip <0) {
-		logrus.WithFields(logrus.Fields{
-				"skip":  skip,
-			}).Warn("Attempted to set a skip value < 0. Ignoring this value.")
 	}
 	
 	return time.Duration(delay) * time.Millisecond
