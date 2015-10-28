@@ -125,9 +125,9 @@ require 'toxiproxy'
 
 Toxiproxy.populate([
   {
-    "name": "toxiproxy_test_redis_tags",
-    "listen": "127.0.0.1:22222",
-    "upstream": "127.0.0.1:6379"
+    name: "toxiproxy_test_redis_tags",
+    listen: "127.0.0.1:22222",
+    upstream: "127.0.0.1:6379"
   }
 ])
 ```
@@ -230,14 +230,14 @@ making sure each proxy in a list is created. Example from the Ruby client:
 # present in Toxiproxy
 Toxiproxy.populate([
   {
-    "name": "shopify_test_redis_master",
-    "listen": "127.0.0.1:22220",
-    "upstream": "127.0.0.1:6379"
+    name: "shopify_test_redis_master",
+    listen: "127.0.0.1:22220",
+    upstream: "127.0.0.1:6379"
   },
   {
-    "name": "shopify_test_mysql_master",
-    "listen": "127.0.0.1:24220",
-    "upstream": "127.0.0.1:3306"
+    name: "shopify_test_mysql_master",
+    listen: "127.0.0.1:24220",
+    upstream: "127.0.0.1:3306"
   }
 ])
 ```
