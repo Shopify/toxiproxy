@@ -456,7 +456,7 @@ Content-Length: 108
 ```
 
 ```bash
-$ curl -i -d '{"type":"latency", "latency":1000}' localhost:8474/proxies/redis/toxics 
+$ curl -i -d '{"type":"latency", "latency":1000}' localhost:8474/proxies/redis/toxics
 HTTP/1.1 200 OK
 Content-Type: application/json
 Date: Fri, 21 Aug 2015 19:05:19 GMT
@@ -529,6 +529,7 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 
 ### Development
 
+* `make`. Build a toxiproxy development binary for the current platform.
 * `make all`. Build Toxiproxy binaries and packages for all platforms. Requires
   to have Go compiled with cross compilation enabled on Linux and Darwin (amd64)
   as well as [`fpm`](https://github.com/jordansissel/fpm) in your `$PATH` to
@@ -536,6 +537,7 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 * `make test`. Run the Toxiproxy tests.
 * `make darwin`. Build binary for Darwin.
 * `make linux`. Build binary for Linux.
+* `make windows`. Build binary for Windows.
 
 ### Release
 
@@ -544,7 +546,7 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 3. Change versions in `README.md`
 4. Commit
 5. Tag
-6. `make` to create binaries, packages and push new Docker image
+6. `make release` to create binaries, packages and push new Docker image
 7. Create [Github draft release](https://github.com/Shopify/toxiproxy/releases/new) against new tag and upload binaries and Debian package
 8. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)
 
