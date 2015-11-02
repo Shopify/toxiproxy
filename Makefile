@@ -8,7 +8,7 @@ COMBINED_GOPATH=$(GODEP_PATH):$(ORIGINAL_PATH)
 .PHONY: packages deb test linux darwin windows
 
 build:
-	GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version git-$(git rev-parse --short HEAD)" -o toxiproxy ./cmd
+	GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o toxiproxy ./cmd
 
 all: deb linux darwin windows
 deb: $(DEB)
@@ -25,13 +25,13 @@ test:
 	GOMAXPROCS=4 GOPATH=$(COMBINED_GOPATH) go test -v -race ./...
 
 tmp/build/toxiproxy-linux-amd64:
-	GOOS=linux GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version $(VERSION)" -o $(@) ./cmd
+	GOOS=linux GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
 
 tmp/build/toxiproxy-darwin-amd64:
-	GOOS=darwin GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version $(VERSION)" -o $(@) ./cmd
+	GOOS=darwin GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
 
 tmp/build/toxiproxy-windows-amd64.exe:
-	GOOS=windows GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version $(VERSION)" -o $(@) ./cmd
+	GOOS=windows GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
 
 docker:
 	docker build --tag="shopify/toxiproxy:$(VERSION)" .
