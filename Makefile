@@ -1,4 +1,4 @@
-NAME=toxiproxy
+NAME=toxiproxy-server
 VERSION=$(shell cat VERSION)
 DEB=pkg/$(NAME)_$(VERSION)_amd64.deb
 GODEP_PATH=$(shell pwd)/Godeps/_workspace
@@ -8,18 +8,19 @@ COMBINED_GOPATH=$(GODEP_PATH):$(ORIGINAL_PATH)
 .PHONY: packages deb test linux darwin windows
 
 build:
-	GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o toxiproxy ./cmd
+	GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(NAME) ./cmd
 
 all: deb linux darwin windows
 deb: $(DEB)
-darwin: tmp/build/toxiproxy-darwin-amd64
-linux: tmp/build/toxiproxy-linux-amd64
-windows: tmp/build/toxiproxy-windows-amd64.exe
+darwin: tmp/build/$(NAME)-darwin-amd64
+linux: tmp/build/$(NAME)-linux-amd64
+windows: tmp/build/$(NAME)-windows-amd64.exe
 release: all docker
 
 clean:
-	rm tmp/build/*
-	rm *.deb
+	rm -f tmp/build/*
+	rm -f $(NAME)
+	rm -f *.deb
 
 test:
 	GOMAXPROCS=4 GOPATH=$(COMBINED_GOPATH) go test -v -race ./...
@@ -51,5 +52,5 @@ $(DEB): tmp/build/toxiproxy-linux-amd64
 		--maintainer "Simon Eskildsen <simon.eskildsen@shopify.com>" \
 		--description "TCP proxy to simulate network and system conditions" \
 		--url "https://github.com/Shopify/toxiproxy" \
-		$<=/usr/bin/toxiproxy \
+		$<=/usr/bin/$(NAME) \
 		./share/toxiproxy.conf=/etc/init/toxiproxy.conf
