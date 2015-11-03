@@ -24,7 +24,7 @@ func NewServer() *ApiServer {
 
 func (server *ApiServer) Listen(host string, port string) {
 	r := mux.NewRouter()
-	r.HandleFunc("/reset", server.ResetState).Methods("GET")
+	r.HandleFunc("/reset", server.ResetState).Methods("POST")
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyShow).Methods("GET")
