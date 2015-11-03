@@ -641,6 +641,20 @@ func TestVersionEndpointReturnsVersion(t *testing.T) {
 	})
 }
 
+func TestInvalidStream(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
+		if err != nil {
+			t.Fatal("Unable to create proxy:", err)
+		}
+
+		_, err = testProxy.AddToxic("", "latency", "walrustream", tclient.Toxic{})
+		if err == nil {
+			t.Fatal("Error setting toxic:", err)
+		}
+	})
+}
+
 func AssertToxicExists(t *testing.T, toxics tclient.Toxics, name, typeName, stream string, exists bool) tclient.Toxic {
 	toxic, found := toxics[name]
 	var actualType, actualStream string
