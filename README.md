@@ -423,7 +423,7 @@ All endpoints are JSON.
  - **GET /proxies/{proxy}/toxics/{toxic}** - Get an active toxic's fields
  - **POST /proxies/{proxy}/toxics/{toxic}** - Update an active toxic
  - **DELETE /proxies/{proxy}/toxics/{toxic}** - Remove an active toxic
- - **GET /reset** - Enable all proxies and remove all active toxics
+ - **POST /reset** - Enable all proxies and remove all active toxics
  - **GET /version** - Returns the server version number
 
 ### Curl Example

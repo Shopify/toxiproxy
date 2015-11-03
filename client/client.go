@@ -147,7 +147,7 @@ func (proxy *Proxy) Save() error {
 
 	var resp *http.Response
 	if proxy.created {
-		resp, err = http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name, "application/json", bytes.NewReader(request))
+		resp, err = http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name, "text/plain", bytes.NewReader(request))
 	} else {
 		resp, err = http.Post(proxy.client.endpoint+"/proxies", "application/json", bytes.NewReader(request))
 	}
@@ -309,7 +309,7 @@ func (proxy *Proxy) RemoveToxic(name string) error {
 
 // ResetState resets the state of all proxies and toxics in Toxiproxy.
 func (client *Client) ResetState() error {
-	resp, err := http.Get(client.endpoint + "/reset")
+	resp, err := http.Post(client.endpoint+"/reset", "text/plain", bytes.NewReader([]byte{}))
 	if err != nil {
 		return err
 	}
