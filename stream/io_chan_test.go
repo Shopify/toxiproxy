@@ -83,8 +83,8 @@ func TestReadLessThanWrite(t *testing.T) {
 	if n != len(send)-len(buf) {
 		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(send)-len(buf))
 	}
-	if err != io.EOF {
-		t.Fatal("Read returned wrong error after close:", err)
+	if err != nil {
+		t.Fatal("Couldn't read from stream", err)
 	}
 	if !bytes.Equal(buf[:n], send[len(buf):]) {
 		t.Fatal("Got wrong message from stream", string(buf[:n]))
@@ -110,11 +110,10 @@ func TestMultiReadWrite(t *testing.T) {
 		writer.Close()
 	}()
 	buf := make([]byte, 10)
-	read := 0
-	for i := 0; i < len(send)/10; i++ {
+	for read := 0; read < len(send); {
 		n, err := reader.Read(buf)
 		if err != nil {
-			t.Fatal("Couldn't read from stream", err)
+			t.Fatal("Couldn't read from stream", err, n)
 		}
 		if !bytes.Equal(buf[:n], send[read:read+n]) {
 			t.Fatal("Got wrong message from stream", string(buf))
@@ -123,7 +122,7 @@ func TestMultiReadWrite(t *testing.T) {
 	}
 	n, err := reader.Read(buf)
 	if err != io.EOF {
-		t.Fatal("Read returned wrong error after close:", err)
+		t.Fatal("Read returned wrong error after close:", err, string(buf[:n]))
 	}
 	if !bytes.Equal(buf[:n], send[len(send)-n:]) {
 		t.Fatal("Got wrong message from stream", string(buf[:n]))
