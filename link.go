@@ -111,12 +111,38 @@ func (link *ToxicLink) UpdateToxic(toxic *toxics.ToxicWrapper) {
 func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 	i := toxic.Index
 
-	// Interrupt the last toxic so that the target's buffer is empty
-	if link.stubs[i-1].InterruptToxic() && link.stubs[i].InterruptToxic() {
+	if link.stubs[i].InterruptToxic() {
+		stop := make(chan bool)
+		// Interrupt the previous toxic to update its output
+		go func() {
+			stop <- link.stubs[i-1].InterruptToxic()
+		}()
+
+		// Unblock the previous toxic if it is trying to flush
+		interrupted := false
+		for !interrupted {
+			select {
+			case interrupted = <-stop:
+				if !interrupted {
+					return
+				}
+			case tmp := <-link.stubs[i].Input:
+				link.stubs[i].Output <- tmp
+				if tmp == nil {
+					link.stubs[i].Close()
+					return
+				}
+			}
+		}
+
 		// Empty the toxic's buffer if necessary
 		for len(link.stubs[i].Input) > 0 {
 			tmp := <-link.stubs[i].Input
 			link.stubs[i].Output <- tmp
+			if tmp == nil {
+				link.stubs[i].Close()
+				return
+			}
 		}
 
 		link.stubs[i-1].Output = link.stubs[i].Output
