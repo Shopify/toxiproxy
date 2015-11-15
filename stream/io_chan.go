@@ -79,7 +79,10 @@ func (c *ChanReader) Read(out []byte) (int, error) {
 		case p := <-c.input:
 			if p == nil { // Stream was closed
 				c.buffer = nil
-				return n, io.EOF
+				if n > 0 {
+					return n, nil
+				}
+				return 0, io.EOF
 			}
 			n2 := copy(out[n:], p.Data)
 			c.buffer = p.Data[n2:]

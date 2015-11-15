@@ -87,16 +87,21 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 
 // Add a toxic to the end of the chain.
 func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
-	i := toxic.Index
+	i := len(link.stubs)
+
+	newin := make(chan *stream.StreamChunk, toxic.BufferSize)
+	link.stubs = append(link.stubs, toxics.NewToxicStub(newin, link.stubs[i-1].Output))
 
 	// Interrupt the last toxic so that we don't have a race when moving channels
 	if link.stubs[i-1].InterruptToxic() {
-		newin := make(chan *stream.StreamChunk, toxic.BufferSize)
-		link.stubs = append(link.stubs, toxics.NewToxicStub(newin, link.stubs[i-1].Output))
 		link.stubs[i-1].Output = newin
 
 		go link.stubs[i].Run(toxic)
 		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1])
+	} else {
+		// This link is already closed, make sure the new toxic matches
+		link.stubs[i].Output = newin // The real output is already closed, close this instead
+		link.stubs[i].Close()
 	}
 }
 
@@ -119,30 +124,33 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 		}()
 
 		// Unblock the previous toxic if it is trying to flush
+		// If the previous toxic is closed, continue flusing until we reach the end.
 		interrupted := false
+		stopped := false
 		for !interrupted {
 			select {
 			case interrupted = <-stop:
-				if !interrupted {
-					return
-				}
+				stopped = true
 			case tmp := <-link.stubs[i].Input:
-				link.stubs[i].Output <- tmp
 				if tmp == nil {
 					link.stubs[i].Close()
+					if !stopped {
+						<-stop
+					}
 					return
 				}
+				link.stubs[i].Output <- tmp
 			}
 		}
 
 		// Empty the toxic's buffer if necessary
 		for len(link.stubs[i].Input) > 0 {
 			tmp := <-link.stubs[i].Input
-			link.stubs[i].Output <- tmp
 			if tmp == nil {
 				link.stubs[i].Close()
 				return
 			}
+			link.stubs[i].Output <- tmp
 		}
 
 		link.stubs[i-1].Output = link.stubs[i].Output
@@ -150,5 +158,4 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 
 		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1])
 	}
-
 }
