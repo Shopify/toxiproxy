@@ -48,6 +48,7 @@ tmp/build/toxiproxy-client-windows-amd64.exe:
 $(DEB): tmp/build/toxiproxy-server-linux-amd64 tmp/build/toxiproxy-client-linux-amd64
 	fpm -t deb \
 		-s dir \
+		-p tmp/build/ \
 		--name "toxiproxy" \
 		--version $(VERSION) \
 		--license MIT \
