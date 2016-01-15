@@ -106,10 +106,10 @@ func main() {
 
 func enabledColor(enabled bool) string {
 	if enabled {
-		return "\x1b[32m"
+		return greenColor
 	}
 
-	return "\x1b[31m"
+	return redColor
 }
 
 func enabledText(enabled bool) string {
