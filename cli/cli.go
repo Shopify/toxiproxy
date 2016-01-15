@@ -19,6 +19,7 @@ const (
 )
 
 func main() {
+	defer fmt.Print(noColor) // make sure to clear unwanted colors
 	toxiproxyClient := toxiproxy.NewClient("http://localhost:8474")
 
 	app := cli.NewApp()
