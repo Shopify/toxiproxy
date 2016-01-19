@@ -131,8 +131,7 @@ func withToxi(f toxiAction, t *toxiproxy.Client) func(*cli.Context) {
 func list(c *cli.Context, t *toxiproxy.Client) {
 	proxies, err := t.Proxies()
 	if err != nil {
-		fmt.Println("Failed to retrieve proxies: ", err)
-		os.Exit(1)
+		log.Fatalln("Failed to retrieve proxies: ", err)
 	}
 
 	var proxyNames []string
@@ -154,8 +153,7 @@ func inspect(c *cli.Context, t *toxiproxy.Client) {
 
 	proxy, err := t.Proxy(proxyName)
 	if err != nil {
-		fmt.Printf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
-		os.Exit(1)
+		log.Fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 
 	// TODO It would be cool to include the enabled toxics in the pipe
@@ -173,16 +171,14 @@ func toggle(c *cli.Context, t *toxiproxy.Client) {
 
 	proxy, err := t.Proxy(proxyName)
 	if err != nil {
-		fmt.Printf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
-		os.Exit(1)
+		log.Fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 
 	proxy.Enabled = !proxy.Enabled
 
 	err = proxy.Save()
 	if err != nil {
-		fmt.Printf("Failed to toggle proxy %s: %s\n", proxyName, err.Error())
-		os.Exit(1)
+		log.Fatalf("Failed to toggle proxy %s: %s\n", proxyName, err.Error())
 	}
 
 	fmt.Printf("Proxy %s%s%s is now %s%s%s\n", enabledColor(proxy.Enabled), proxyName, noColor, enabledColor(proxy.Enabled), enabledText(proxy.Enabled), noColor)
@@ -201,8 +197,7 @@ func create(c *cli.Context, t *toxiproxy.Client) {
 	p = t.NewProxy(p)
 	err := p.Create()
 	if err != nil {
-		log.Fatalf("Failed to create proxy: %s\n",
-			err.Error())
+		log.Fatalf("Failed to create proxy: %s\n", err.Error())
 	}
 	fmt.Printf("Created new proxy %s\n", proxyName)
 }
@@ -211,14 +206,12 @@ func delete(c *cli.Context, t *toxiproxy.Client) {
 	proxyName := c.String("name")
 	p, err := t.Proxy(proxyName)
 	if err != nil {
-		fmt.Printf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
-		os.Exit(1)
+		log.Fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 
 	err = p.Delete()
 	if err != nil {
-		log.Fatalf("Failed to delete proxy: %s\n",
-			err.Error())
+		log.Fatalf("Failed to delete proxy: %s\n", err.Error())
 	}
 	fmt.Printf("Deleted proxy %s\n", proxyName)
 }
@@ -230,16 +223,14 @@ func addToxic(c *cli.Context, t *toxiproxy.Client) {
 	toxicConfig := c.String("fields")
 	p, err := t.Proxy(proxyName)
 	if err != nil {
-		fmt.Printf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
-		os.Exit(1)
+		log.Fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 	conf := parseToxicConfig(toxicConfig)
 	_, err = p.SetToxic(toxicName, direction, conf)
 	if err != nil {
 		log.Fatalf("Failed to set toxic: %s\n", err.Error())
 	}
-	fmt.Printf("Set %s %s toxic on proxy %s\n", direction,
-		toxicName, proxyName)
+	fmt.Printf("Set %s %s toxic on proxy %s\n", direction, toxicName, proxyName)
 }
 
 func parseToxicConfig(raw string) map[string]interface{} {
