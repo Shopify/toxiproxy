@@ -31,39 +31,89 @@ func main() {
 	app.Commands = []cli.Command{
 		{
 			Name:    "list",
-			Aliases: []string{"l", "li", "ls"},
-			Usage:   "List all proxies",
+			Usage:   "list all proxies",
+			Aliases: []string{"l", "li", "ls"}, // TODO would it be cleaner to limit aliases
 			Action:  withToxi(list, toxiproxyClient),
 		},
 		{
 			Name:    "inspect",
 			Aliases: []string{"i", "ins"},
-			Usage:   "Inspect a single proxy",
-			Action:  withToxi(inspect, toxiproxyClient),
+			Usage:   "inspect a single proxy",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "name, n",
+					Usage: "name of the proxy",
+				},
+			},
+			Action: withToxi(inspect, toxiproxyClient),
 		},
 		{
 			Name:    "toggle",
-			Usage:   "Toggle enabled status on a proxy",
+			Usage:   "toggle enabled status on a proxy",
 			Aliases: []string{"tog"},
-			Action:  withToxi(toggle, toxiproxyClient),
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "name, n",
+					Usage: "name of the proxy",
+				},
+			},
+			Action: withToxi(toggle, toxiproxyClient),
 		},
 		{
 			Name:    "create",
-			Usage:   "Create a new proxy",
+			Usage:   "create a new proxy",
 			Aliases: []string{"c", "new"},
-			Action:  withToxi(create, toxiproxyClient),
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "name, n",
+					Usage: "name of the proxy",
+				},
+				cli.StringFlag{
+					Name:  "listen, l",
+					Usage: "proxy will listen on this address",
+				},
+				cli.StringFlag{
+					Name:  "upstream, u",
+					Usage: "proxy will forward to this address",
+				},
+			},
+			Action: withToxi(create, toxiproxyClient),
 		},
 		{
 			Name:    "delete",
-			Usage:   "Delete a proxy",
+			Usage:   "delete a proxy",
 			Aliases: []string{"d"},
-			Action:  withToxi(delete, toxiproxyClient),
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "name, n",
+					Usage: "name of the proxy",
+				},
+			},
+			Action: withToxi(delete, toxiproxyClient),
 		},
 		{
-			Name:    "add",
-			Usage:   "Add a toxic to a proxy",
-			Aliases: []string{"a"},
-			Action:  withToxi(addToxic, toxiproxyClient),
+			Name:    "set",
+			Usage:   "set a toxic on a proxy",
+			Aliases: []string{"s"},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "name, n",
+					Usage: "name of the proxy",
+				},
+				cli.StringFlag{
+					Name:  "direction, d",
+					Usage: "upstream or downstream", // TODO -u or -d
+				},
+				cli.StringFlag{
+					Name:  "toxic, t",
+					Usage: "kind of toxic",
+				},
+				cli.StringFlag{
+					Name:  "fields, f",
+					Usage: "key value json string",
+				},
+			},
+			Action: withToxi(addToxic, toxiproxyClient),
 		},
 	}
 
@@ -100,7 +150,7 @@ func list(c *cli.Context, t *toxiproxy.Client) {
 	}
 }
 func inspect(c *cli.Context, t *toxiproxy.Client) {
-	proxyName := c.Args().First()
+	proxyName := c.String("name")
 
 	proxy, err := t.Proxy(proxyName)
 	if err != nil {
@@ -119,7 +169,7 @@ func inspect(c *cli.Context, t *toxiproxy.Client) {
 }
 
 func toggle(c *cli.Context, t *toxiproxy.Client) {
-	proxyName := c.Args().First()
+	proxyName := c.String("name")
 
 	proxy, err := t.Proxy(proxyName)
 	if err != nil {
@@ -139,9 +189,9 @@ func toggle(c *cli.Context, t *toxiproxy.Client) {
 }
 
 func create(c *cli.Context, t *toxiproxy.Client) {
-	proxyName := c.Args().Get(0)
-	listen := c.Args().Get(1)
-	upstream := c.Args().Get(2)
+	proxyName := c.String("name")
+	listen := c.String("listen")
+	upstream := c.String("upstream")
 	p := &toxiproxy.Proxy{
 		Name:     proxyName,
 		Listen:   listen,
@@ -158,7 +208,7 @@ func create(c *cli.Context, t *toxiproxy.Client) {
 }
 
 func delete(c *cli.Context, t *toxiproxy.Client) {
-	proxyName := c.Args().First()
+	proxyName := c.String("name")
 	p, err := t.Proxy(proxyName)
 	if err != nil {
 		fmt.Printf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
@@ -174,10 +224,10 @@ func delete(c *cli.Context, t *toxiproxy.Client) {
 }
 
 func addToxic(c *cli.Context, t *toxiproxy.Client) {
-	proxyName := c.Args().Get(0)
-	toxicName := c.Args().Get(1)
-	direction := c.Args().Get(2)
-	toxicConfig := c.Args().Get(3)
+	proxyName := c.String("name")
+	toxicName := c.String("toxic")
+	direction := c.String("direction")
+	toxicConfig := c.String("fields")
 	p, err := t.Proxy(proxyName)
 	if err != nil {
 		fmt.Printf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
@@ -217,6 +267,7 @@ func enabledText(enabled bool) string {
 	return "disabled"
 }
 
+// TODO should have upstream and downstream headings
 func listToxics(toxics toxiproxy.Toxics, direction string) {
 	for name, toxic := range toxics {
 		fmt.Printf("%s%s direction=%s", enabledColor(toxic["enabled"].(bool)), name, direction)
