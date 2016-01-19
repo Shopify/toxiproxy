@@ -258,8 +258,8 @@ func enabledText(enabled bool) string {
 	return "disabled"
 }
 
-// TODO should have upstream and downstream headings
 func listToxics(toxics toxiproxy.Toxics, direction string) {
+	fmt.Printf("%s%s\n", noColor, direction)
 	for name, toxic := range toxics {
 		fmt.Printf("%s%s direction=%s", enabledColor(toxic["enabled"].(bool)), name, direction)
 
