@@ -100,9 +100,13 @@ func main() {
 					Name:  "name, n",
 					Usage: "name of the proxy",
 				},
-				cli.StringFlag{
-					Name:  "direction, d",
-					Usage: "upstream or downstream", // TODO -u or -d
+				cli.BoolFlag{
+					Name:  "upstream, u",
+					Usage: "set toxic on upstream",
+				},
+				cli.BoolFlag{
+					Name:  "downstream, d",
+					Usage: "set toxic on downstream",
 				},
 				cli.StringFlag{
 					Name:  "toxic, t",
@@ -219,18 +223,31 @@ func delete(c *cli.Context, t *toxiproxy.Client) {
 func addToxic(c *cli.Context, t *toxiproxy.Client) {
 	proxyName := c.String("name")
 	toxicName := c.String("toxic")
-	direction := c.String("direction")
 	toxicConfig := c.String("fields")
+
+	upstream := c.Bool("upstream")
+	downstream := c.Bool("downstream")
+
 	p, err := t.Proxy(proxyName)
 	if err != nil {
 		log.Fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 	conf := parseToxicConfig(toxicConfig)
-	_, err = p.SetToxic(toxicName, direction, conf)
-	if err != nil {
-		log.Fatalf("Failed to set toxic: %s\n", err.Error())
+
+	setToxic := func(direction string) {
+		_, err = p.SetToxic(toxicName, direction, conf)
+		if err != nil {
+			log.Fatalf("Failed to set toxic: %s\n", err.Error())
+		}
+		fmt.Printf("Set %s %s toxic on proxy %s\n", direction, toxicName, proxyName)
 	}
-	fmt.Printf("Set %s %s toxic on proxy %s\n", direction, toxicName, proxyName)
+
+	if upstream {
+		setToxic("upstream")
+	}
+	if downstream {
+		setToxic("downstream")
+	}
 }
 
 func parseToxicConfig(raw string) map[string]interface{} {
