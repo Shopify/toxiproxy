@@ -32,7 +32,7 @@ func main() {
 		{
 			Name:    "list",
 			Usage:   "list all proxies",
-			Aliases: []string{"l", "li", "ls"}, // TODO would it be cleaner to limit aliases
+			Aliases: []string{"l", "li", "ls"},
 			Action:  withToxi(list, toxiproxyClient),
 		},
 		{
@@ -153,7 +153,7 @@ func list(c *cli.Context, t *toxiproxy.Client) {
 	}
 }
 func inspect(c *cli.Context, t *toxiproxy.Client) {
-	proxyName := c.String("name")
+	proxyName := getArgOrFail(c, "name")
 
 	proxy, err := t.Proxy(proxyName)
 	if err != nil {
@@ -171,7 +171,7 @@ func inspect(c *cli.Context, t *toxiproxy.Client) {
 }
 
 func toggle(c *cli.Context, t *toxiproxy.Client) {
-	proxyName := c.String("name")
+	proxyName := getArgOrFail(c, "name")
 
 	proxy, err := t.Proxy(proxyName)
 	if err != nil {
@@ -189,9 +189,9 @@ func toggle(c *cli.Context, t *toxiproxy.Client) {
 }
 
 func create(c *cli.Context, t *toxiproxy.Client) {
-	proxyName := c.String("name")
-	listen := c.String("listen")
-	upstream := c.String("upstream")
+	proxyName := getArgOrFail(c, "name")
+	listen := getArgOrFail(c, "listen")
+	upstream := getArgOrFail(c, "upstream")
 	p := &toxiproxy.Proxy{
 		Name:     proxyName,
 		Listen:   listen,
@@ -207,7 +207,7 @@ func create(c *cli.Context, t *toxiproxy.Client) {
 }
 
 func delete(c *cli.Context, t *toxiproxy.Client) {
-	proxyName := c.String("name")
+	proxyName := getArgOrFail(c, "name")
 	p, err := t.Proxy(proxyName)
 	if err != nil {
 		log.Fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
@@ -221,12 +221,15 @@ func delete(c *cli.Context, t *toxiproxy.Client) {
 }
 
 func addToxic(c *cli.Context, t *toxiproxy.Client) {
-	proxyName := c.String("name")
-	toxicName := c.String("toxic")
-	toxicConfig := c.String("fields")
+	proxyName := getArgOrFail(c, "name")
+	toxicName := getArgOrFail(c, "toxic")
+	toxicConfig := getArgOrFail(c, "fields")
 
 	upstream := c.Bool("upstream")
 	downstream := c.Bool("downstream")
+	if !(upstream || downstream) {
+		log.Fatalln("Toxic must be set on upstream and or downstream with '-u' or '-d'.")
+	}
 
 	p, err := t.Proxy(proxyName)
 	if err != nil {
@@ -286,4 +289,12 @@ func listToxics(toxics toxiproxy.Toxics, direction string) {
 		}
 		fmt.Println()
 	}
+}
+
+func getArgOrFail(c *cli.Context, name string) string {
+	arg := c.String(name)
+	if arg == "" {
+		log.Fatalf("Required argument '%s' was empty.\n", name)
+	}
+	return arg
 }
