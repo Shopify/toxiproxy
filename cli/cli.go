@@ -21,6 +21,14 @@ const (
 	noColor     = "\x1b[0m"
 )
 
+var toxicSymbols = map[string]string{
+	"latency":    "L",
+	"down":       "D",
+	"bandwidth":  "B",
+	"slow_close": "SC",
+	"timeout":    "T",
+}
+
 func main() {
 	defer fmt.Print(noColor) // make sure to clear unwanted colors
 	toxiproxyClient := toxiproxy.NewClient("http://localhost:8474")
@@ -160,10 +168,10 @@ func inspect(c *cli.Context, t *toxiproxy.Client) {
 		log.Fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 
-	// TODO It would be cool to include the enabled toxics in the pipe
-	// rendering --L-SC-> for latency + slow close enabled
+	toxicPipe := formatToxicPipe(proxy.ToxicsUpstream, proxy.ToxicsDownstream)
+
 	fmt.Printf("%s%s%s\n", enabledColor(proxy.Enabled), proxy.Name, noColor)
-	fmt.Printf("%s%s %s---> %s%s%s\n\n", blueColor, proxy.Listen, grayColor, yellowColor, proxy.Upstream, noColor)
+	fmt.Printf("%s%s %s--%s-> %s%s%s\n\n", blueColor, proxy.Listen, grayColor, toxicPipe, yellowColor, proxy.Upstream, noColor)
 
 	listToxics(proxy.ToxicsUpstream, "upstream")
 	fmt.Println()
@@ -297,4 +305,29 @@ func getArgOrFail(c *cli.Context, name string) string {
 		log.Fatalf("Required argument '%s' was empty.\n", name)
 	}
 	return arg
+}
+
+func formatToxicPipe(upstream, downstream toxiproxy.Toxics) string {
+	toxicsEnabled := map[string]bool{}
+	mergeIntoEnabled := func(toxics toxiproxy.Toxics) {
+		for name, toxic := range toxics {
+			if toxic["enabled"].(bool) {
+				toxicsEnabled[name] = true
+			}
+		}
+
+	}
+	mergeIntoEnabled(upstream)
+	mergeIntoEnabled(downstream)
+
+	var pipe string
+
+	for name, _ := range toxicsEnabled {
+		s, ok := toxicSymbols[name]
+		if !ok {
+			continue
+		}
+		pipe += s + "-"
+	}
+	return pipe
 }
