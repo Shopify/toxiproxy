@@ -655,8 +655,21 @@ func TestInvalidStream(t *testing.T) {
 	})
 }
 
+func findToxic(t *testing.T, name string, toxics tclient.Toxics) (tclient.Toxic, bool) {
+	for _, tox := range toxics {
+		n, ok := tox["name"]
+		if !ok {
+			t.Fatal("expected toxic to have name field")
+		}
+		if name == n {
+			return tox, true
+		}
+	}
+	return nil, false
+}
+
 func AssertToxicExists(t *testing.T, toxics tclient.Toxics, name, typeName, stream string, exists bool) tclient.Toxic {
-	toxic, found := toxics[name]
+	toxic, found := findToxic(t, name, toxics)
 	var actualType, actualStream string
 	if found {
 		actualType = toxic["type"].(string)
