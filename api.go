@@ -205,7 +205,7 @@ func (server *ApiServer) ToxicIndex(response http.ResponseWriter, request *http.
 		return
 	}
 
-	toxics := proxy.Toxics.GetToxicMap()
+	toxics := proxy.Toxics.GetToxicArray()
 	data, err := json.Marshal(toxics)
 	if apiError(response, err) {
 		return
@@ -376,9 +376,9 @@ func apiError(resp http.ResponseWriter, err error) bool {
 
 func proxyWithToxics(proxy *Proxy) (result struct {
 	*Proxy
-	Toxics map[string]toxics.Toxic `json:"toxics"`
+	Toxics []toxics.Toxic `json:"toxics"`
 }) {
 	result.Proxy = proxy
-	result.Toxics = proxy.Toxics.GetToxicMap()
+	result.Toxics = proxy.Toxics.GetToxicArray()
 	return
 }

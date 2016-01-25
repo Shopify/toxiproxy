@@ -68,14 +68,14 @@ func (c *ToxicCollection) GetToxic(name string) *toxics.ToxicWrapper {
 	return nil
 }
 
-func (c *ToxicCollection) GetToxicMap() map[string]toxics.Toxic {
+func (c *ToxicCollection) GetToxicArray() []toxics.Toxic {
 	c.Lock()
 	defer c.Unlock()
 
-	result := make(map[string]toxics.Toxic)
+	result := make([]toxics.Toxic, 0)
 	for dir := range c.toxics {
 		for _, toxic := range c.toxics[dir] {
-			result[toxic.Name] = toxic
+			result = append(result, toxic)
 		}
 	}
 	return result
