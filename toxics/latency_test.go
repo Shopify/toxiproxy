@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -151,6 +152,47 @@ func TestLatencyToxicCloseRace(t *testing.T) {
 		conn.Close()
 		proxy.Toxics.RemoveToxic("latency")
 	}
+}
+
+func TestTwoLatencyToxics(t *testing.T) {
+	WithEchoProxy(t, func(conn net.Conn, response chan []byte, proxy *toxiproxy.Proxy) {
+		toxics := []*toxics.LatencyToxic{&toxics.LatencyToxic{Latency: 500}, &toxics.LatencyToxic{Latency: 500}}
+		for i, toxic := range toxics {
+			_, err := proxy.Toxics.AddToxicJson(ToxicToJson(t, "latency_"+strconv.Itoa(i), "latency", "upstream", toxic))
+			if err != nil {
+				t.Error("AddToxicJson returned error:", err)
+			}
+		}
+
+		msg := []byte("hello world " + strings.Repeat("a", 32*1024) + "\n")
+
+		timer := time.Now()
+		_, err := conn.Write(msg)
+		if err != nil {
+			t.Error("Failed writing to TCP server", err)
+		}
+
+		resp := <-response
+		if !bytes.Equal(resp, msg) {
+			t.Error("Server didn't read correct bytes from client:", string(resp))
+		}
+
+		AssertDeltaTime(t,
+			"Upstream two latency toxics",
+			time.Since(timer),
+			time.Duration(1000)*time.Millisecond,
+			time.Duration(10)*time.Millisecond,
+		)
+
+		for i := range toxics {
+			proxy.Toxics.RemoveToxic("latency_" + strconv.Itoa(i))
+		}
+
+		err = conn.Close()
+		if err != nil {
+			t.Error("Failed to close TCP connection", err)
+		}
+	})
 }
 
 func TestLatencyToxicBandwidth(t *testing.T) {
