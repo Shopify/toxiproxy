@@ -18,7 +18,7 @@ type Client struct {
 }
 
 type Toxic map[string]interface{}
-type Toxics map[string]Toxic
+type Toxics []Toxic
 
 // Proxy represents a Proxy.
 type Proxy struct {
@@ -216,7 +216,7 @@ func (proxy *Proxy) Toxics() (Toxics, error) {
 		return nil, err
 	}
 
-	toxics := make(Toxics)
+	toxics := make(Toxics, 0)
 	err = json.NewDecoder(resp.Body).Decode(&toxics)
 	if err != nil {
 		return nil, err
