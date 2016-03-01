@@ -3,6 +3,7 @@ package toxiproxy
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -97,9 +98,6 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 	if err != nil {
 		return nil, joinError(err, ErrBadRequestBody)
 	}
-	if wrapper.Name == "" {
-		wrapper.Name = wrapper.Type
-	}
 	switch strings.ToLower(wrapper.Stream) {
 	case "downstream":
 		wrapper.Direction = stream.Downstream
@@ -107,6 +105,9 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 		wrapper.Direction = stream.Upstream
 	default:
 		return nil, ErrInvalidStream
+	}
+	if wrapper.Name == "" {
+		wrapper.Name = fmt.Sprintf("%s_%s", wrapper.Type, wrapper.Stream)
 	}
 
 	if toxics.New(wrapper) == nil {
