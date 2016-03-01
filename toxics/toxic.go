@@ -92,7 +92,7 @@ func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 }
 
 // Interrupt the flow of data so that the toxic controlling the stub can be replaced.
-// Returns true if the stream was successfully interrupted.
+// Returns true if the stream was successfully interrupted, or false if the stream is closed.
 func (s *ToxicStub) InterruptToxic() bool {
 	select {
 	case <-s.closed:
