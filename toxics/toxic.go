@@ -1,7 +1,6 @@
 package toxics
 
 import (
-	"encoding/json"
 	"math/rand"
 	"reflect"
 	"sync"
@@ -33,7 +32,7 @@ type BufferedToxic interface {
 }
 
 type ToxicWrapper struct {
-	Toxic      `json:"-"`
+	Toxic      `json:"attributes"`
 	Name       string           `json:"name"`
 	Type       string           `json:"type"`
 	Stream     string           `json:"stream"`
@@ -41,25 +40,6 @@ type ToxicWrapper struct {
 	Direction  stream.Direction `json:"-"`
 	Index      int              `json:"-"`
 	BufferSize int              `json:"-"`
-}
-
-// Marhsal toxics to include both the Toxic and ToxicWrapper fields
-func (w *ToxicWrapper) MarshalJSON() ([]byte, error) {
-	toxic, err := json.Marshal(w.Toxic)
-	if err != nil {
-		return nil, err
-	}
-	wrapper, err := json.Marshal(*w)
-	if err != nil {
-		return nil, err
-	}
-	output := wrapper[:len(wrapper)-1]
-	if len(toxic) > 2 {
-		output = append(output, ',')
-		output = append(output, toxic[1:len(toxic)-1]...)
-	}
-	output = append(output, '}')
-	return output, nil
 }
 
 type ToxicStub struct {
