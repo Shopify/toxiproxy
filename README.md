@@ -210,7 +210,7 @@ Toxiproxy for Windows is available for download at https://github.com/Shopify/to
 
 **Docker**
 
-Toxiproxy is available on [Docker Hub](https://registry.hub.docker.com/u/shopify/toxiproxy/).
+Toxiproxy is available on [Docker Hub](https://hub.docker.com/r/shopify/toxiproxy/).
 
 ```bash
 $ docker pull shopify/toxiproxy
@@ -513,4 +513,4 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 8. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)
 
 
-[blog]: http://www.shopify.com/technology/16906928-building-and-testing-resilient-ruby-on-rails-applications
+[blog]: https://engineering.shopify.com/17489072-building-and-testing-resilient-ruby-on-rails-applications
