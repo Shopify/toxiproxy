@@ -322,7 +322,7 @@ For documentation on implementing custom toxics, see [CREATING_TOXICS.md](https:
 
 Add a delay to all data going through the proxy. The delay is equal to `latency` +/- `jitter`.
 
-Fields:
+Attributes:
 
  - `latency`: time in milliseconds
  - `jitter`: time in milliseconds
@@ -337,7 +337,7 @@ Toxiproxy. This is done by `POST`ing to `/proxies/{proxy}` and setting the
 
 Limit a connection to a maximum number of kilobytes per second.
 
-Fields:
+Attributes:
 
  - `rate`: rate in KB/s
 
@@ -345,7 +345,7 @@ Fields:
 
 Delay the TCP socket from closing until `delay` has elapsed.
 
-Fields:
+Attributes:
 
  - `delay`: time in milliseconds
 
@@ -355,7 +355,7 @@ Stops all data from getting through, and closes the connection after `timeout`. 
 `timeout` is 0, the connection won't close, and data will be delayed until the
 toxic is removed.
 
-Fields:
+Attributes:
 
  - `timeout`: time in milliseconds
 
@@ -364,7 +364,7 @@ Fields:
 Slices TCP data up into small bits, optionally adding a delay between each
 sliced "packet".
 
-Fields:
+Attributes:
 
  - `average_size`: size in bytes of an average packet
  - `size_variation`: variation in bytes of an average packet (should be smaller than average_size)
@@ -396,13 +396,13 @@ back to `true` to reenable it.
 
 #### Toxic fields:
 
- - `name`: toxic name (string, defaults to `type`)
+ - `name`: toxic name (string, defaults to `<type>_<stream>`)
  - `type`: toxic type (string)
  - `stream`: link direction to affect (defaults to `downstream`)
  - `toxicity`: probability of the toxic being applied to a link (defaults to 1.0, 100%)
+ - `attributes`: a map of toxic-specific attributes
 
-These are global fields that are applied to all toxics. Each toxic type has its own
-parameters that can be specified as well. See [Toxics](#toxics) for available types.
+See [Toxics](#toxics) for toxic-specific attributes.
 
 The `stream` direction must be either `upstream` or `downstream`. `upstream` applies
 the toxic on the `client -> server` connection, while `downstream` applies the toxic
@@ -431,10 +431,10 @@ All endpoints are JSON.
 $ curl -i -d '{"name": "redis", "upstream": "localhost:6379", "listen": "localhost:26379"}' localhost:8474/proxies
 HTTP/1.1 201 Created
 Content-Type: application/json
-Date: Fri, 21 Aug 2015 19:03:02 GMT
+Date: Fri, 18 Mar 2016 01:19:59 GMT
 Content-Length: 98
 
-{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true,"toxics":{}}
+{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true,"toxics":[]}
 ```
 
 ```bash
@@ -449,20 +449,20 @@ OK
 $ curl -i localhost:8474/proxies
 HTTP/1.1 200 OK
 Content-Type: application/json
-Date: Fri, 21 Aug 2015 19:04:23 GMT
+Date: Fri, 18 Mar 2016 01:20:31 GMT
 Content-Length: 108
 
-{"redis":{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true,"toxics":{}}}
+{"redis":{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true,"toxics":[]}}
 ```
 
 ```bash
-$ curl -i -d '{"type":"latency", "latency":1000}' localhost:8474/proxies/redis/toxics
+$ curl -i -d '{"type":"latency", "attributes":{"latency":1000}}' localhost:8474/proxies/redis/toxics
 HTTP/1.1 200 OK
 Content-Type: application/json
-Date: Fri, 21 Aug 2015 19:05:19 GMT
-Content-Length: 27
+Date: Fri, 18 Mar 2016 01:21:08 GMT
+Content-Length: 122
 
-{"latency":1000,"jitter":0}
+{"attributes":{"latency":1000,"jitter":0},"name":"latency_downstream","type":"latency","stream":"downstream","toxicity":1}
 ```
 
 ```bash
@@ -476,9 +476,9 @@ $ redis-cli -p 26379
 ```
 
 ```bash
-$ curl -i -X DELETE localhost:8474/proxies/redis/toxics/latency
+$ curl -i -X DELETE localhost:8474/proxies/redis/toxics/latency_downstream
 HTTP/1.1 204 No Content
-Date: Fri, 21 Aug 2015 19:06:28 GMT
+Date: Fri, 18 Mar 2016 01:21:58 GMT
 ```
 
 ```bash
@@ -490,7 +490,7 @@ $ redis-cli -p 26379
 ```bash
 $ curl -i -X DELETE localhost:8474/proxies/redis
 HTTP/1.1 204 No Content
-Date: Fri, 21 Aug 2015 19:07:07 GMT
+Date: Fri, 18 Mar 2016 01:22:20 GMT
 ```
 
 ```bash
