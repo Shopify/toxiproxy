@@ -90,39 +90,18 @@ func WithEchoProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, pr
 }
 
 func ToxicToJson(t *testing.T, name, typeName, stream string, toxic toxics.Toxic) io.Reader {
-	// Hack to add fields to an interface, json will nest otherwise, not embed
-	data, err := json.Marshal(toxic)
+	data := map[string]interface{}{
+		"name":       name,
+		"type":       typeName,
+		"stream":     stream,
+		"attributes": toxic,
+	}
+	request, err := json.Marshal(data)
 	if err != nil {
-		if t != nil {
-			t.Errorf("Failed to marshal toxic for api (1): %v", toxic)
-		}
-		return nil
+		t.Errorf("Failed to marshal toxic for api (1): %v", toxic)
 	}
 
-	marshal := make(map[string]interface{})
-	err = json.Unmarshal(data, &marshal)
-	if err != nil {
-		if t != nil {
-			t.Errorf("Failed to unmarshal toxic (2): %v", toxic)
-		}
-		return nil
-	}
-	marshal["type"] = typeName
-	if name != "" {
-		marshal["name"] = name
-	}
-	if stream != "" {
-		marshal["stream"] = stream
-	}
-
-	data, err = json.Marshal(marshal)
-	if err != nil {
-		if t != nil {
-			t.Errorf("Failed to marshal toxic for api (3): %v", toxic)
-		}
-		return nil
-	}
-	return bytes.NewReader(data)
+	return bytes.NewReader(request)
 }
 
 func AssertEchoResponse(t *testing.T, client, server net.Conn) {

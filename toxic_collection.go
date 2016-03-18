@@ -88,16 +88,18 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 
 	var buffer bytes.Buffer
 
-	// Default to a downstream toxic
+	// Default to a downstream toxic with a toxicity of 1.
 	wrapper := &toxics.ToxicWrapper{
 		Stream:   "downstream",
 		Toxicity: 1.0,
+		Toxic:    new(toxics.NoopToxic),
 	}
 
 	err := json.NewDecoder(io.TeeReader(data, &buffer)).Decode(wrapper)
 	if err != nil {
 		return nil, joinError(err, ErrBadRequestBody)
 	}
+
 	switch strings.ToLower(wrapper.Stream) {
 	case "downstream":
 		wrapper.Direction = stream.Downstream
@@ -121,7 +123,14 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 			}
 		}
 	}
-	err = json.NewDecoder(&buffer).Decode(wrapper.Toxic)
+
+	// Parse attributes because we now know the toxics type.
+	attrs := &struct {
+		Attributes interface{} `json:"attributes"`
+	}{
+		wrapper.Toxic,
+	}
+	err = json.NewDecoder(&buffer).Decode(attrs)
 	if err != nil {
 		return nil, joinError(err, ErrBadRequestBody)
 	}
@@ -135,25 +144,21 @@ func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (*toxics.
 	c.Lock()
 	defer c.Unlock()
 
-	var buffer bytes.Buffer
-	all := make(map[string]interface{})
-	err := json.NewDecoder(io.TeeReader(data, &buffer)).Decode(&all)
-	if err != nil {
-		return nil, joinError(err, ErrBadRequestBody)
-	}
-
 	for dir := range c.toxics {
 		for _, toxic := range c.toxics[dir] {
 			if toxic.Name == name {
-				err := json.NewDecoder(&buffer).Decode(toxic.Toxic)
+				attrs := &struct {
+					Attributes interface{} `json:"attributes"`
+					Toxicity   float32     `json:"toxicity"`
+				}{
+					toxic.Toxic,
+					toxic.Toxicity,
+				}
+				err := json.NewDecoder(data).Decode(attrs)
 				if err != nil {
 					return nil, joinError(err, ErrBadRequestBody)
 				}
-				if val, ok := all["toxicity"]; ok {
-					if toxicity, ok := val.(float64); ok {
-						toxic.Toxicity = float32(toxicity)
-					}
-				}
+				toxic.Toxicity = attrs.Toxicity
 
 				c.chainUpdateToxic(toxic)
 				return toxic, nil

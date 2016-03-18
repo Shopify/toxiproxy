@@ -59,13 +59,13 @@ proxies, err = client.Populate(config)
 
 Toxics can be added as follows:
 ```go
-// Add 1s latency to the downstream
-proxy.AddToxic("latency_down", "latency", "downstream", toxiproxy.Toxic{
+// Add 1s latency to 100% of downstream connections
+proxy.AddToxic("latency_down", "latency", "downstream", 1.0, toxiproxy.Attributes{
     "latency": 1000,
 })
 
 // Change downstream latency to add 100ms of jitter
-proxy.UpdateToxic("latency_down", toxiproxy.Toxic{
+proxy.UpdateToxic("latency_down", 1.0, toxiproxy.Attributes{
     "jitter": 100,
 })
 
@@ -126,10 +126,10 @@ func TestRedisBackendDown(t *testing.T) {
 }
 
 func TestRedisBackendSlow(t *testing.T) {
-    proxies["redis"].AddToxic("", "latency", "", toxiproxy.Toxic{
+    proxies["redis"].AddToxic("", "latency", "", 1, toxiproxy.Attributes{
         "latency": 1000,
     })
-    defer proxies["redis"].RemoveToxic("latency")
+    defer proxies["redis"].RemoveToxic("latency_downstream")
 
     // Test that redis is slow
     start := time.Now()
