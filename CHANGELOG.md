@@ -15,6 +15,7 @@
 * Define proxy buffer sizes per-toxic (Fixes #72)
 * Fix slicer toxic testing race condition #71
 * API and client return toxics as array rather than a map of name to toxic #92
+* Nest toxic attributes rather than having a flat structure #98
 
 # 1.2.1
 

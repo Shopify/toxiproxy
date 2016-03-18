@@ -688,31 +688,26 @@ func TestInvalidStream(t *testing.T) {
 	})
 }
 
-func findToxic(t *testing.T, name string, toxics tclient.Toxics) (*tclient.Toxic, bool) {
+func AssertToxicExists(t *testing.T, toxics tclient.Toxics, name, typeName, stream string, exists bool) *tclient.Toxic {
+	var toxic *tclient.Toxic
+	var actualType, actualStream string
+
 	for _, tox := range toxics {
 		if name == tox.Name {
-			return &tox, true
+			toxic = &tox
+			actualType = tox.Type
+			actualStream = tox.Stream
 		}
 	}
-	return nil, false
-}
-
-func AssertToxicExists(t *testing.T, toxics tclient.Toxics, name, typeName, stream string, exists bool) *tclient.Toxic {
-	toxic, found := findToxic(t, name, toxics)
-	var actualType, actualStream string
-	if found {
-		actualType = toxic.Type
-		actualStream = toxic.Stream
-	}
 	if exists {
-		if !found {
+		if toxic == nil {
 			t.Fatalf("Expected to see %s toxic in list", name)
 		} else if actualType != typeName {
 			t.Fatalf("Expected %s to be of type %s, found %s", name, typeName, actualType)
 		} else if actualStream != stream {
 			t.Fatalf("Expected %s to be in stream %s, found %s", name, stream, actualStream)
 		}
-	} else if found && actualStream == stream {
+	} else if toxic != nil && actualStream == stream {
 		t.Fatalf("Expected %s toxic to be missing from list, found type %s", name, actualType)
 	}
 	return toxic
