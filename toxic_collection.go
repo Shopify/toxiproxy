@@ -158,9 +158,7 @@ func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (*toxics.
 				if err != nil {
 					return nil, joinError(err, ErrBadRequestBody)
 				}
-				if attrs.Toxicity != -1 {
-					toxic.Toxicity = attrs.Toxicity
-				}
+				toxic.Toxicity = attrs.Toxicity
 
 				c.chainUpdateToxic(toxic)
 				return toxic, nil

@@ -58,10 +58,9 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		bytes, err := io.Copy(link.input, source)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
-				"name":     link.proxy.Name,
-				"upstream": link.proxy.Upstream,
-				"bytes":    bytes,
-				"err":      err,
+				"name":  link.proxy.Name,
+				"bytes": bytes,
+				"err":   err,
 			}).Warn("Source terminated")
 		}
 		link.input.Close()
@@ -73,10 +72,9 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		bytes, err := io.Copy(dest, link.output)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
-				"name":     link.proxy.Name,
-				"upstream": link.proxy.Upstream,
-				"bytes":    bytes,
-				"err":      err,
+				"name":  link.proxy.Name,
+				"bytes": bytes,
+				"err":   err,
 			}).Warn("Destination terminated")
 		}
 		dest.Close()

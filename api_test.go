@@ -586,7 +586,7 @@ func TestUpdateToxics(t *testing.T) {
 			t.Fatal("Unable to create proxy:", err)
 		}
 
-		latency, err := testProxy.AddToxic("", "latency", "downstream", 1, tclient.Attributes{
+		latency, err := testProxy.AddToxic("", "latency", "downstream", -1, tclient.Attributes{
 			"latency": 100,
 			"jitter":  10,
 		})
@@ -609,13 +609,24 @@ func TestUpdateToxics(t *testing.T) {
 			t.Fatal("Latency toxic did not get updated with the correct settings:", latency)
 		}
 
+		latency, err = testProxy.UpdateToxic("latency_downstream", -1, tclient.Attributes{
+			"latency": 500,
+		})
+		if err != nil {
+			t.Fatal("Error setting toxic:", err)
+		}
+
+		if latency.Toxicity != 0.5 || latency.Attributes["latency"] != 500.0 || latency.Attributes["jitter"] != 10.0 {
+			t.Fatal("Latency toxic did not get updated with the correct settings:", latency)
+		}
+
 		toxics, err := testProxy.Toxics()
 		if err != nil {
 			t.Fatal("Error returning toxics:", err)
 		}
 
 		toxic := AssertToxicExists(t, toxics, "latency_downstream", "latency", "downstream", true)
-		if toxic.Toxicity != 0.5 || toxic.Attributes["latency"] != 1000.0 || toxic.Attributes["jitter"] != 10.0 {
+		if toxic.Toxicity != 0.5 || toxic.Attributes["latency"] != 500.0 || toxic.Attributes["jitter"] != 10.0 {
 			t.Fatal("Toxic was not read back correctly:", toxic)
 		}
 	})

@@ -240,6 +240,9 @@ func (proxy *Proxy) Toxics() (Toxics, error) {
 // See https://github.com/Shopify/toxiproxy#toxics for a list of all Toxic types.
 func (proxy *Proxy) AddToxic(name, typeName, stream string, toxicity float32, attrs Attributes) (*Toxic, error) {
 	toxic := Toxic{name, typeName, stream, toxicity, attrs}
+	if toxic.Toxicity == -1 {
+		toxic.Toxicity = 1 // Just to be consistent with a toxicity of -1 using the default
+	}
 
 	request, err := json.Marshal(&toxic)
 	if err != nil {
@@ -266,8 +269,14 @@ func (proxy *Proxy) AddToxic(name, typeName, stream string, toxicity float32, at
 }
 
 // UpdateToxic sets the parameters for an existing toxic with the given name.
+// If toxicity is set to -1, the current value will be used.
 func (proxy *Proxy) UpdateToxic(name string, toxicity float32, attrs Attributes) (*Toxic, error) {
-	toxic := Toxic{Toxicity: toxicity, Attributes: attrs}
+	toxic := map[string]interface{}{
+		"attributes": attrs,
+	}
+	if toxicity != -1 {
+		toxic["toxicity"] = toxicity
+	}
 	request, err := json.Marshal(&toxic)
 	if err != nil {
 		return nil, err
