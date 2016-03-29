@@ -58,9 +58,9 @@ stopping you from creating a client in any other language (see
   1. [Proxy fields](#proxy-fields)
   2. [Toxic fields](#toxic-fields)
   3. [Endpoints](#endpoints)
-  4. [CLI example](#cli-example)
-7. [FAQ](#frequently-asked-questions)
-8. [Development](#development)
+7. [CLI example](#cli-example)
+8. [FAQ](#frequently-asked-questions)
+9. [Development](#development)
 
 ## Why yet another chaotic TCP proxy?
 
