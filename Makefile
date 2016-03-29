@@ -62,8 +62,8 @@ $(DEB): tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
 		--description "TCP proxy to simulate network and system conditions" \
 		--url "https://github.com/Shopify/toxiproxy" \
 		$(word 1,$^)=/usr/bin/toxiproxy \
-		$(word 1,$^)=/usr/bin/toxiproxy-server \
-		$(word 2,$^)=/usr/bin/toxiproxy-cli \
+		$(word 1,$^)=/usr/bin/$(SERVER_NAME) \
+		$(word 2,$^)=/usr/bin/$(CLI_NAME) \
 		./share/toxiproxy.conf=/etc/init/toxiproxy.conf
 
 docker:
