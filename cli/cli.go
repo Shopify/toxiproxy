@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	toxiproxyServer "github.com/Shopify/toxiproxy"
 	"github.com/Shopify/toxiproxy/client"
 	"github.com/codegangsta/cli"
 
@@ -41,52 +42,46 @@ var toxicDescription = `
 	        	average_size=<byes>,size_variation=<bytes>,delay=<microseconds>
 
 	toxic add:
-		usage: toxiproxy-client add <proxyName> --type <toxicType> --toxicName <toxicName> \
+		usage: toxiproxy-cli add <proxyName> --type <toxicType> --toxicName <toxicName> \
 		--attributes <key1=value1,key2=value2...> --upstream --downstream
 
-		example: toxiproxy-client toxic add myProxy -t latency -n myToxic -f latency=100,jitter=50
+		example: toxiproxy-cli toxic add myProxy -t latency -n myToxic -f latency=100,jitter=50
 
 	toxic update:
-		usage: toxiproxy-client update <proxyName> --toxicName <toxicName> \
+		usage: toxiproxy-cli update <proxyName> --toxicName <toxicName> \
 		--attributes <key1=value1,key2=value2...>
-		
-		example: toxiproxy-client toxic update myProxy -n myToxic -f jitter=25
-	
-	toxic delete:
-		usage: toxiproxy-client update <proxyName> --toxicName <toxicName>
 
-		example: toxiproxy-client toxic delete myProxy -n myToxic
+		example: toxiproxy-cli toxic update myProxy -n myToxic -f jitter=25
+
+	toxic delete:
+		usage: toxiproxy-cli update <proxyName> --toxicName <toxicName>
+
+		example: toxiproxy-cli toxic delete myProxy -n myToxic
 `
 
 func main() {
 	toxiproxyClient := toxiproxy.NewClient("http://localhost:8474")
 
 	app := cli.NewApp()
-	app.Name = "Toxiproxy"
-	app.Version = "2.0-alpha" // We're still improving the client ui.
+	app.Name = "toxiproxy-cli"
+	app.Version = toxiproxyServer.Version
 	app.Usage = "Simulate network and system conditions"
 	app.Commands = []cli.Command{
 		{
 			Name:    "list",
-			Usage:   "list all proxies\n\tusage: 'toxiproxy-client list'\n",
+			Usage:   "list all proxies\n\tusage: 'toxiproxy-cli list'\n",
 			Aliases: []string{"l", "li", "ls"},
 			Action:  withToxi(list, toxiproxyClient),
 		},
 		{
 			Name:    "inspect",
 			Aliases: []string{"i", "ins"},
-			Usage:   "inspect a single proxy\n\tusage: 'toxiproxy-client inspect <proxyName>'\n",
+			Usage:   "inspect a single proxy\n\tusage: 'toxiproxy-cli inspect <proxyName>'\n",
 			Action:  withToxi(inspect, toxiproxyClient),
 		},
 		{
-			Name:    "toggle",
-			Usage:   "\ttoggle enabled status on a proxy\n\t\tusage: 'toxiproxy-client toggle <proxyName>'\n",
-			Aliases: []string{"tog"},
-			Action:  withToxi(toggle, toxiproxyClient),
-		},
-		{
 			Name:    "create",
-			Usage:   "create a new proxy\n\tusage: 'toxiproxy-client create <proxyName> --listen <addr> --upstream <addr>'\n",
+			Usage:   "create a new proxy\n\tusage: 'toxiproxy-cli create <proxyName> --listen <addr> --upstream <addr>'\n",
 			Aliases: []string{"c", "new"},
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -101,21 +96,28 @@ func main() {
 			Action: withToxi(create, toxiproxyClient),
 		},
 		{
+			Name:    "toggle",
+			Usage:   "\ttoggle enabled status on a proxy\n\t\tusage: 'toxiproxy-cli toggle <proxyName>'\n",
+			Aliases: []string{"tog"},
+			Action:  withToxi(toggle, toxiproxyClient),
+		},
+		{
 			Name:    "delete",
-			Usage:   "\tdelete a proxy\n\t\tusage: 'toxiproxy-client delete <proxyName>'\n",
+			Usage:   "\tdelete a proxy\n\t\tusage: 'toxiproxy-cli delete <proxyName>'\n",
 			Aliases: []string{"d"},
 			Action:  withToxi(delete, toxiproxyClient),
 		},
 		{
 			Name:        "toxic",
 			Aliases:     []string{"t"},
-			Usage:       "\tadd, remove or update a toxic\n\t\tusage: see 'toxiproxy-client toxic'\n",
+			Usage:       "\tadd, remove or update a toxic\n\t\tusage: see 'toxiproxy-cli toxic'\n",
 			Description: toxicDescription,
 			Subcommands: []cli.Command{
 				{
-					Name:    "add",
-					Aliases: []string{"a"},
-					Usage:   "add a new toxic",
+					Name:      "add",
+					Aliases:   []string{"a"},
+					Usage:     "add a new toxic",
+					ArgsUsage: "<proxyName>",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "toxicName, n",
@@ -145,9 +147,10 @@ func main() {
 					Action: withToxi(addToxic, toxiproxyClient),
 				},
 				{
-					Name:    "update",
-					Aliases: []string{"u"},
-					Usage:   "update an enabled toxic",
+					Name:      "update",
+					Aliases:   []string{"u"},
+					Usage:     "update an enabled toxic",
+					ArgsUsage: "<proxyName>",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "toxicName, n",
@@ -165,9 +168,10 @@ func main() {
 					Action: withToxi(updateToxic, toxiproxyClient),
 				},
 				{
-					Name:    "remove",
-					Aliases: []string{"r", "delete", "d"},
-					Usage:   "remove an enabled toxic",
+					Name:      "remove",
+					Aliases:   []string{"r", "delete", "d"},
+					Usage:     "remove an enabled toxic",
+					ArgsUsage: "<proxyName>",
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "toxicName, n",
@@ -209,7 +213,7 @@ func list(c *cli.Context, t *toxiproxy.Client) {
 
 	if len(proxyNames) == 0 {
 		fmt.Printf("%sno proxies\n\n%s", redColor, noColor)
-		hint("create a proxy with `toxiproxy-client create`")
+		hint("create a proxy with `toxiproxy-cli create`")
 		return
 	}
 
@@ -223,7 +227,7 @@ func list(c *cli.Context, t *toxiproxy.Client) {
 			enabledColor(proxy.Enabled), proxy.Name, purpleColor, proxy.Enabled, redColor, numToxics, noColor)
 	}
 	fmt.Println()
-	hint("inspect a toxic with `toxiproxy-client inspect <proxyName>`")
+	hint("inspect toxics with `toxiproxy-cli inspect <proxyName>`")
 }
 func inspect(c *cli.Context, t *toxiproxy.Client) {
 	proxyName := c.Args().First()
@@ -265,7 +269,7 @@ func inspect(c *cli.Context, t *toxiproxy.Client) {
 	}
 	fmt.Println()
 
-	hint("add a toxic with `toxiproxy-client toxic add`")
+	hint("add a toxic with `toxiproxy-cli toxic add`")
 }
 
 func toggle(c *cli.Context, t *toxiproxy.Client) {
