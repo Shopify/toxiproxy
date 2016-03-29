@@ -58,7 +58,7 @@ stopping you from creating a client in any other language (see
   1. [Proxy fields](#proxy-fields)
   2. [Toxic fields](#toxic-fields)
   3. [Endpoints](#endpoints)
-  4. [Curl example](#curl-example)
+  4. [CLI example](#cli-example)
 7. [FAQ](#frequently-asked-questions)
 8. [Development](#development)
 
@@ -225,7 +225,7 @@ $ docker run -it shopify/toxiproxy
 If you have Go installed, you can build Toxiproxy from source using the make file:
 ```bash
 $ make build
-$ ./toxiproxy
+$ ./toxiproxy-server
 ```
 
 #### Upgrading from Toxiproxy 1.x
@@ -268,10 +268,10 @@ This code needs to run as early in boot as possible, before any code establishes
 a connection through Toxiproxy. Please check your client library for
 documentation on the population helpers.
 
-Alternatively use the HTTP API directly to create proxies, e.g.:
+Alternatively use the CLI to create proxies, e.g.:
 
 ```bash
-curl -i -d '{"name": "shopify_test_redis_master", "upstream": "localhost:6379", "listen": "localhost:26379"}' localhost:8474/proxies
+toxiproxy-cli create shopify_test_redis_master -l localhost:26379 -u localhost:6379
 ```
 
 We recommend a naming such as the above: `<app>_<env>_<data store>_<shard>`.
@@ -307,6 +307,12 @@ redis = Redis.new(port: 22220)
 Toxiproxy[:shopify_test_redis_master].downstream(:latency, latency: 1000).apply do
   redis.get("test") # will take 1s
 end
+```
+
+Or via the CLI:
+
+```bash
+toxiproxy-cli toxic add shopify_test_redis_master -t latency -a latency=1000
 ```
 
 Please consult your respective client library on usage.
@@ -426,16 +432,17 @@ All endpoints are JSON.
  - **POST /reset** - Enable all proxies and remove all active toxics
  - **GET /version** - Returns the server version number
 
-### Curl Example
+### CLI Example
 
 ```bash
-$ curl -i -d '{"name": "redis", "upstream": "localhost:6379", "listen": "localhost:26379"}' localhost:8474/proxies
-HTTP/1.1 201 Created
-Content-Type: application/json
-Date: Fri, 18 Mar 2016 01:19:59 GMT
-Content-Length: 98
+$ toxiproxy-cli create redis -l localhost:26379 -u localhost:6379
+Created new proxy redis
+$ toxiproxy-cli list
+Listen          Upstream        Name  Enabled Toxics
+======================================================================
+127.0.0.1:26379 localhost:6379  redis true    None
 
-{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true,"toxics":[]}
+Hint: inspect toxics with `toxiproxy-client inspect <proxyName>`
 ```
 
 ```bash
@@ -447,23 +454,8 @@ OK
 ```
 
 ```bash
-$ curl -i localhost:8474/proxies
-HTTP/1.1 200 OK
-Content-Type: application/json
-Date: Fri, 18 Mar 2016 01:20:31 GMT
-Content-Length: 108
-
-{"redis":{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true,"toxics":[]}}
-```
-
-```bash
-$ curl -i -d '{"type":"latency", "attributes":{"latency":1000}}' localhost:8474/proxies/redis/toxics
-HTTP/1.1 200 OK
-Content-Type: application/json
-Date: Fri, 18 Mar 2016 01:21:08 GMT
-Content-Length: 122
-
-{"attributes":{"latency":1000,"jitter":0},"name":"latency_downstream","type":"latency","stream":"downstream","toxicity":1}
+$ toxiproxy-cli toxic add redis -t latency -a latency=1000
+Added downstream latency toxic 'latency_downstream' on proxy 'redis'
 ```
 
 ```bash
@@ -477,9 +469,8 @@ $ redis-cli -p 26379
 ```
 
 ```bash
-$ curl -i -X DELETE localhost:8474/proxies/redis/toxics/latency_downstream
-HTTP/1.1 204 No Content
-Date: Fri, 18 Mar 2016 01:21:58 GMT
+$ toxiproxy-cli toxic remove redis -n latency_downstream
+Removed toxic 'latency_downstream' on proxy 'redis'
 ```
 
 ```bash
@@ -489,9 +480,8 @@ $ redis-cli -p 26379
 ```
 
 ```bash
-$ curl -i -X DELETE localhost:8474/proxies/redis
-HTTP/1.1 204 No Content
-Date: Fri, 18 Mar 2016 01:22:20 GMT
+$ toxiproxy-cli delete redis
+Deleted proxy redis
 ```
 
 ```bash

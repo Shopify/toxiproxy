@@ -1,5 +1,6 @@
 toxiproxy
 toxiproxy-server
+toxiproxy-cli
 cli
 toxiproxy.test
 testing

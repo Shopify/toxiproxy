@@ -1,6 +1,7 @@
-NAME=toxiproxy
+SERVER_NAME=toxiproxy-server
+CLI_NAME=toxiproxy-cli
 VERSION=$(shell cat VERSION)
-DEB=pkg/$(NAME)_$(VERSION)_amd64.deb
+DEB=pkg/toxiproxy_$(VERSION)_amd64.deb
 GODEP_PATH=$(shell pwd)/Godeps/_workspace
 ORIGINAL_PATH=$(shell echo $(GOPATH))
 COMBINED_GOPATH=$(GODEP_PATH):$(ORIGINAL_PATH)
@@ -8,44 +9,46 @@ COMBINED_GOPATH=$(GODEP_PATH):$(ORIGINAL_PATH)
 .PHONY: packages deb test linux darwin windows
 
 build:
-	GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(NAME) ./cmd
+	GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(SERVER_NAME) ./cmd
+	GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(CLI_NAME) ./cli
 
 all: deb linux darwin windows
 deb: $(DEB)
 
-darwin: tmp/build/toxiproxy-server-darwin-amd64 tmp/build/toxiproxy-client-darwin-amd64
-linux: tmp/build/toxiproxy-server-linux-amd64 tmp/build/toxiproxy-client-linux-amd64
-windows: tmp/build/toxiproxy-server-windows-amd64.exe tmp/build/toxiproxy-client-windows-amd64.exe
+darwin: tmp/build/$(SERVER_NAME)-darwin-amd64 tmp/build/$(CLI_NAME)-darwin-amd64
+linux: tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
+windows: tmp/build/$(SERVER_NAME)-windows-amd64.exe tmp/build/$(CLI_NAME)-windows-amd64.exe
 
 release: all docker
 
 clean:
 	rm -f tmp/build/*
-	#rm -f $(NAME)
+	rm -f $(SERVER_NAME)
+	rm -f $(CLI_NAME)
 	rm -f *.deb
 
 test:
 	GOMAXPROCS=4 GOPATH=$(COMBINED_GOPATH) go test -v -race ./...
 
-tmp/build/toxiproxy-server-linux-amd64:
+tmp/build/$(SERVER_NAME)-linux-amd64:
 	GOOS=linux GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
 
-tmp/build/toxiproxy-server-darwin-amd64:
+tmp/build/$(SERVER_NAME)-darwin-amd64:
 	GOOS=darwin GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
 
-tmp/build/toxiproxy-server-windows-amd64.exe:
+tmp/build/$(SERVER_NAME)-windows-amd64.exe:
 	GOOS=windows GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
 
-tmp/build/toxiproxy-client-linux-amd64:
+tmp/build/$(CLI_NAME)-linux-amd64:
 	GOOS=linux GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
 
-tmp/build/toxiproxy-client-darwin-amd64:
+tmp/build/$(CLI_NAME)-darwin-amd64:
 	GOOS=darwin GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
 
-tmp/build/toxiproxy-client-windows-amd64.exe:
+tmp/build/$(CLI_NAME)-windows-amd64.exe:
 	GOOS=windows GOARCH=amd64 GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
 
-$(DEB): tmp/build/toxiproxy-server-linux-amd64 tmp/build/toxiproxy-client-linux-amd64
+$(DEB): tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
 	fpm -t deb \
 		-s dir \
 		-p tmp/build/ \
@@ -60,7 +63,7 @@ $(DEB): tmp/build/toxiproxy-server-linux-amd64 tmp/build/toxiproxy-client-linux-
 		--url "https://github.com/Shopify/toxiproxy" \
 		$(word 1,$^)=/usr/bin/toxiproxy \
 		$(word 1,$^)=/usr/bin/toxiproxy-server \
-		$(word 2,$^)=/usr/bin/toxiproxy-client \
+		$(word 2,$^)=/usr/bin/toxiproxy-cli \
 		./share/toxiproxy.conf=/etc/init/toxiproxy.conf
 
 docker:
