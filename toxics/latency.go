@@ -1,4 +1,4 @@
-package main
+package toxics
 
 import (
 	"math/rand"
@@ -7,22 +7,13 @@ import (
 
 // The LatencyToxic passes data through with the a delay of latency +/- jitter added.
 type LatencyToxic struct {
-	Enabled bool `json:"enabled"`
 	// Times in milliseconds
 	Latency int64 `json:"latency"`
 	Jitter  int64 `json:"jitter"`
 }
 
-func (t *LatencyToxic) Name() string {
-	return "latency"
-}
-
-func (t *LatencyToxic) IsEnabled() bool {
-	return t.Enabled
-}
-
-func (t *LatencyToxic) SetEnabled(enabled bool) {
-	t.Enabled = enabled
+func (t *LatencyToxic) GetBufferSize() int {
+	return 1024
 }
 
 func (t *LatencyToxic) delay() time.Duration {
@@ -38,21 +29,27 @@ func (t *LatencyToxic) delay() time.Duration {
 func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 	for {
 		select {
-		case <-stub.interrupt:
+		case <-stub.Interrupt:
 			return
-		case c := <-stub.input:
+		case c := <-stub.Input:
 			if c == nil {
 				stub.Close()
 				return
 			}
-			sleep := t.delay() - time.Now().Sub(c.timestamp)
+			sleep := t.delay() - time.Since(c.Timestamp)
 			select {
 			case <-time.After(sleep):
-				stub.output <- c
-			case <-stub.interrupt:
-				stub.output <- c // Don't drop any data on the floor
+				c.Timestamp = c.Timestamp.Add(sleep)
+				stub.Output <- c
+			case <-stub.Interrupt:
+				// Exit fast without applying latency.
+				stub.Output <- c // Don't drop any data on the floor
 				return
 			}
 		}
 	}
+}
+
+func init() {
+	Register("latency", new(LatencyToxic))
 }

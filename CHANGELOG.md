@@ -1,5 +1,27 @@
-# Unreleased
+# 2.0.0rc2 (Unreleased)
 
+* Add CLI (`toxiproxy-cli`) and rename server binary to `toxiproxy-server` #93
+* Fix removing a timeout toxic causing API to hang #89
+* API and client return toxics as array rather than a map of name to toxic #92
+* Fix multiple latency toxics not accumulating #94
+* Change default toxic name to `<type>_<stream>` #96
+* Nest toxic attributes rather than having a flat structure #98
+
+# 2.0.0rc1 (Unreleased)
+
+* 2.0 RFC: #54 and PR #62
+    * Change toxic API endpoints to an Add/Update/Remove structure
+    * Remove `enabled` field, and add `name` and `type` fields to toxics
+    * Add global toxic fields to a wrapper struct
+    * Chain toxics together dynamically instead of in a fixed length chain
+    * Register toxics in `init()` functions instead of a hard-coded list
+    * Clean up API error codes to make them more consistent
+    * Move toxics to their own package to allow 3rd party toxics
+* Remove stream direction from API urls #73
+* Add `toxicity` field for toxics #75
+* Refactor Go client to make usage easier with 2.0 #76
+* Make `ChanReader` in the `stream` package interruptible #77
+* Define proxy buffer sizes per-toxic (Fixes #72)
 * Fix slicer toxic testing race condition #71
 
 # 1.2.1

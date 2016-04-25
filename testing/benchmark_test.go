@@ -8,17 +8,27 @@ import (
 
 // Benchmark numbers:
 //
-// 1x Toxics:
-//     BenchmarkDirect             2000            694467 ns/op
-//     BenchmarkProxy              2000           1136668 ns/op
-//     BenchmarkDirectSmall        5000            423319 ns/op
-//     BenchmarkProxySmall         2000            769262 ns/op
+// Toxiproxy 1.1
 //
-// 5x Toxics:
-//     BenchmarkDirect             5000            695102 ns/op
-//     BenchmarkProxy              2000           1232454 ns/op
-//     BenchmarkDirectSmall        5000            424712 ns/op
-//     BenchmarkProxySmall         2000            798016 ns/op
+// 1x Toxic Types:
+//     BenchmarkDirect             3000            588148 ns/op
+//     BenchmarkProxy              2000            999949 ns/op
+//     BenchmarkDirectSmall        5000            291324 ns/op
+//     BenchmarkProxySmall         3000            504501 ns/op
+//
+// 10x Toxic Types:
+//     BenchmarkDirect             3000            599519 ns/op
+//     BenchmarkProxy              2000           1044746 ns/op
+//     BenchmarkDirectSmall        5000            280713 ns/op
+//     BenchmarkProxySmall         3000            574816 ns/op
+//
+// Toxiproxy 2.0
+//
+// No Enabled Toxics:
+//     BenchmarkDirect             2000            597998 ns/op
+//     BenchmarkProxy              2000            964510 ns/op
+//     BenchmarkDirectSmall       10000            287448 ns/op
+//     BenchmarkProxySmall         5000            560694 ns/op
 
 // Test the backend server directly, use 64k random endpoint
 func BenchmarkDirect(b *testing.B) {

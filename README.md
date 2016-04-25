@@ -44,6 +44,7 @@ stopping you from creating a client in any other language (see
 3. [Example](#example)
 4. [Usage](#usage)
   1. [Installing](#1-installing-toxiproxy)
+    1. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
   2. [Populating](#2-populating-toxiproxy)
   3. [Using](#3-using-toxiproxy)
 5. [Toxics](#toxics)
@@ -55,9 +56,11 @@ stopping you from creating a client in any other language (see
   6. [Slicer](#slicer)
 6. [HTTP API](#http-api)
   1. [Proxy fields](#proxy-fields)
-  2. [Curl example](#curl-example)
-7. [FAQ](#frequently-asked-questions)
-8. [Development](#development)
+  2. [Toxic fields](#toxic-fields)
+  3. [Endpoints](#endpoints)
+7. [CLI example](#cli-example)
+8. [FAQ](#frequently-asked-questions)
+9. [Development](#development)
 
 ## Why yet another chaotic TCP proxy?
 
@@ -217,6 +220,24 @@ $ docker pull shopify/toxiproxy
 $ docker run -it shopify/toxiproxy
 ```
 
+**Source**
+
+If you have Go installed, you can build Toxiproxy from source using the make file:
+```bash
+$ make build
+$ ./toxiproxy-server
+```
+
+#### Upgrading from Toxiproxy 1.x
+
+In Toxiproxy 2.0 several changes were made to the API that make it incompatible with version 1.x.
+In order to use version 2.x of the Toxiproxy server, you will need to make sure your client
+library supports the same version. You can check which version of Toxiproxy you are running by
+looking at the `/version` endpoint.
+
+See the documentation for your client library for specific library changes. Detailed changes
+for the Toxiproxy server can been found in [CHANGELOG.md](https://github.com/Shopify/toxiproxy/blob/master/CHANGELOG.md).
+
 ### 2. Populating Toxiproxy
 
 When your application boots, it needs to make sure that Toxiproxy knows which
@@ -247,10 +268,10 @@ This code needs to run as early in boot as possible, before any code establishes
 a connection through Toxiproxy. Please check your client library for
 documentation on the population helpers.
 
-Alternatively use the HTTP API directly to create proxies, e.g.:
+Alternatively use the CLI to create proxies, e.g.:
 
 ```bash
-curl -i -d '{"name": "shopify_test_redis_master", "upstream": "localhost:6379", "listen": "localhost:26379"}' localhost:8474/proxies
+toxiproxy-cli create shopify_test_redis_master -l localhost:26379 -u localhost:6379
 ```
 
 We recommend a naming such as the above: `<app>_<env>_<data store>_<shard>`.
@@ -288,21 +309,28 @@ Toxiproxy[:shopify_test_redis_master].downstream(:latency, latency: 1000).apply 
 end
 ```
 
+Or via the CLI:
+
+```bash
+toxiproxy-cli toxic add shopify_test_redis_master -t latency -a latency=1000
+```
+
 Please consult your respective client library on usage.
 
 ### Toxics
 
-Toxics manipulate the pipe between the client and upstream. If the `enabled`
-field is not provided when creating the toxic, it will default to being
-disabled.
+Toxics manipulate the pipe between the client and upstream. They can be added
+and removed from proxies using the [HTTP api](#http-api). Each toxic has its own parameters
+to change how it affects the proxy links.
+
+For documentation on implementing custom toxics, see [CREATING_TOXICS.md](https://github.com/Shopify/toxiproxy/blob/master/CREATING_TOXICS.md)
 
 #### latency
 
 Add a delay to all data going through the proxy. The delay is equal to `latency` +/- `jitter`.
 
-Fields:
+Attributes:
 
- - `enabled`: true/false
  - `latency`: time in milliseconds
  - `jitter`: time in milliseconds
 
@@ -316,29 +344,26 @@ Toxiproxy. This is done by `POST`ing to `/proxies/{proxy}` and setting the
 
 Limit a connection to a maximum number of kilobytes per second.
 
-Fields:
+Attributes:
 
- - `enabled`: true/false
  - `rate`: rate in KB/s
 
 #### slow_close
 
 Delay the TCP socket from closing until `delay` has elapsed.
 
-Fields:
+Attributes:
 
- - `enabled`: true/false
  - `delay`: time in milliseconds
 
 #### timeout
 
-Stops all data from getting through, and close the connection after `timeout`. If
+Stops all data from getting through, and closes the connection after `timeout`. If
 `timeout` is 0, the connection won't close, and data will be delayed until the
-toxic is disabled.
+toxic is removed.
 
-Fields:
+Attributes:
 
- - `enabled`: true/false
  - `timeout`: time in milliseconds
 
 #### slicer
@@ -346,13 +371,11 @@ Fields:
 Slices TCP data up into small bits, optionally adding a delay between each
 sliced "packet".
 
-Fields:
+Attributes:
 
- - `enabled`: true/false
  - `average_size`: size in bytes of an average packet
  - `size_variation`: variation in bytes of an average packet (should be smaller than average_size)
  - `delay`: time in microseconds to delay each packet by
-
 
 ### HTTP API
 
@@ -361,7 +384,7 @@ HTTP interface, which is described here.
 
 Toxiproxy listens for HTTP on port **8474**.
 
-#### Proxy Fields:
+#### Proxy fields:
 
  - `name`: proxy name (string)
  - `listen`: listen address (string)
@@ -375,32 +398,51 @@ Changing the `listen` or `upstream` fields will restart the proxy and drop any a
 If `listen` is specified with a port of 0, toxiproxy will pick an ephemeral port. The `listen` field
 in the response will be updated with the actual port.
 
-If you change `enabled` to `false`, it'll take down the proxy. You can switch it
+If you change `enabled` to `false`, it will take down the proxy. You can switch it
 back to `true` to reenable it.
+
+#### Toxic fields:
+
+ - `name`: toxic name (string, defaults to `<type>_<stream>`)
+ - `type`: toxic type (string)
+ - `stream`: link direction to affect (defaults to `downstream`)
+ - `toxicity`: probability of the toxic being applied to a link (defaults to 1.0, 100%)
+ - `attributes`: a map of toxic-specific attributes
+
+See [Toxics](#toxics) for toxic-specific attributes.
+
+The `stream` direction must be either `upstream` or `downstream`. `upstream` applies
+the toxic on the `client -> server` connection, while `downstream` applies the toxic
+on the `server -> client` connection. This can be used to modify requests and responses
+separately.
+
+#### Endpoints
 
 All endpoints are JSON.
 
  - **GET /proxies** - List existing proxies and their toxics
  - **POST /proxies** - Create a new proxy
- - **GET /proxies/{proxy}** - Show the proxy with both its upstream and downstream toxics
+ - **GET /proxies/{proxy}** - Show the proxy with all its active toxics
  - **POST /proxies/{proxy}** - Update a proxy's fields
  - **DELETE /proxies/{proxy}** - Delete an existing proxy
- - **GET /proxies/{proxy}/upstream/toxics** - List upstream toxics
- - **GET /proxies/{proxy}/downstream/toxics** - List downstream toxics
- - **POST /proxies/{proxy}/upstream/toxics/{toxic}** - Update upstream toxic
- - **POST /proxies/{proxy}/downstream/toxics/{toxic}** - Update downstream toxic
- - **GET /reset** - Enable all proxies and disable all toxics
+ - **GET /proxies/{proxy}/toxics** - List active toxics
+ - **GET /proxies/{proxy}/toxics/{toxic}** - Get an active toxic's fields
+ - **POST /proxies/{proxy}/toxics/{toxic}** - Update an active toxic
+ - **DELETE /proxies/{proxy}/toxics/{toxic}** - Remove an active toxic
+ - **POST /reset** - Enable all proxies and remove all active toxics
+ - **GET /version** - Returns the server version number
 
-### Curl Example
+### CLI Example
 
 ```bash
-$ curl -i -d '{"name": "redis", "upstream": "localhost:6379", "listen": "localhost:26379"}' localhost:8474/proxies
-HTTP/1.1 201 Created
-Content-Type: application/json
-Date: Sun, 12 Apr 2015 19:52:08 GMT
-Content-Length: 392
+$ toxiproxy-cli create redis -l localhost:26379 -u localhost:6379
+Created new proxy redis
+$ toxiproxy-cli list
+Listen          Upstream        Name  Enabled Toxics
+======================================================================
+127.0.0.1:26379 localhost:6379  redis true    None
 
-{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true,"upstream_toxics":{"latency":{"enabled":false,"latency":0,"jitter":0},"slow_close":{"enabled":false,"delay":0},"timeout":{"enabled":false,"timeout":0}},"downstream_toxics":{"latency":{"enabled":false,"latency":0,"jitter":0},"slow_close":{"enabled":false,"delay":0},"timeout":{"enabled":false,"timeout":0}}}
+Hint: inspect toxics with `toxiproxy-client inspect <proxyName>`
 ```
 
 ```bash
@@ -412,55 +454,34 @@ OK
 ```
 
 ```bash
-$ curl -i localhost:8474/proxies
-HTTP/1.1 200 OK
-Content-Type: application/json
-Date: Sun, 12 Apr 2015 19:52:49 GMT
-Content-Length: 96
-
-{"redis":{"name":"redis","listen":"127.0.0.1:26379","upstream":"localhost:6379","enabled":true}}
-```
-
-```bash
-$ curl -i -d '{"enabled":true, "latency":1000}' localhost:8474/proxies/redis/downstream/toxics/latency
-HTTP/1.1 200 OK
-Content-Type: application/json
-Date: Mon, 10 Nov 2014 16:37:25 GMT
-Content-Length: 42
-
-{"enabled":true,"latency":1000,"jitter":0}
+$ toxiproxy-cli toxic add redis -t latency -a latency=1000
+Added downstream latency toxic 'latency_downstream' on proxy 'redis'
 ```
 
 ```bash
 $ redis-cli -p 26379
-127.0.0.1:26379> GET "omg"
+127.0.0.1:26379> GET omg
 "pandas"
 (1.00s)
-127.0.0.1:26379> DEL "omg"
+127.0.0.1:26379> DEL omg
 (integer) 1
 (1.00s)
 ```
 
 ```bash
-$ curl -i -d '{"enabled":false}' localhost:8474/proxies/redis/downstream/toxics/latency
-HTTP/1.1 200 OK
-Content-Type: application/json
-Date: Mon, 10 Nov 2014 16:39:49 GMT
-Content-Length: 43
-
-{"enabled":false,"latency":1000,"jitter":0}
+$ toxiproxy-cli toxic remove redis -n latency_downstream
+Removed toxic 'latency_downstream' on proxy 'redis'
 ```
 
 ```bash
 $ redis-cli -p 26379
-127.0.0.1:26379> GET "omg"
+127.0.0.1:26379> GET omg
 (nil)
 ```
 
 ```bash
-$ curl -i -X DELETE localhost:8474/proxies/redis
-HTTP/1.1 204 No Content
-Date: Mon, 10 Nov 2014 16:07:36 GMT
+$ toxiproxy-cli delete redis
+Deleted proxy redis
 ```
 
 ```bash
@@ -472,9 +493,15 @@ Could not connect to Redis at 127.0.0.1:26379: Connection refused
 
 **How fast is Toxiproxy?** The speed of Toxiproxy depends largely on your hardware,
 but you can expect a latency of *< 100µs* when no toxics are enabled. When running
-with `GOMAXPROCS=4` on a Macbook Pro we acheived *~1000MB/s* throuput, and as high
+with `GOMAXPROCS=4` on a Macbook Pro we acheived *~1000MB/s* throughput, and as high
 as *2400MB/s* on a higher end desktop. Basically, you can expect Toxiproxy to move
 data around at least as fast the app you're testing.
+
+**Can Toxiproxy do randomized testing?** Many of the available toxics can be configured
+to have randomness, such as `jitter` in the `latency` toxic. There is also a
+global `toxicity` parameter that specifies the percentage of connections a toxic
+will affect. This is most useful for things like the `timeout` toxic, which would
+allow X% of connections to timeout.
 
 **I am not seeing my Toxiproxy actions reflected for MySQL**. MySQL will prefer
 the local Unix domain socket for some clients, no matter which port you pass it
@@ -493,6 +520,7 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 
 ### Development
 
+* `make`. Build a toxiproxy development binary for the current platform.
 * `make all`. Build Toxiproxy binaries and packages for all platforms. Requires
   to have Go compiled with cross compilation enabled on Linux and Darwin (amd64)
   as well as [`fpm`](https://github.com/jordansissel/fpm) in your `$PATH` to
@@ -500,15 +528,16 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 * `make test`. Run the Toxiproxy tests.
 * `make darwin`. Build binary for Darwin.
 * `make linux`. Build binary for Linux.
+* `make windows`. Build binary for Windows.
 
 ### Release
 
 1. Update `CHANGELOG.md`
-2. Bump `VERSION` and `toxiproxy.go`
+2. Bump `VERSION`
 3. Change versions in `README.md`
 4. Commit
 5. Tag
-6. `make` to create binaries, packages and push new Docker image
+6. `make release` to create binaries, packages and push new Docker image
 7. Create [Github draft release](https://github.com/Shopify/toxiproxy/releases/new) against new tag and upload binaries and Debian package
 8. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)
 

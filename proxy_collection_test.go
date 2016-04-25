@@ -1,13 +1,15 @@
-package main
+package toxiproxy_test
 
 import (
 	"bytes"
 	"net"
 	"testing"
+
+	"github.com/Shopify/toxiproxy"
 )
 
 func TestAddProxyToCollection(t *testing.T) {
-	collection := NewProxyCollection()
+	collection := toxiproxy.NewProxyCollection()
 	proxy := NewTestProxy("test", "localhost:20000")
 
 	if _, err := collection.Get(proxy.Name); err == nil {
@@ -25,7 +27,7 @@ func TestAddProxyToCollection(t *testing.T) {
 }
 
 func TestAddTwoProxiesToCollection(t *testing.T) {
-	collection := NewProxyCollection()
+	collection := toxiproxy.NewProxyCollection()
 	proxy := NewTestProxy("test", "localhost:20000")
 
 	err := collection.Add(proxy, false)
@@ -40,7 +42,7 @@ func TestAddTwoProxiesToCollection(t *testing.T) {
 }
 
 func TestListProxies(t *testing.T) {
-	collection := NewProxyCollection()
+	collection := toxiproxy.NewProxyCollection()
 	proxy := NewTestProxy("test", "localhost:20000")
 
 	err := collection.Add(proxy, false)
@@ -58,7 +60,7 @@ func TestListProxies(t *testing.T) {
 }
 
 func TestAddProxyAndStart(t *testing.T) {
-	collection := NewProxyCollection()
+	collection := toxiproxy.NewProxyCollection()
 	proxy := NewTestProxy("test", "localhost:20000")
 
 	err := collection.Add(proxy, true)
@@ -76,8 +78,8 @@ func TestAddProxyAndStart(t *testing.T) {
 }
 
 func TestAddAndRemoveProxyFromCollection(t *testing.T) {
-	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *Proxy) {
-		collection := NewProxyCollection()
+	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *toxiproxy.Proxy) {
+		collection := toxiproxy.NewProxyCollection()
 
 		if _, err := collection.Get(proxy.Name); err == nil {
 			t.Error("Expected proxies to be empty")

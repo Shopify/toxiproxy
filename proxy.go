@@ -1,9 +1,10 @@
-package main
+package toxiproxy
 
 import (
 	"errors"
 	"sync"
 
+	"github.com/Shopify/toxiproxy/stream"
 	"github.com/Sirupsen/logrus"
 	"gopkg.in/tomb.v1"
 
@@ -28,8 +29,7 @@ type Proxy struct {
 
 	tomb        tomb.Tomb
 	connections ConnectionList
-	upToxics    *ToxicCollection
-	downToxics  *ToxicCollection
+	Toxics      *ToxicCollection `json:"-"`
 }
 
 type ConnectionList struct {
@@ -52,8 +52,7 @@ func NewProxy() *Proxy {
 		started:     make(chan error),
 		connections: ConnectionList{list: make(map[string]net.Conn)},
 	}
-	proxy.upToxics = NewToxicCollection(proxy)
-	proxy.downToxics = NewToxicCollection(proxy)
+	proxy.Toxics = NewToxicCollection(proxy)
 	return proxy
 }
 
@@ -174,11 +173,11 @@ func (proxy *Proxy) server() {
 
 		name := client.RemoteAddr().String()
 		proxy.connections.Lock()
-		proxy.connections.list[name+"client"] = client
 		proxy.connections.list[name+"upstream"] = upstream
+		proxy.connections.list[name+"downstream"] = client
 		proxy.connections.Unlock()
-		proxy.upToxics.StartLink(name+"client", client, upstream)
-		proxy.downToxics.StartLink(name+"upstream", upstream, client)
+		proxy.Toxics.StartLink(name+"upstream", client, upstream, stream.Upstream)
+		proxy.Toxics.StartLink(name+"downstream", upstream, client, stream.Downstream)
 	}
 }
 
