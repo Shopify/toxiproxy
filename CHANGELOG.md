@@ -1,4 +1,4 @@
-# 2.0.0rc2 (Unreleased)
+# 2.0.0
 
 * Add CLI (`toxiproxy-cli`) and rename server binary to `toxiproxy-server` #93
 * Fix removing a timeout toxic causing API to hang #89
@@ -6,9 +6,6 @@
 * Fix multiple latency toxics not accumulating #94
 * Change default toxic name to `<type>_<stream>` #96
 * Nest toxic attributes rather than having a flat structure #98
-
-# 2.0.0rc1 (Unreleased)
-
 * 2.0 RFC: #54 and PR #62
     * Change toxic API endpoints to an Add/Update/Remove structure
     * Remove `enabled` field, and add `name` and `type` fields to toxics
