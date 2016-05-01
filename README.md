@@ -426,6 +426,7 @@ All endpoints are JSON.
  - **POST /proxies/{proxy}** - Update a proxy's fields
  - **DELETE /proxies/{proxy}** - Delete an existing proxy
  - **GET /proxies/{proxy}/toxics** - List active toxics
+ - **POST /proxies/{proxy}/toxics** - Create a new toxic
  - **GET /proxies/{proxy}/toxics/{toxic}** - Get an active toxic's fields
  - **POST /proxies/{proxy}/toxics/{toxic}** - Update an active toxic
  - **DELETE /proxies/{proxy}/toxics/{toxic}** - Remove an active toxic
