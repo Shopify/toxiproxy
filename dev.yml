@@ -1,0 +1,12 @@
+name: toxiproxy
+
+up:
+  - go: 1.6.2
+
+commands:
+  build:
+    run: godep go build
+    desc: 'build the project'
+  test:
+    run: godep go test ./...
+    desc: 'run unit tests'
