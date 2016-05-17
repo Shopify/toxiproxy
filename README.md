@@ -76,7 +76,7 @@ development and CI environments.
 * [toxiproxy-python](https://github.com/douglas/toxiproxy-python)
 * [toxiproxy.net](https://github.com/mdevilliers/Toxiproxy.Net)
 * [toxiproxy-php-client](https://github.com/ihsw/toxiproxy-php-client)
-* [toxiproxy-node](https://github.com/dlion/toxiproxy-node)
+* [toxiproxy-node-client](https://github.com/ihsw/toxiproxy-node-client)
 * [toxiproxy-java](https://github.com/trekawek/toxiproxy-java)
 
 ## Example
