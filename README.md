@@ -180,7 +180,7 @@ Full example application is at
 
 ## Usage
 
-Configuring a project to use Toxiproxy consists of four steps:
+Configuring a project to use Toxiproxy consists of three steps:
 
 1. Installing Toxiproxy
 2. Populating Toxiproxy
