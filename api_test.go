@@ -71,6 +71,68 @@ func TestCreateProxyBlankUpstream(t *testing.T) {
 	})
 }
 
+func TestPopulateProxy(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxies, err := client.Populate2([]tclient.Proxy{
+			{
+				Name:     "one",
+				Listen:   "localhost:7070",
+				Upstream: "localhost:7171",
+			},
+			{
+				Name:     "two",
+				Listen:   "localhost:7373",
+				Upstream: "localhost:7474",
+			},
+		})
+
+		for _, p := range testProxies {
+			AssertProxyUp(t, p.Listen, true)
+		}
+
+		if err != nil {
+			t.Fatal("Unable to populate:", err)
+		}
+	})
+}
+
+func TestPopulateProxyWithBadDataShouldBeTransactional(t *testing.T) {
+	WithServer(t, func(addr string) {
+		_, err := client.Populate2([]tclient.Proxy{
+			{
+				Name:     "one",
+				Listen:   "localhost:7070",
+				Upstream: "localhost:7171",
+			},
+			{
+				Name:     "two",
+				Listen:   "local373",
+				Upstream: "localhost:7474",
+			},
+			{
+				Name:     "three",
+				Listen:   "localhost:7575",
+				Upstream: "localhost:7676",
+			},
+		})
+
+		if err == nil {
+			t.Fatal("Expected Populate to fail.")
+		}
+
+		proxies, err := client.Proxies()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, p := range proxies {
+			if p.Name == "one" || p.Name == "two" || p.Name == "three" {
+				t.Fatalf("Proxy %s was still exists. Populate was not transactional.")
+			}
+		}
+	})
+}
+
 func TestListingProxies(t *testing.T) {
 	WithServer(t, func(addr string) {
 		_, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")

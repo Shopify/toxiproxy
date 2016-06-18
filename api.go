@@ -27,6 +27,7 @@ func (server *ApiServer) Listen(host string, port string) {
 	r.HandleFunc("/reset", server.ResetState).Methods("POST")
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
 	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
+	r.HandleFunc("/populate", server.Populate).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyShow).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyUpdate).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE")
@@ -118,6 +119,64 @@ func (server *ApiServer) ProxyCreate(response http.ResponseWriter, request *http
 	}
 
 	data, err := json.Marshal(proxyWithToxics(proxy))
+	if apiError(response, err) {
+		return
+	}
+
+	response.Header().Set("Content-Type", "application/json")
+	response.WriteHeader(http.StatusCreated)
+	_, err = response.Write(data)
+	if err != nil {
+		logrus.Warn("ProxyCreate: Failed to write response to client", err)
+	}
+}
+
+func (server *ApiServer) Populate(response http.ResponseWriter, request *http.Request) {
+	input := []Proxy{}
+
+	err := json.NewDecoder(request.Body).Decode(&input)
+	if apiError(response, joinError(err, ErrBadRequestBody)) {
+		return
+	}
+
+	proxiesCreated := []*Proxy{}
+
+	for _, p := range input {
+		if len(p.Name) < 1 {
+			apiError(response, joinError(fmt.Errorf("name"), ErrMissingField))
+			return
+		}
+		if len(p.Upstream) < 1 {
+			apiError(response, joinError(fmt.Errorf("upstream"), ErrMissingField))
+			return
+		}
+
+		// TODO(jpittis) Defaulting to enabled is not standard but I dont see another way.
+		p.Enabled = true
+
+		proxy := NewProxy()
+		proxy.Name = p.Name
+		proxy.Listen = p.Listen
+		proxy.Upstream = p.Upstream
+
+		// TODO(jpittis) Tried to make this transactional. Kinda a mess of error handling code.
+		err = server.Collection.Add(proxy, p.Enabled)
+		if err != nil {
+			for _, p := range proxiesCreated {
+				err := server.Collection.Remove(p.Name)
+				if apiError(response, err) {
+					return
+				}
+			}
+			if apiError(response, joinError(err, ErrBadRequestBody)) {
+				return
+			}
+		}
+
+		proxiesCreated = append(proxiesCreated, proxy)
+	}
+
+	data, err := json.Marshal(proxiesWithToxics(proxiesCreated))
 	if apiError(response, err) {
 		return
 	}
@@ -374,11 +433,21 @@ func apiError(resp http.ResponseWriter, err error) bool {
 	return true
 }
 
-func proxyWithToxics(proxy *Proxy) (result struct {
+type proxyToxics struct {
 	*Proxy
 	Toxics []toxics.Toxic `json:"toxics"`
-}) {
+}
+
+func proxyWithToxics(proxy *Proxy) (result proxyToxics) {
 	result.Proxy = proxy
 	result.Toxics = proxy.Toxics.GetToxicArray()
 	return
+}
+
+func proxiesWithToxics(proxies []*Proxy) []proxyToxics {
+	result := make([]proxyToxics, len(proxies))
+	for i := range proxies {
+		result[i] = proxyWithToxics(proxies[i])
+	}
+	return result
 }

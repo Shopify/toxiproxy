@@ -147,6 +147,32 @@ func (client *Client) Populate(config []Proxy) (map[string]*Proxy, error) {
 	return proxies, nil
 }
 
+// TODO(jpittis) replace this with the old populate command.
+func (client *Client) Populate2(config []Proxy) ([]*Proxy, error) {
+	proxies := make([]*Proxy, len(config))
+	request, err := json.Marshal(config)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.Post(client.endpoint+"/populate", "application/json", bytes.NewReader(request))
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkError(resp, http.StatusCreated, "Create")
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&proxies)
+	if err != nil {
+		return nil, err
+	}
+
+	return proxies, nil
+}
+
 // Save saves changes to a proxy such as its enabled status or upstream port.
 func (proxy *Proxy) Save() error {
 	request, err := json.Marshal(proxy)
