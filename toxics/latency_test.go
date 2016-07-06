@@ -83,7 +83,7 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *toxics.LatencyToxic) {
 			"Round trip",
 			time.Since(timer),
 			time.Duration(upLatency.Latency+downLatency.Latency)*time.Millisecond,
-			time.Duration(upLatency.Jitter+downLatency.Jitter+10)*time.Millisecond,
+			time.Duration(upLatency.Jitter+downLatency.Jitter+20)*time.Millisecond,
 		)
 
 		proxy.Toxics.RemoveToxic("latency_up")
