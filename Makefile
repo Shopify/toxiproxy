@@ -2,7 +2,7 @@ SERVER_NAME=toxiproxy-server
 CLI_NAME=toxiproxy-cli
 VERSION=$(shell cat VERSION)
 DEB=pkg/toxiproxy_$(VERSION)_amd64.deb
-GODEP_PATH=$(shell pwd)/Godeps/_workspace
+GODEP_PATH=$(shell pwd)/vendor
 ORIGINAL_PATH=$(shell echo $(GOPATH))
 COMBINED_GOPATH=$(GODEP_PATH):$(ORIGINAL_PATH)
 

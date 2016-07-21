@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/Shopify/toxiproxy",
-	"GoVersion": "go1.3.3",
+	"GoVersion": "go1.6",
 	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
