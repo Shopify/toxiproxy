@@ -1,6 +1,10 @@
 {
 	"ImportPath": "github.com/Shopify/toxiproxy",
 	"GoVersion": "go1.3.3",
+	"GodepVersion": "v74",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
@@ -14,6 +18,11 @@
 		{
 			"ImportPath": "github.com/gorilla/mux",
 			"Rev": "4b8fbc56f3b2400a7c7ea3dba9b3539787c486b6"
+		},
+		{
+			"ImportPath": "github.com/urfave/cli",
+			"Comment": "v1.18.0",
+			"Rev": "1efa31f08b9333f1bd4882d61f9d668a70cd902e"
 		},
 		{
 			"ImportPath": "gopkg.in/tomb.v1",

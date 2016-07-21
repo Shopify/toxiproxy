@@ -7,7 +7,7 @@ import (
 
 	toxiproxyServer "github.com/Shopify/toxiproxy"
 	"github.com/Shopify/toxiproxy/client"
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 
 	"fmt"
 	"os"
@@ -189,9 +189,11 @@ func main() {
 
 type toxiAction func(*cli.Context, *toxiproxy.Client)
 
-func withToxi(f toxiAction, t *toxiproxy.Client) func(*cli.Context) {
-	return func(c *cli.Context) {
+func withToxi(f toxiAction, t *toxiproxy.Client) func(*cli.Context) error {
+	return func(c *cli.Context) error {
 		f(c, t)
+
+		return nil
 	}
 }
 
