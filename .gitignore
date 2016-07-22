@@ -1,7 +1,7 @@
 toxiproxy
 toxiproxy-server
 toxiproxy-cli
-cli
+./cli/cli
 toxiproxy.test
 testing
 testing.test
