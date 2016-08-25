@@ -1,35 +1,33 @@
 package toxics_test
 
 import (
-	"math/rand"
+	"bytes"
+	"crypto/rand"
+	"fmt"
 	"testing"
 
 	"github.com/Shopify/toxiproxy/stream"
 	"github.com/Shopify/toxiproxy/toxics"
 )
 
-func cmpBuffers(bufa []byte, bufb []byte) bool {
-	if len(bufa) != len(bufb) {
-		return false
-	}
-
-	for i, a := range bufa {
-		if a != bufb[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
 func buffer(size int) []byte {
 	buf := make([]byte, size)
-
-	for i := 0; i < size; i++ {
-		buf[i] = byte(rand.Int())
-	}
+	rand.Read(buf)
 
 	return buf
+}
+
+func checkOutgoingChunk(t *testing.T, output chan *stream.StreamChunk, expected []byte) {
+	chunk := <-output
+	if !bytes.Equal(chunk.Data, expected) {
+		t.Error("Data in outgoing chunk doesn't match expected values")
+	}
+}
+
+func checkRemainingChunks(t *testing.T, output chan *stream.StreamChunk) {
+	if len(output) != 0 {
+		t.Error(fmt.Sprintf("There is %d chunks in output channel. 0 is expected.", len(output)))
+	}
 }
 
 func check(t *testing.T, toxic *toxics.LimitDataToxic, chunks [][]byte, expectedChunks [][]byte) {
@@ -37,28 +35,50 @@ func check(t *testing.T, toxic *toxics.LimitDataToxic, chunks [][]byte, expected
 	output := make(chan *stream.StreamChunk, 100)
 	stub := toxics.NewToxicStub(input, output)
 
-	go func() {
-		toxic.Pipe(stub)
-	}()
+	go toxic.Pipe(stub)
 
 	for _, buf := range chunks {
 		input <- &stream.StreamChunk{Data: buf}
 	}
 
 	for _, expected := range expectedChunks {
-		chunk := <-output
-
-		if !cmpBuffers(chunk.Data, expected) {
-			t.Fail()
-		}
+		checkOutgoingChunk(t, output, expected)
 	}
 
-	if len(output) != 0 {
-		t.Fail()
-	}
+	checkRemainingChunks(t, output)
 }
 
 func TestLimitDataToxicMayBeInterrupted(t *testing.T) {
+	toxic := &toxics.LimitDataToxic{Bytes: 100}
+
+	input := make(chan *stream.StreamChunk)
+	output := make(chan *stream.StreamChunk, 100)
+	stub := toxics.NewToxicStub(input, output)
+
+	buf := buffer(90)
+	buf2 := buffer(20)
+
+	// Send chunk with data not exceeding limit and interrupt
+	go func() {
+		input <- &stream.StreamChunk{Data: buf}
+		stub.Interrupt <- struct{}{}
+	}()
+
+	toxic.Pipe(stub)
+	checkOutgoingChunk(t, output, buf)
+
+	// Send 2nd chunk to exceed limit
+	go func() {
+		input <- &stream.StreamChunk{Data: buf2}
+	}()
+
+	toxic.Pipe(stub)
+	checkOutgoingChunk(t, output, buf2[0:10])
+
+	checkRemainingChunks(t, output)
+}
+
+func TestLimitDataToxicMayBeRestarted(t *testing.T) {
 	toxic := &toxics.LimitDataToxic{Bytes: 100}
 
 	input := make(chan *stream.StreamChunk)
@@ -103,7 +123,7 @@ func TestLimitDataToxicChunkLengthMatchesLimit(t *testing.T) {
 func TestLimitDataToxicChunkBiggerThanLimit(t *testing.T) {
 	toxic := &toxics.LimitDataToxic{Bytes: 100}
 
-	buf := buffer(100)
+	buf := buffer(150)
 	expected := buf[0:100]
 
 	check(t, toxic, [][]byte{buf}, [][]byte{expected})

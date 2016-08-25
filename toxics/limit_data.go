@@ -4,11 +4,12 @@ import "github.com/Shopify/toxiproxy/stream"
 
 // LimitDataToxic has limit in bytes
 type LimitDataToxic struct {
-	Bytes int64 `json:"bytes"`
+	Bytes            int64 `json:"bytes"`
+	bytesTransmitted int64
 }
 
 func (t *LimitDataToxic) Pipe(stub *ToxicStub) {
-	var bytesRemaining = t.Bytes
+	var bytesRemaining = t.Bytes - t.bytesTransmitted
 
 	for {
 		select {
@@ -31,8 +32,10 @@ func (t *LimitDataToxic) Pipe(stub *ToxicStub) {
 
 			if len(chunk.Data) > 0 {
 				stub.Output <- chunk
-				bytesRemaining -= int64(len(chunk.Data))
+				t.bytesTransmitted += int64(len(chunk.Data))
 			}
+
+			bytesRemaining = t.Bytes - t.bytesTransmitted
 
 			if bytesRemaining <= 0 {
 				stub.Close()
