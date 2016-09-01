@@ -115,6 +115,24 @@ The unit used by `GetBufferSize()` is `StreamChunk`s. Chunks are generally anywh
 1 byte, up to 32KB, so keep this in mind when thinking about how much buffering you need,
 and how much memory you are comfortable with using.
 
+## Stateful toxics
+
+If a toxic needs to store extra information for a connection such as the number of bytes
+transferred (See `limit_data` toxic), a state object can be created by implementing the
+`StatefulToxic` interface. This interface defines the `NewState()` function that can create
+a new state object with default values set.
+
+When a stateful toxic is created, the state object will be stored on the `ToxicStub` and
+can be accessed from `toxic.Pipe()`:
+
+```go
+state := stub.State.(*ExampleToxicState)
+```
+
+If necessary, some global state can be stored in the toxic struct, which will not be
+instanced per-connection. These fields cannot have a custom default value set and will
+not be thread-safe, so proper locking or atomic operations will need to be used.
+
 ## Using `io.Reader` and `io.Writer`
 
 If your toxic involves modifying the data going through a proxy, you can use the `ChanReader`
