@@ -2,8 +2,8 @@ package toxics_test
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"testing"
 
 	"github.com/Shopify/toxiproxy/stream"
