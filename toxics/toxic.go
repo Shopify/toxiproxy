@@ -31,6 +31,14 @@ type BufferedToxic interface {
 	GetBufferSize() int
 }
 
+// Stateful toxics store a per-connection state object on the ToxicStub.
+// The state is created once when the toxic is added and persists until the
+// toxic is removed or the connection is closed.
+type StatefulToxic interface {
+	// Creates a new object to store toxic state in
+	NewState() interface{}
+}
+
 type ToxicWrapper struct {
 	Toxic      `json:"attributes"`
 	Name       string           `json:"name"`
@@ -45,6 +53,7 @@ type ToxicWrapper struct {
 type ToxicStub struct {
 	Input     <-chan *stream.StreamChunk
 	Output    chan<- *stream.StreamChunk
+	State     interface{}
 	Interrupt chan struct{}
 	running   chan struct{}
 	closed    chan struct{}

@@ -2,8 +2,8 @@ package toxics_test
 
 import (
 	"bytes"
-	"crypto/rand"
 	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/Shopify/toxiproxy/stream"
@@ -34,6 +34,7 @@ func check(t *testing.T, toxic *toxics.LimitDataToxic, chunks [][]byte, expected
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk, 100)
 	stub := toxics.NewToxicStub(input, output)
+	stub.State = toxic.NewState()
 
 	go toxic.Pipe(stub)
 
@@ -48,12 +49,13 @@ func check(t *testing.T, toxic *toxics.LimitDataToxic, chunks [][]byte, expected
 	checkRemainingChunks(t, output)
 }
 
-func TestLimitDataToxicMayBeInterrupted(t *testing.T) {
+func TestLimitDataToxicMayBeRestarted(t *testing.T) {
 	toxic := &toxics.LimitDataToxic{Bytes: 100}
 
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk, 100)
 	stub := toxics.NewToxicStub(input, output)
+	stub.State = toxic.NewState()
 
 	buf := buffer(90)
 	buf2 := buffer(20)
@@ -78,12 +80,13 @@ func TestLimitDataToxicMayBeInterrupted(t *testing.T) {
 	checkRemainingChunks(t, output)
 }
 
-func TestLimitDataToxicMayBeRestarted(t *testing.T) {
+func TestLimitDataToxicMayBeInterrupted(t *testing.T) {
 	toxic := &toxics.LimitDataToxic{Bytes: 100}
 
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk)
 	stub := toxics.NewToxicStub(input, output)
+	stub.State = toxic.NewState()
 
 	go func() {
 		stub.Interrupt <- struct{}{}
@@ -98,6 +101,7 @@ func TestLimitDataToxicNilShouldClosePipe(t *testing.T) {
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk)
 	stub := toxics.NewToxicStub(input, output)
+	stub.State = toxic.NewState()
 
 	go func() {
 		input <- nil
