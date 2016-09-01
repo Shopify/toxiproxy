@@ -378,6 +378,12 @@ Attributes:
  - `size_variation`: variation in bytes of an average packet (should be smaller than average_size)
  - `delay`: time in microseconds to delay each packet by
 
+#### limit_data
+
+Closes connection when transmitted data exceeded limit.
+
+ - `bytes`: number of bytes it should transmit before connection is closed
+
 ### HTTP API
 
 All communication with the Toxiproxy daemon from the client happens through the
