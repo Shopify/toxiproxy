@@ -59,9 +59,9 @@ var toxicDescription = `
 		example: toxiproxy-cli toxic delete myProxy -n myToxic
 `
 
-func main() {
-	toxiproxyClient := toxiproxy.NewClient("http://localhost:8474")
+var hostname string
 
+func main() {
 	app := cli.NewApp()
 	app.Name = "toxiproxy-cli"
 	app.Version = toxiproxyServer.Version
@@ -71,13 +71,13 @@ func main() {
 			Name:    "list",
 			Usage:   "list all proxies\n\tusage: 'toxiproxy-cli list'\n",
 			Aliases: []string{"l", "li", "ls"},
-			Action:  withToxi(list, toxiproxyClient),
+			Action:  withToxi(list),
 		},
 		{
 			Name:    "inspect",
 			Aliases: []string{"i", "ins"},
 			Usage:   "inspect a single proxy\n\tusage: 'toxiproxy-cli inspect <proxyName>'\n",
-			Action:  withToxi(inspect, toxiproxyClient),
+			Action:  withToxi(inspectProxy),
 		},
 		{
 			Name:    "create",
@@ -93,19 +93,19 @@ func main() {
 					Usage: "proxy will forward to this address",
 				},
 			},
-			Action: withToxi(create, toxiproxyClient),
+			Action: withToxi(createProxy),
 		},
 		{
 			Name:    "toggle",
 			Usage:   "\ttoggle enabled status on a proxy\n\t\tusage: 'toxiproxy-cli toggle <proxyName>'\n",
 			Aliases: []string{"tog"},
-			Action:  withToxi(toggle, toxiproxyClient),
+			Action:  withToxi(toggleProxy),
 		},
 		{
 			Name:    "delete",
 			Usage:   "\tdelete a proxy\n\t\tusage: 'toxiproxy-cli delete <proxyName>'\n",
 			Aliases: []string{"d"},
-			Action:  withToxi(delete, toxiproxyClient),
+			Action:  withToxi(deleteProxy),
 		},
 		{
 			Name:        "toxic",
@@ -144,7 +144,7 @@ func main() {
 							Usage: "add toxic to downstream",
 						},
 					},
-					Action: withToxi(addToxic, toxiproxyClient),
+					Action: withToxi(addToxic),
 				},
 				{
 					Name:      "update",
@@ -165,7 +165,7 @@ func main() {
 							Usage: "comma seperated key=value toxic attributes",
 						},
 					},
-					Action: withToxi(updateToxic, toxiproxyClient),
+					Action: withToxi(updateToxic),
 				},
 				{
 					Name:      "remove",
@@ -178,9 +178,21 @@ func main() {
 							Usage: "name of the toxic",
 						},
 					},
-					Action: withToxi(removeToxic, toxiproxyClient),
+					Action: withToxi(removeToxic),
 				},
 			},
+		},
+	}
+	cli.HelpFlag = cli.BoolFlag{
+		Name:  "help",
+		Usage: "show help",
+	}
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:        "host, h",
+			Value:       "http://localhost:8474",
+			Usage:       "toxiproxy host to connect to",
+			Destination: &hostname,
 		},
 	}
 
@@ -189,9 +201,10 @@ func main() {
 
 type toxiAction func(*cli.Context, *toxiproxy.Client)
 
-func withToxi(f toxiAction, t *toxiproxy.Client) func(*cli.Context) error {
+func withToxi(f toxiAction) func(*cli.Context) error {
 	return func(c *cli.Context) error {
-		f(c, t)
+		toxiproxyClient := toxiproxy.NewClient(hostname)
+		f(c, toxiproxyClient)
 
 		return nil
 	}
@@ -231,7 +244,7 @@ func list(c *cli.Context, t *toxiproxy.Client) {
 	fmt.Println()
 	hint("inspect toxics with `toxiproxy-cli inspect <proxyName>`")
 }
-func inspect(c *cli.Context, t *toxiproxy.Client) {
+func inspectProxy(c *cli.Context, t *toxiproxy.Client) {
 	proxyName := c.Args().First()
 	if proxyName == "" {
 		cli.ShowSubcommandHelp(c)
@@ -274,7 +287,7 @@ func inspect(c *cli.Context, t *toxiproxy.Client) {
 	hint("add a toxic with `toxiproxy-cli toxic add`")
 }
 
-func toggle(c *cli.Context, t *toxiproxy.Client) {
+func toggleProxy(c *cli.Context, t *toxiproxy.Client) {
 	proxyName := c.Args().First()
 	if proxyName == "" {
 		cli.ShowSubcommandHelp(c)
@@ -296,7 +309,7 @@ func toggle(c *cli.Context, t *toxiproxy.Client) {
 	fmt.Printf("Proxy %s%s%s is now %s%s%s\n", enabledColor(proxy.Enabled), proxyName, noColor, enabledColor(proxy.Enabled), enabledText(proxy.Enabled), noColor)
 }
 
-func create(c *cli.Context, t *toxiproxy.Client) {
+func createProxy(c *cli.Context, t *toxiproxy.Client) {
 	proxyName := c.Args().First()
 	if proxyName == "" {
 		cli.ShowSubcommandHelp(c)
@@ -311,7 +324,7 @@ func create(c *cli.Context, t *toxiproxy.Client) {
 	fmt.Printf("Created new proxy %s\n", proxyName)
 }
 
-func delete(c *cli.Context, t *toxiproxy.Client) {
+func deleteProxy(c *cli.Context, t *toxiproxy.Client) {
 	proxyName := c.Args().First()
 	if proxyName == "" {
 		cli.ShowSubcommandHelp(c)
