@@ -3,6 +3,7 @@ package toxiproxy_test
 import (
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -757,6 +758,42 @@ func TestInvalidStream(t *testing.T) {
 		_, err = testProxy.AddToxic("", "latency", "walrustream", 1, nil)
 		if err == nil {
 			t.Fatal("Error setting toxic:", err)
+		}
+	})
+}
+
+func BenchmarkPopulateProxyList(b *testing.B) {
+	WithServer(nil, func(addr string) {
+		proxyList := make([]tclient.Proxy, b.N)
+		for i := 0; i < len(proxyList); i++ {
+			proxyList[i] = tclient.Proxy{
+				Name:     "test" + strconv.Itoa(i),
+				Listen:   "127.0.0.1:0",
+				Upstream: "localhost:7171",
+			}
+		}
+		_, err := client.Populate(proxyList)
+
+		if err != nil {
+			b.Fatal("Unable to populate:", err)
+		}
+	})
+}
+
+func BenchmarkPopulateProxyList2(b *testing.B) {
+	WithServer(nil, func(addr string) {
+		proxyList := make([]tclient.Proxy, b.N)
+		for i := 0; i < len(proxyList); i++ {
+			proxyList[i] = tclient.Proxy{
+				Name:     "test" + strconv.Itoa(i),
+				Listen:   "127.0.0.1:0",
+				Upstream: "localhost:7171",
+			}
+		}
+		_, err := client.Populate2(proxyList)
+
+		if err != nil {
+			b.Fatal("Unable to populate:", err)
 		}
 	})
 }
