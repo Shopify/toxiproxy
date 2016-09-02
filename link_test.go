@@ -207,7 +207,6 @@ func TestStateCreated(t *testing.T) {
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 
-	// Add stubs
 	collection.chainAddToxic(&toxics.ToxicWrapper{
 		Toxic:     new(toxics.LimitDataToxic),
 		Type:      "limit_data",
