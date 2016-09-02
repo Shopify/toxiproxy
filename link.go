@@ -66,6 +66,10 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		link.input.Close()
 	}()
 	for i, toxic := range link.toxics.chain[link.direction] {
+		if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
+			link.stubs[i].State = stateful.NewState()
+		}
+
 		go link.stubs[i].Run(toxic)
 	}
 	go func() {
@@ -93,6 +97,10 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	// Interrupt the last toxic so that we don't have a race when moving channels
 	if link.stubs[i-1].InterruptToxic() {
 		link.stubs[i-1].Output = newin
+
+		if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
+			link.stubs[i].State = stateful.NewState()
+		}
 
 		go link.stubs[i].Run(toxic)
 		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1])

@@ -200,3 +200,20 @@ func TestToxicity(t *testing.T) {
 		t.Fatalf("Read did not get EOF: %d %v", n, err)
 	}
 }
+
+func TestStateCreated(t *testing.T) {
+	collection := NewToxicCollection(nil)
+	link := NewToxicLink(nil, collection, stream.Downstream)
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	collection.links["test"] = link
+
+	collection.chainAddToxic(&toxics.ToxicWrapper{
+		Toxic:     new(toxics.LimitDataToxic),
+		Type:      "limit_data",
+		Direction: stream.Downstream,
+		Toxicity:  1,
+	})
+	if link.stubs[len(link.stubs)-1].State == nil {
+		t.Fatalf("New toxic did not have state object created.")
+	}
+}

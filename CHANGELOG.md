@@ -1,3 +1,8 @@
+# 2.1.0 (Unreleased)
+
+* Add support for stateful toxics
+* Add limit_data toxic
+
 # 2.0.0
 
 * Add CLI (`toxiproxy-cli`) and rename server binary to `toxiproxy-server` #93

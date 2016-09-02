@@ -28,6 +28,7 @@ clean:
 	rm -f *.deb
 
 test:
+	echo "Testing with" `go version`
 	GOMAXPROCS=4 GOPATH=$(COMBINED_GOPATH) go test -v -race ./...
 
 tmp/build/$(SERVER_NAME)-linux-amd64:
