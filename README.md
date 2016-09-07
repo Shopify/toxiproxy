@@ -429,6 +429,7 @@ All endpoints are JSON.
 
  - **GET /proxies** - List existing proxies and their toxics
  - **POST /proxies** - Create a new proxy
+ - **POST /populate** - Create or replace a list of proxies
  - **GET /proxies/{proxy}** - Show the proxy with all its active toxics
  - **POST /proxies/{proxy}** - Update a proxy's fields
  - **DELETE /proxies/{proxy}** - Delete an existing proxy
