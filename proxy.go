@@ -6,7 +6,7 @@ import (
 
 	"github.com/Shopify/toxiproxy/stream"
 	"github.com/Sirupsen/logrus"
-	"gopkg.in/tomb.v1"
+	tomb "gopkg.in/tomb.v1"
 
 	"net"
 )

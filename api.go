@@ -132,16 +132,19 @@ func (server *ApiServer) ProxyCreate(response http.ResponseWriter, request *http
 }
 
 func (server *ApiServer) Populate(response http.ResponseWriter, request *http.Request) {
-	input := []Proxy{}
+	input := []struct {
+		Proxy
+		Enabled *bool `json:"enabled"` // Overrides Proxy field to make field nullable
+	}{}
 
 	err := json.NewDecoder(request.Body).Decode(&input)
 	if apiError(response, joinError(err, ErrBadRequestBody)) {
 		return
 	}
 
-	proxiesCreated := []*Proxy{}
-
-	for _, p := range input {
+	// Check for valid input before creating any proxies
+	t := true
+	for i, p := range input {
 		if len(p.Name) < 1 {
 			apiError(response, joinError(fmt.Errorf("name"), ErrMissingField))
 			return
@@ -150,42 +153,49 @@ func (server *ApiServer) Populate(response http.ResponseWriter, request *http.Re
 			apiError(response, joinError(fmt.Errorf("upstream"), ErrMissingField))
 			return
 		}
+		if p.Enabled == nil {
+			input[i].Enabled = &t
+		}
+	}
 
-		// TODO(jpittis) Defaulting to enabled is not standard but I dont see another way.
-		p.Enabled = true
+	proxies := make([]proxyToxics, 0, len(input))
 
+	responseCode := http.StatusCreated
+	var apiErr *ApiError
+	for _, p := range input {
 		proxy := NewProxy()
 		proxy.Name = p.Name
 		proxy.Listen = p.Listen
 		proxy.Upstream = p.Upstream
 
-		// TODO(jpittis) Tried to make this transactional. Kinda a mess of error handling code.
-		err = server.Collection.Add(proxy, p.Enabled)
+		err = server.Collection.AddOrReplace(proxy, *p.Enabled)
 		if err != nil {
-			for _, p := range proxiesCreated {
-				err := server.Collection.Remove(p.Name)
-				if apiError(response, err) {
-					return
-				}
+			var ok bool
+			apiErr, ok = err.(*ApiError)
+			if !ok {
+				logrus.Warn("Error did not include status code: ", err)
+				apiErr = &ApiError{err.Error(), http.StatusInternalServerError}
 			}
-			if apiError(response, joinError(err, ErrBadRequestBody)) {
-				return
-			}
+			responseCode = apiErr.StatusCode
+			break
 		}
 
-		proxiesCreated = append(proxiesCreated, proxy)
+		proxies = append(proxies, proxyWithToxics(proxy))
 	}
 
-	data, err := json.Marshal(proxiesWithToxics(proxiesCreated))
+	data, err := json.Marshal(struct {
+		*ApiError `json:",omitempty"`
+		Proxies   []proxyToxics `json:"proxies"`
+	}{apiErr, proxies})
 	if apiError(response, err) {
 		return
 	}
 
 	response.Header().Set("Content-Type", "application/json")
-	response.WriteHeader(http.StatusCreated)
+	response.WriteHeader(responseCode)
 	_, err = response.Write(data)
 	if err != nil {
-		logrus.Warn("ProxyCreate: Failed to write response to client", err)
+		logrus.Warn("Populate: Failed to write response to client", err)
 	}
 }
 
@@ -382,7 +392,7 @@ func (server *ApiServer) Version(response http.ResponseWriter, request *http.Req
 }
 
 type ApiError struct {
-	Message    string `json:"title"`
+	Message    string `json:"error"`
 	StatusCode int    `json:"status"`
 }
 
@@ -415,7 +425,7 @@ var (
 func apiError(resp http.ResponseWriter, err error) bool {
 	obj, ok := err.(*ApiError)
 	if !ok && err != nil {
-		logrus.Warn("Error did not include status code:", err)
+		logrus.Warn("Error did not include status code: ", err)
 		obj = &ApiError{err.Error(), http.StatusInternalServerError}
 	}
 
@@ -425,7 +435,7 @@ func apiError(resp http.ResponseWriter, err error) bool {
 
 	data, err2 := json.Marshal(obj)
 	if err2 != nil {
-		logrus.Warn("Error json encoding error (╯°□°）╯︵ ┻━┻", err2)
+		logrus.Warn("Error json encoding error (╯°□°）╯︵ ┻━┻ ", err2)
 	}
 	resp.Header().Set("Content-Type", "application/json")
 	http.Error(resp, string(data), obj.StatusCode)
@@ -442,12 +452,4 @@ func proxyWithToxics(proxy *Proxy) (result proxyToxics) {
 	result.Proxy = proxy
 	result.Toxics = proxy.Toxics.GetToxicArray()
 	return
-}
-
-func proxiesWithToxics(proxies []*Proxy) []proxyToxics {
-	result := make([]proxyToxics, len(proxies))
-	for i := range proxies {
-		result[i] = proxyWithToxics(proxies[i])
-	}
-	return result
 }
