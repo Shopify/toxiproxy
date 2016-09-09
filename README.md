@@ -82,8 +82,7 @@ development and CI environments.
 ## Example
 
 Let's walk through an example with a Rails application. Note that Toxiproxy is
-in no way tied to Ruby, it's just been our first use case and it's currently the
-only language that has a client. You can see the full example at
+in no way tied to Ruby, it's just been our first use case. You can see the full example at
 [Sirupsen/toxiproxy-rails-example](https://github.com/Sirupsen/toxiproxy-rails-example).
 To get started right away, jump down to [Usage](#usage).
 
