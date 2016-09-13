@@ -72,6 +72,7 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 				link.stubs[i].State = stateful.NewState()
 			} else {
 				link.stubs[i].State = link.pairedLink.stubs[toxic.PairedToxic.Index].State
+				link.stubs[i].Toxicity = link.pairedLink.stubs[toxic.PairedToxic.Index].Toxicity
 			}
 		}
 

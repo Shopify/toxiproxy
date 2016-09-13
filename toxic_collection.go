@@ -146,7 +146,6 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 	return wrapper, nil
 }
 
-// tODO Update bidirectional toxics
 func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (*toxics.ToxicWrapper, error) {
 	c.Lock()
 	defer c.Unlock()
@@ -166,19 +165,24 @@ func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (*toxics.
 		}
 		toxic.Toxicity = attrs.Toxicity
 
+		if toxic.PairedToxic != nil {
+			c.chainUpdateToxic(toxic.PairedToxic)
+		}
 		c.chainUpdateToxic(toxic)
 		return toxic, nil
 	}
 	return nil, ErrToxicNotFound
 }
 
-// TODO Remove bidirectional toxics
 func (c *ToxicCollection) RemoveToxic(name string) error {
 	c.Lock()
 	defer c.Unlock()
 
 	toxic := c.findToxicByName(name)
 	if toxic != nil {
+		if toxic.PairedToxic != nil {
+			c.chainRemoveToxic(toxic.PairedToxic)
+		}
 		c.chainRemoveToxic(toxic)
 		return nil
 	}

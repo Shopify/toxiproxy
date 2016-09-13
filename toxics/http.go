@@ -3,7 +3,6 @@ package toxics
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -13,7 +12,11 @@ import (
 type HttpToxic struct{}
 
 type HttpToxicState struct {
-	Shared bool
+	Requests chan *http.Request
+}
+
+func (t *HttpToxic) FilterRequests(req *http.Request) bool {
+	return req.URL.Path == "/foo"
 }
 
 func (t *HttpToxic) ModifyResponse(resp *http.Response) {
@@ -22,9 +25,29 @@ func (t *HttpToxic) ModifyResponse(resp *http.Response) {
 
 func (t *HttpToxic) PipeRequest(stub *ToxicStub) {
 	state := stub.State.(*HttpToxicState)
-	state.Shared = true
-	// TODO
-	new(NoopToxic).Pipe(stub)
+
+	buffer := bytes.NewBuffer(make([]byte, 0, 32*1024))
+	writer := stream.NewChanWriter(stub.Output)
+	reader := stream.NewChanReader(stub.Input)
+	reader.SetInterrupt(stub.Interrupt)
+	for {
+		tee := io.TeeReader(reader, buffer)
+		req, err := http.ReadRequest(bufio.NewReader(tee))
+		if err == stream.ErrInterrupted {
+			buffer.WriteTo(writer)
+			return
+		} else if err == io.EOF || err == io.ErrUnexpectedEOF {
+			stub.Close()
+			return
+		}
+		if err != nil {
+			buffer.WriteTo(writer)
+		} else {
+			state.Requests <- req
+			req.Write(writer)
+		}
+		buffer.Reset()
+	}
 }
 
 func (t *HttpToxic) Pipe(stub *ToxicStub) {
@@ -37,6 +60,7 @@ func (t *HttpToxic) Pipe(stub *ToxicStub) {
 	for {
 		tee := io.TeeReader(reader, buffer)
 		resp, err := http.ReadResponse(bufio.NewReader(tee), nil)
+		req := <-state.Requests
 		if err == stream.ErrInterrupted {
 			buffer.WriteTo(writer)
 			return
@@ -47,8 +71,9 @@ func (t *HttpToxic) Pipe(stub *ToxicStub) {
 		if err != nil {
 			buffer.WriteTo(writer)
 		} else {
-			fmt.Println("Shared:", state.Shared) // This should be true if the shared state is working
-			t.ModifyResponse(resp)
+			if t.FilterRequests(req) {
+				t.ModifyResponse(resp)
+			}
 			resp.Write(writer)
 		}
 		buffer.Reset()
@@ -56,7 +81,9 @@ func (t *HttpToxic) Pipe(stub *ToxicStub) {
 }
 
 func (t *HttpToxic) NewState() interface{} {
-	return new(HttpToxicState)
+	return &HttpToxicState{
+		Requests: make(chan *http.Request, 1),
+	}
 }
 
 func init() {
