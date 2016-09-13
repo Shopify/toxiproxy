@@ -58,6 +58,7 @@ stopping you from creating a client in any other language (see
   1. [Proxy fields](#proxy-fields)
   2. [Toxic fields](#toxic-fields)
   3. [Endpoints](#endpoints)
+  4. [Populating Proxies](#populating-proxies)
 7. [CLI example](#cli-example)
 8. [FAQ](#frequently-asked-questions)
 9. [Development](#development)
@@ -440,6 +441,16 @@ All endpoints are JSON.
  - **DELETE /proxies/{proxy}/toxics/{toxic}** - Remove an active toxic
  - **POST /reset** - Enable all proxies and remove all active toxics
  - **GET /version** - Returns the server version number
+
+#### Populating Proxies
+
+Proxies can be added and configured in bulk using the `/populate` endpoint. This is done by
+passing an json array of proxies to toxiproxy. If a proxy with the same name already exists,
+it will be compared to the new proxy and replaced if the `upstream` and `listen` address don't match.
+
+A `/populate` call can be included for example at application start to ensure all required proxies
+exist. It is safe to make this call several times, since proxies will be untouched as long as their
+fields are consistent with the new data.
 
 ### CLI Example
 

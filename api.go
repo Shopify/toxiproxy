@@ -146,11 +146,11 @@ func (server *ApiServer) Populate(response http.ResponseWriter, request *http.Re
 	t := true
 	for i, p := range input {
 		if len(p.Name) < 1 {
-			apiError(response, joinError(fmt.Errorf("name"), ErrMissingField))
+			apiError(response, joinError(fmt.Errorf("name at proxy %d", i+1), ErrMissingField))
 			return
 		}
 		if len(p.Upstream) < 1 {
-			apiError(response, joinError(fmt.Errorf("upstream"), ErrMissingField))
+			apiError(response, joinError(fmt.Errorf("upstream at proxy %d", i+1), ErrMissingField))
 			return
 		}
 		if p.Enabled == nil {

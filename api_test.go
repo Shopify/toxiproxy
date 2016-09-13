@@ -132,6 +132,36 @@ func TestPopulateDefaultEnabled(t *testing.T) {
 	})
 }
 
+func TestPopulateDisabledProxy(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxies, err := client.Populate([]tclient.Proxy{
+			{
+				Name:     "one",
+				Listen:   "localhost:7070",
+				Upstream: "localhost:7171",
+				Enabled:  false,
+			},
+			{
+				Name:     "two",
+				Listen:   "localhost:7373",
+				Upstream: "localhost:7474",
+				Enabled:  true,
+			},
+		})
+
+		if err != nil {
+			t.Fatal("Unable to populate:", err)
+		} else if len(testProxies) != 2 {
+			t.Fatalf("Wrong number of proxies returned: %d != 2", len(testProxies))
+		} else if testProxies[0].Name != "one" || testProxies[1].Name != "two" {
+			t.Fatalf("Wrong proxy names returned: %s, %s", testProxies[0].Name, testProxies[1].Name)
+		}
+
+		AssertProxyUp(t, "localhost:7070", false)
+		AssertProxyUp(t, "localhost:7373", true)
+	})
+}
+
 func TestPopulateExistingProxy(t *testing.T) {
 	WithServer(t, func(addr string) {
 		testProxy, err := client.CreateProxy("one", "localhost:7070", "localhost:7171")
@@ -206,7 +236,7 @@ func TestPopulateWithBadName(t *testing.T) {
 
 		if err == nil {
 			t.Fatal("Expected Populate to fail.")
-		} else if err.Error() != "Populate: HTTP 400: missing required field: name" {
+		} else if err.Error() != "Populate: HTTP 400: missing required field: name at proxy 2" {
 			t.Fatal("Expected different error during populate:", err)
 		} else if len(testProxies) != 0 {
 			t.Fatalf("Wrong number of proxies returned: %d != 0", len(testProxies))
