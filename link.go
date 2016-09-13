@@ -18,12 +18,13 @@ import (
 // Input > ToxicStub > ToxicStub > Output
 //
 type ToxicLink struct {
-	stubs     []*toxics.ToxicStub
-	proxy     *Proxy
-	toxics    *ToxicCollection
-	input     *stream.ChanWriter
-	output    *stream.ChanReader
-	direction stream.Direction
+	stubs      []*toxics.ToxicStub
+	proxy      *Proxy
+	toxics     *ToxicCollection
+	input      *stream.ChanWriter
+	output     *stream.ChanReader
+	direction  stream.Direction
+	pairedLink *ToxicLink
 }
 
 func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Direction) *ToxicLink {
@@ -67,7 +68,11 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 	}()
 	for i, toxic := range link.toxics.chain[link.direction] {
 		if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
-			link.stubs[i].State = stateful.NewState()
+			if toxic.PairedToxic == nil || link.pairedLink.stubs[toxic.PairedToxic.Index].State == nil {
+				link.stubs[i].State = stateful.NewState()
+			} else {
+				link.stubs[i].State = link.pairedLink.stubs[toxic.PairedToxic.Index].State
+			}
 		}
 
 		go link.stubs[i].Run(toxic)
@@ -99,7 +104,11 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 		link.stubs[i-1].Output = newin
 
 		if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
-			link.stubs[i].State = stateful.NewState()
+			if toxic.PairedToxic == nil || link.pairedLink.stubs[toxic.PairedToxic.Index].State == nil {
+				link.stubs[i].State = stateful.NewState()
+			} else {
+				link.pairedLink.stubs[toxic.PairedToxic.Index].State = link.stubs[i].State
+			}
 		}
 
 		go link.stubs[i].Run(toxic)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 	"sync"
 
@@ -67,12 +68,11 @@ func (c *ToxicCollection) GetToxicArray() []toxics.Toxic {
 
 	result := make([]toxics.Toxic, 0)
 	for dir := range c.chain {
-		for i, toxic := range c.chain[dir] {
-			if i == 0 {
-				// Skip the first noop toxic, it should not be visible
-				continue
+		for _, toxic := range c.chain[dir] {
+			if len(toxic.Name) > 0 {
+				// Skip toxics with no name, they should be hidden
+				result = append(result, toxic)
 			}
-			result = append(result, toxic)
 		}
 	}
 	return result
@@ -96,20 +96,31 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 		return nil, joinError(err, ErrBadRequestBody)
 	}
 
-	switch strings.ToLower(wrapper.Stream) {
-	case "downstream":
-		wrapper.Direction = stream.Downstream
-	case "upstream":
-		wrapper.Direction = stream.Upstream
-	default:
-		return nil, ErrInvalidStream
-	}
-	if wrapper.Name == "" {
-		wrapper.Name = fmt.Sprintf("%s_%s", wrapper.Type, wrapper.Stream)
-	}
-
 	if toxics.New(wrapper) == nil {
 		return nil, ErrInvalidToxicType
+	}
+
+	if wrapper.PairedToxic == nil {
+		switch strings.ToLower(wrapper.Stream) {
+		case "downstream":
+			wrapper.Direction = stream.Downstream
+		case "upstream":
+			wrapper.Direction = stream.Upstream
+		default:
+			return nil, ErrInvalidStream
+		}
+	} else {
+		wrapper.Stream = "both"
+		wrapper.Direction = stream.Downstream
+		wrapper.PairedToxic.Direction = stream.Upstream
+	}
+
+	if wrapper.Name == "" {
+		if wrapper.PairedToxic != nil {
+			wrapper.Name = wrapper.Type
+		} else {
+			wrapper.Name = fmt.Sprintf("%s_%s", wrapper.Type, wrapper.Stream)
+		}
 	}
 
 	found := c.findToxicByName(wrapper.Name)
@@ -129,9 +140,13 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 	}
 
 	c.chainAddToxic(wrapper)
+	if wrapper.PairedToxic != nil {
+		c.chainAddToxic(wrapper.PairedToxic)
+	}
 	return wrapper, nil
 }
 
+// tODO Update bidirectional toxics
 func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (*toxics.ToxicWrapper, error) {
 	c.Lock()
 	defer c.Unlock()
@@ -157,6 +172,7 @@ func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (*toxics.
 	return nil, ErrToxicNotFound
 }
 
+// TODO Remove bidirectional toxics
 func (c *ToxicCollection) RemoveToxic(name string) error {
 	c.Lock()
 	defer c.Unlock()
@@ -169,13 +185,21 @@ func (c *ToxicCollection) RemoveToxic(name string) error {
 	return ErrToxicNotFound
 }
 
-func (c *ToxicCollection) StartLink(name string, input io.Reader, output io.WriteCloser, direction stream.Direction) {
+func (c *ToxicCollection) StartLinks(name string, client, upstream net.Conn) {
 	c.Lock()
 	defer c.Unlock()
 
-	link := NewToxicLink(c.proxy, c, direction)
-	link.Start(name, input, output)
-	c.links[name] = link
+	linkUp := NewToxicLink(c.proxy, c, stream.Upstream)
+	linkDown := NewToxicLink(c.proxy, c, stream.Downstream)
+
+	linkUp.pairedLink = linkDown
+	linkDown.pairedLink = linkUp
+
+	linkUp.Start(name+"upstream", client, upstream)
+	linkDown.Start(name+"downstream", upstream, client)
+
+	c.links[name+"upstream"] = linkUp
+	c.links[name+"downstream"] = linkDown
 }
 
 func (c *ToxicCollection) RemoveLink(name string) {
@@ -187,12 +211,8 @@ func (c *ToxicCollection) RemoveLink(name string) {
 // All following functions assume the lock is already grabbed
 func (c *ToxicCollection) findToxicByName(name string) *toxics.ToxicWrapper {
 	for dir := range c.chain {
-		for i, toxic := range c.chain[dir] {
-			if i == 0 {
-				// Skip the first noop toxic, it has no name
-				continue
-			}
-			if toxic.Name == name {
+		for _, toxic := range c.chain[dir] {
+			if len(toxic.Name) > 0 && toxic.Name == name {
 				return toxic
 			}
 		}

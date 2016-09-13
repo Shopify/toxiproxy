@@ -31,6 +31,7 @@ type CleanupToxic interface {
 	Cleanup(*ToxicStub)
 }
 
+// Buffered toxics include a buffer for incoming data so that delays don't block other toxics.
 type BufferedToxic interface {
 	// Defines the size of buffer this toxic should use
 	GetBufferSize() int
@@ -44,15 +45,26 @@ type StatefulToxic interface {
 	NewState() interface{}
 }
 
+// TODO Test everything about bidirectional toxics
+// - Toxicity
+// - Duplicate names
+// - Hidden toxic pair
+// - Add/Update/Remove
+// - State
+type BidirectionalToxic interface {
+	PipeRequest(*ToxicStub)
+}
+
 type ToxicWrapper struct {
-	Toxic      `json:"attributes"`
-	Name       string           `json:"name"`
-	Type       string           `json:"type"`
-	Stream     string           `json:"stream"`
-	Toxicity   float32          `json:"toxicity"`
-	Direction  stream.Direction `json:"-"`
-	Index      int              `json:"-"`
-	BufferSize int              `json:"-"`
+	Toxic       `json:"attributes"`
+	Name        string           `json:"name"`
+	Type        string           `json:"type"`
+	Stream      string           `json:"stream"`
+	Toxicity    float32          `json:"toxicity"`
+	Direction   stream.Direction `json:"-"`
+	Index       int              `json:"-"`
+	BufferSize  int              `json:"-"`
+	PairedToxic *ToxicWrapper    `json:"-"`
 }
 
 type ToxicStub struct {
@@ -78,8 +90,14 @@ func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.Stream
 func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 	s.running = make(chan struct{})
 	defer close(s.running)
+	// TODO: How will toxicity work with bidirectional toxics?
 	if rand.Float32() < toxic.Toxicity {
-		toxic.Pipe(s)
+		if toxic.PairedToxic == nil || toxic.Direction == stream.Downstream {
+			toxic.Pipe(s)
+		} else {
+			bidirectional := toxic.Toxic.(BidirectionalToxic)
+			bidirectional.PipeRequest(s)
+		}
 	} else {
 		new(NoopToxic).Pipe(s)
 	}
@@ -139,6 +157,15 @@ func New(wrapper *ToxicWrapper) Toxic {
 		wrapper.BufferSize = buffered.GetBufferSize()
 	} else {
 		wrapper.BufferSize = 0
+	}
+	if _, ok := wrapper.Toxic.(BidirectionalToxic); ok {
+		wrapper.PairedToxic = &ToxicWrapper{
+			Toxic:       wrapper.Toxic,
+			Type:        wrapper.Type,
+			Toxicity:    1, // TODO how will toxicity work?
+			BufferSize:  wrapper.BufferSize,
+			PairedToxic: wrapper,
+		}
 	}
 	return wrapper.Toxic
 }

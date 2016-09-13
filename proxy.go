@@ -2,13 +2,11 @@ package toxiproxy
 
 import (
 	"errors"
+	"net"
 	"sync"
 
-	"github.com/Shopify/toxiproxy/stream"
 	"github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v1"
-
-	"net"
 )
 
 // Proxy represents the proxy in its entirity with all its links. The main
@@ -176,8 +174,7 @@ func (proxy *Proxy) server() {
 		proxy.connections.list[name+"upstream"] = upstream
 		proxy.connections.list[name+"downstream"] = client
 		proxy.connections.Unlock()
-		proxy.Toxics.StartLink(name+"upstream", client, upstream, stream.Upstream)
-		proxy.Toxics.StartLink(name+"downstream", upstream, client, stream.Downstream)
+		proxy.Toxics.StartLinks(name, client, upstream)
 	}
 }
 
