@@ -108,7 +108,8 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 			if toxic.PairedToxic == nil || link.pairedLink.stubs[toxic.PairedToxic.Index].State == nil {
 				link.stubs[i].State = stateful.NewState()
 			} else {
-				link.pairedLink.stubs[toxic.PairedToxic.Index].State = link.stubs[i].State
+				link.stubs[i].State = link.pairedLink.stubs[toxic.PairedToxic.Index].State
+				link.stubs[i].Toxicity = link.pairedLink.stubs[toxic.PairedToxic.Index].Toxicity
 			}
 		}
 

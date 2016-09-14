@@ -3,6 +3,7 @@ package toxics_test
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"math/rand"
 	"net"
 	"strconv"
@@ -18,11 +19,13 @@ type EchoToxic struct {
 }
 
 type EchoToxicState struct {
-	Request chan *stream.StreamChunk
+	Request          chan *stream.StreamChunk
+	UpstreamToxicity float32
 }
 
 func (t *EchoToxic) PipeRequest(stub *toxics.ToxicStub) {
 	state := stub.State.(*EchoToxicState)
+	state.UpstreamToxicity = stub.Toxicity
 
 	for {
 		select {
@@ -53,6 +56,9 @@ func (t *EchoToxic) Pipe(stub *toxics.ToxicStub) {
 			}
 			if t.Replace {
 				c.Data = []byte("foobar\n")
+			}
+			if stub.Toxicity != state.UpstreamToxicity {
+				c.Data = []byte(fmt.Sprintf("Incorrect toxicity: %f != %f\n", stub.Toxicity, state.UpstreamToxicity))
 			}
 			stub.Output <- c
 		}
@@ -208,4 +214,73 @@ func TestBidirectionalToxicDuplicateName(t *testing.T) {
 	proxy.Stop()
 }
 
-// TODO: Test toxicity on bidirectional toxics
+func TestBidirectionalToxicWithStartToxicity(t *testing.T) {
+	for existing := 0; existing < 2; existing++ {
+		WithEchoToxic(t, existing > 0, func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy) {
+			proxyServer.Toxics.RemoveToxic("echo_test")
+			AssertToxicEchoResponse(t, proxy, response, true)
+
+			proxyServer.Toxics.AddToxicJson(bytes.NewReader([]byte(`{"type": "echo_test", "toxicity": 0.5}`)))
+
+			_, err := proxy.Write([]byte("hello world\n"))
+			if err != nil {
+				t.Error("Failed writing to TCP server", err)
+			}
+
+			scan := bufio.NewScanner(proxy)
+			if !scan.Scan() {
+				t.Error("Server unexpectedly closed connection")
+			}
+
+			resp := scan.Bytes()
+			if !bytes.Equal(resp, []byte("hello world")) {
+				t.Error("Client didn't read correct bytes from proxy:", string(resp), "!= hello world")
+			}
+
+			// Clear out response, it's random if the request made it through or not
+			select {
+			case <-response:
+			default:
+			}
+
+			proxyServer.Toxics.RemoveToxic("echo_test")
+
+			AssertToxicEchoResponse(t, proxy, response, true)
+		})
+	}
+}
+
+func TestBidirectionalToxicWithUpdatedToxicity(t *testing.T) {
+	for existing := 0; existing < 2; existing++ {
+		WithEchoToxic(t, existing > 0, func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy) {
+			AssertToxicEchoResponse(t, proxy, response, false)
+
+			proxyServer.Toxics.UpdateToxicJson("echo_test", bytes.NewReader([]byte(`{"toxicity": 0.5}`)))
+
+			_, err := proxy.Write([]byte("hello world\n"))
+			if err != nil {
+				t.Error("Failed writing to TCP server", err)
+			}
+
+			scan := bufio.NewScanner(proxy)
+			if !scan.Scan() {
+				t.Error("Server unexpectedly closed connection")
+			}
+
+			resp := scan.Bytes()
+			if !bytes.Equal(resp, []byte("hello world")) {
+				t.Error("Client didn't read correct bytes from proxy:", string(resp), "!= hello world")
+			}
+
+			// Clear out response, it's random if the request made it through or not
+			select {
+			case <-response:
+			default:
+			}
+
+			proxyServer.Toxics.RemoveToxic("echo_test")
+
+			AssertToxicEchoResponse(t, proxy, response, true)
+		})
+	}
+}

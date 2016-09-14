@@ -166,6 +166,7 @@ func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (*toxics.
 		toxic.Toxicity = attrs.Toxicity
 
 		if toxic.PairedToxic != nil {
+			toxic.PairedToxic.Toxicity = attrs.Toxicity
 			c.chainUpdateToxic(toxic.PairedToxic)
 		}
 		c.chainUpdateToxic(toxic)
