@@ -1,3 +1,7 @@
+# 2.2.0 (unreleased)
+
+* Add bidirectional toxics #132
+
 # 2.1.3
 
 * Update `/version` endpoint to also return a charset of utf-8. #204
