@@ -62,11 +62,11 @@ func (c *ToxicCollection) GetToxic(name string) *toxics.ToxicWrapper {
 	return c.findToxicByName(name)
 }
 
-func (c *ToxicCollection) GetToxicArray() []toxics.Toxic {
+func (c *ToxicCollection) GetToxicArray() []*toxics.ToxicWrapper {
 	c.Lock()
 	defer c.Unlock()
 
-	result := make([]toxics.Toxic, 0)
+	result := make([]*toxics.ToxicWrapper, 0)
 	for dir := range c.chain {
 		for _, toxic := range c.chain[dir] {
 			if len(toxic.Name) > 0 {

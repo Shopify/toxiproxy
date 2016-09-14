@@ -45,13 +45,10 @@ type StatefulToxic interface {
 	NewState() interface{}
 }
 
-// TODO Test everything about bidirectional toxics
-// - Toxicity
-// - Duplicate names
-// - Hidden toxic pair
-// - Add/Update/Remove
-// - State
+// Bidirectional toxics operate on both TCP streams and allow state to be shared.
+// PipeRequest() will oparate on the upstream, while Pipe() will operate on the downstream.
 type BidirectionalToxic interface {
+	// Defines the packet flow through an upstream ToxicStub. Operates the same as Pipe().
 	PipeRequest(*ToxicStub)
 }
 
@@ -164,7 +161,7 @@ func New(wrapper *ToxicWrapper) Toxic {
 		wrapper.PairedToxic = &ToxicWrapper{
 			Toxic:       wrapper.Toxic,
 			Type:        wrapper.Type,
-			Toxicity:    1, // TODO how will toxicity work?
+			Toxicity:    wrapper.Toxicity,
 			BufferSize:  wrapper.BufferSize,
 			PairedToxic: wrapper,
 		}
