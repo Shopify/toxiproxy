@@ -8,6 +8,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 )
@@ -29,7 +31,6 @@ type Toxic struct {
 
 type Toxics []Toxic
 
-// Proxy represents a Proxy.
 type Proxy struct {
 	Name     string `json:"name"`     // The name of the proxy
 	Listen   string `json:"listen"`   // The address the proxy listens on
@@ -130,21 +131,32 @@ func (client *Client) Proxy(name string) (*Proxy, error) {
 
 // Create a list of proxies using a configuration list. If a proxy already exists, it will be replaced
 // with the specified configuration. For large amounts of proxies, `config` can be loaded from a file.
-func (client *Client) Populate(config []Proxy) (map[string]*Proxy, error) {
-	proxies := make(map[string]*Proxy, len(config))
-	for _, proxy := range config {
-		existing, err := client.Proxy(proxy.Name)
-		if err != nil && err.Error() != "Proxy: HTTP 404: proxy not found" {
-			return nil, err
-		} else if existing != nil && (existing.Listen != proxy.Listen || existing.Upstream != proxy.Upstream) {
-			existing.Delete()
-		}
-		proxies[proxy.Name], err = client.CreateProxy(proxy.Name, proxy.Listen, proxy.Upstream)
-		if err != nil {
-			return nil, err
-		}
+// Returns a list of the successfully created proxies.
+func (client *Client) Populate(config []Proxy) ([]*Proxy, error) {
+	proxies := struct {
+		Proxies []*Proxy `json:"proxies"`
+	}{}
+	request, err := json.Marshal(config)
+	if err != nil {
+		return nil, err
 	}
-	return proxies, nil
+
+	resp, err := http.Post(client.endpoint+"/populate", "application/json", bytes.NewReader(request))
+	if err != nil {
+		return nil, err
+	}
+
+	// Response body may need to be read twice, we want to return both the proxy list and any errors
+	var body bytes.Buffer
+	tee := io.TeeReader(resp.Body, &body)
+	err = json.NewDecoder(tee).Decode(&proxies)
+	if err != nil {
+		return nil, err
+	}
+
+	resp.Body = ioutil.NopCloser(&body)
+	err = checkError(resp, http.StatusCreated, "Populate")
+	return proxies.Proxies, err
 }
 
 // Save saves changes to a proxy such as its enabled status or upstream port.
@@ -328,12 +340,12 @@ func (client *Client) ResetState() error {
 }
 
 type ApiError struct {
-	Title  string `json:"title"`
-	Status int    `json:"status"`
+	Message string `json:"error"`
+	Status  int    `json:"status"`
 }
 
 func (err *ApiError) Error() string {
-	return fmt.Sprintf("HTTP %d: %s", err.Status, err.Title)
+	return fmt.Sprintf("HTTP %d: %s", err.Status, err.Message)
 }
 
 func checkError(resp *http.Response, expectedCode int, caller string) error {
@@ -341,7 +353,7 @@ func checkError(resp *http.Response, expectedCode int, caller string) error {
 		apiError := new(ApiError)
 		err := json.NewDecoder(resp.Body).Decode(apiError)
 		if err != nil {
-			apiError.Title = fmt.Sprintf("Unexpected response code, expected %d", expectedCode)
+			apiError.Message = fmt.Sprintf("Unexpected response code, expected %d", expectedCode)
 			apiError.Status = resp.StatusCode
 		}
 		return fmt.Errorf("%s: %v", caller, apiError)

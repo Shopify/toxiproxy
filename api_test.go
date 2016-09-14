@@ -1,6 +1,7 @@
 package toxiproxy_test
 
 import (
+	"bytes"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -67,6 +68,233 @@ func TestCreateProxyBlankUpstream(t *testing.T) {
 			t.Fatal("Expected error creating proxy, got nil")
 		} else if err.Error() != "Create: HTTP 400: missing required field: upstream" {
 			t.Fatal("Expected different error creating proxy:", err)
+		}
+	})
+}
+
+func TestPopulateProxy(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxies, err := client.Populate([]tclient.Proxy{
+			{
+				Name:     "one",
+				Listen:   "localhost:7070",
+				Upstream: "localhost:7171",
+				Enabled:  true,
+			},
+			{
+				Name:     "two",
+				Listen:   "localhost:7373",
+				Upstream: "localhost:7474",
+				Enabled:  true,
+			},
+		})
+
+		if err != nil {
+			t.Fatal("Unable to populate:", err)
+		} else if len(testProxies) != 2 {
+			t.Fatalf("Wrong number of proxies returned: %d != 2", len(testProxies))
+		} else if testProxies[0].Name != "one" || testProxies[1].Name != "two" {
+			t.Fatalf("Wrong proxy names returned: %s, %s", testProxies[0].Name, testProxies[1].Name)
+		}
+
+		for _, p := range testProxies {
+			AssertProxyUp(t, p.Listen, true)
+		}
+	})
+}
+
+func TestPopulateDefaultEnabled(t *testing.T) {
+	WithServer(t, func(addr string) {
+		request := []byte(`[{"name": "test", "listen": "localhost:7070", "upstream": "localhost:7171"}]`)
+
+		resp, err := http.Post(addr+"/populate", "application/json", bytes.NewReader(request))
+		if err != nil {
+			t.Fatal("Failed to send POST to /populate:", err)
+		}
+
+		if resp.StatusCode != http.StatusCreated {
+			message, _ := ioutil.ReadAll(resp.Body)
+			t.Fatalf("Failed to populate proxy list: HTTP %s\n%s", resp.Status, string(message))
+		}
+
+		proxies, err := client.Proxies()
+		if err != nil {
+			t.Fatal(err)
+		} else if len(proxies) != 1 {
+			t.Fatalf("Wrong number of proxies created: %d != 1", len(proxies))
+		} else if _, ok := proxies["test"]; !ok {
+			t.Fatalf("Wrong proxy name returned")
+		}
+
+		for _, p := range proxies {
+			AssertProxyUp(t, p.Listen, true)
+		}
+	})
+}
+
+func TestPopulateDisabledProxy(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxies, err := client.Populate([]tclient.Proxy{
+			{
+				Name:     "one",
+				Listen:   "localhost:7070",
+				Upstream: "localhost:7171",
+				Enabled:  false,
+			},
+			{
+				Name:     "two",
+				Listen:   "localhost:7373",
+				Upstream: "localhost:7474",
+				Enabled:  true,
+			},
+		})
+
+		if err != nil {
+			t.Fatal("Unable to populate:", err)
+		} else if len(testProxies) != 2 {
+			t.Fatalf("Wrong number of proxies returned: %d != 2", len(testProxies))
+		} else if testProxies[0].Name != "one" || testProxies[1].Name != "two" {
+			t.Fatalf("Wrong proxy names returned: %s, %s", testProxies[0].Name, testProxies[1].Name)
+		}
+
+		AssertProxyUp(t, "localhost:7070", false)
+		AssertProxyUp(t, "localhost:7373", true)
+	})
+}
+
+func TestPopulateExistingProxy(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxy, err := client.CreateProxy("one", "localhost:7070", "localhost:7171")
+		if err != nil {
+			t.Fatal("Unable to create proxy:", err)
+		}
+		_, err = client.CreateProxy("two", "localhost:7373", "localhost:7474")
+		if err != nil {
+			t.Fatal("Unable to create proxy:", err)
+		}
+
+		// Create a toxic so we can make sure the proxy wasn't replaced
+		_, err = testProxy.AddToxic("", "latency", "downstream", 1, nil)
+		if err != nil {
+			t.Fatal("Unable to create toxic:", err)
+		}
+
+		testProxies, err := client.Populate([]tclient.Proxy{
+			{
+				Name:     "one",
+				Listen:   "127.0.0.1:7070", // TODO(xthexder): Will replace existing proxy if not resolved ip...
+				Upstream: "localhost:7171",
+				Enabled:  true,
+			},
+			{
+				Name:     "two",
+				Listen:   "127.0.0.1:7575",
+				Upstream: "localhost:7676",
+				Enabled:  true,
+			},
+		})
+
+		if err != nil {
+			t.Fatal("Unable to populate:", err)
+		} else if len(testProxies) != 2 {
+			t.Fatalf("Wrong number of proxies returned: %d != 2", len(testProxies))
+		} else if testProxies[0].Name != "one" || testProxies[1].Name != "two" {
+			t.Fatalf("Wrong proxy names returned: %s, %s", testProxies[0].Name, testProxies[1].Name)
+		} else if testProxies[0].Listen != "127.0.0.1:7070" || testProxies[1].Listen != "127.0.0.1:7575" {
+			t.Fatalf("Wrong proxy listen addresses returned: %s, %s", testProxies[0].Listen, testProxies[1].Listen)
+		}
+
+		toxics, err := testProxy.Toxics()
+		if err != nil {
+			t.Fatal("Unable to get toxics:", err)
+		}
+		if len(toxics) != 1 || toxics[0].Type != "latency" {
+			t.Fatalf("Populate did not preseve existing proxy. (%d toxics)", len(toxics))
+		}
+
+		for _, p := range testProxies {
+			AssertProxyUp(t, p.Listen, true)
+		}
+	})
+}
+
+func TestPopulateWithBadName(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxies, err := client.Populate([]tclient.Proxy{
+			{
+				Name:     "one",
+				Listen:   "localhost:7070",
+				Upstream: "localhost:7171",
+				Enabled:  true,
+			},
+			{
+				Name:    "",
+				Listen:  "",
+				Enabled: true,
+			},
+		})
+
+		if err == nil {
+			t.Fatal("Expected Populate to fail.")
+		} else if err.Error() != "Populate: HTTP 400: missing required field: name at proxy 2" {
+			t.Fatal("Expected different error during populate:", err)
+		} else if len(testProxies) != 0 {
+			t.Fatalf("Wrong number of proxies returned: %d != 0", len(testProxies))
+		}
+
+		proxies, err := client.Proxies()
+		if err != nil {
+			t.Fatal(err)
+		} else if len(proxies) != 0 {
+			t.Fatalf("Expected no proxies to be created: %d != 0", len(proxies))
+		}
+	})
+}
+
+func TestPopulateProxyWithBadDataShouldReturnError(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxies, err := client.Populate([]tclient.Proxy{
+			{
+				Name:     "one",
+				Listen:   "localhost:7070",
+				Upstream: "localhost:7171",
+				Enabled:  true,
+			},
+			{
+				Name:     "two",
+				Listen:   "local373",
+				Upstream: "localhost:7474",
+				Enabled:  true,
+			},
+			{
+				Name:     "three",
+				Listen:   "localhost:7575",
+				Upstream: "localhost:7676",
+				Enabled:  true,
+			},
+		})
+
+		if err == nil {
+			t.Fatal("Expected Populate to fail.")
+		} else if len(testProxies) != 1 {
+			t.Fatalf("Wrong number of proxies returned: %d != %d", len(testProxies), 1)
+		} else if testProxies[0].Name != "one" {
+			t.Fatalf("Wrong proxy name returned: %s != one", testProxies[0].Name)
+		}
+
+		for _, p := range testProxies {
+			AssertProxyUp(t, p.Listen, true)
+		}
+
+		proxies, err := client.Proxies()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, p := range proxies {
+			if p.Name == "two" || p.Name == "three" {
+				t.Fatalf("Proxy %s exists, populate did not fail correctly.")
+			}
 		}
 	})
 }

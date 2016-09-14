@@ -11,7 +11,7 @@ import (
 
 	"github.com/Shopify/toxiproxy"
 	"github.com/Sirupsen/logrus"
-	"gopkg.in/tomb.v1"
+	tomb "gopkg.in/tomb.v1"
 )
 
 func init() {
@@ -308,7 +308,7 @@ func TestRestartFailedToStartProxy(t *testing.T) {
 func AssertProxyUp(t *testing.T, addr string, up bool) net.Conn {
 	conn, err := net.Dial("tcp", addr)
 	if err != nil && up {
-		t.Error("Expected proxy to be up", err)
+		t.Error("Expected proxy to be up:", err)
 	} else if err == nil && !up {
 		t.Error("Expected proxy to be down")
 	}

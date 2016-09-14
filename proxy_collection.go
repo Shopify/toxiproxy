@@ -38,6 +38,29 @@ func (collection *ProxyCollection) Add(proxy *Proxy, start bool) error {
 	return nil
 }
 
+func (collection *ProxyCollection) AddOrReplace(proxy *Proxy, start bool) error {
+	collection.Lock()
+	defer collection.Unlock()
+
+	if existing, exists := collection.proxies[proxy.Name]; exists {
+		if existing.Listen == proxy.Listen && existing.Upstream == proxy.Upstream {
+			return nil
+		}
+		existing.Stop()
+	}
+
+	if start {
+		err := proxy.Start()
+		if err != nil {
+			return err
+		}
+	}
+
+	collection.proxies[proxy.Name] = proxy
+
+	return nil
+}
+
 func (collection *ProxyCollection) Proxies() map[string]*Proxy {
 	collection.RLock()
 	defer collection.RUnlock()
