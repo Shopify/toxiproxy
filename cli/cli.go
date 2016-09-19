@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -8,21 +10,38 @@ import (
 	toxiproxyServer "github.com/Shopify/toxiproxy"
 	"github.com/Shopify/toxiproxy/client"
 	"github.com/urfave/cli"
-
-	"fmt"
-	"os"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
-	redColor    = "\x1b[31m"
-	greenColor  = "\x1b[32m"
-	yellowColor = "\x1b[33m"
-	blueColor   = "\x1b[34m"
-	cyanColor   = "\x1b[36m"
-	purpleColor = "\x1b[35m"
-	grayColor   = "\x1b[37m"
-	noColor     = "\x1b[0m"
+	RED = iota
+	GREEN
+	YELLOW
+	BLUE
+	CYAN
+	PURPLE
+	GRAY
+	NONE
 )
+
+var colors = map[int]string{
+	RED:    "\x1b[31m",
+	GREEN:  "\x1b[32m",
+	YELLOW: "\x1b[33m",
+	BLUE:   "\x1b[34m",
+	CYAN:   "\x1b[36m",
+	PURPLE: "\x1b[35m",
+	GRAY:   "\x1b[37m",
+	NONE:   "\x1b[0m",
+}
+
+func color(color int) string {
+	if isTTY {
+		return colors[color]
+	} else {
+		return ""
+	}
+}
 
 var toxicDescription = `
 	Default Toxics:
@@ -60,6 +79,7 @@ var toxicDescription = `
 `
 
 var hostname string
+var isTTY bool
 
 func main() {
 	app := cli.NewApp()
@@ -131,7 +151,7 @@ func main() {
 							Name:  "toxicity, tox",
 							Usage: "toxicity of toxic",
 						},
-						cli.StringFlag{
+						cli.StringSliceFlag{
 							Name:  "attributes, a",
 							Usage: "comma seperated key=value toxic attributes",
 						},
@@ -160,7 +180,7 @@ func main() {
 							Name:  "toxicity, tox",
 							Usage: "toxicity of toxic",
 						},
-						cli.StringFlag{
+						cli.StringSliceFlag{
 							Name:  "attributes, a",
 							Usage: "comma seperated key=value toxic attributes",
 						},
@@ -196,6 +216,8 @@ func main() {
 		},
 	}
 
+	isTTY = terminal.IsTerminal(int(os.Stdout.Fd()))
+
 	app.Run(os.Args)
 }
 
@@ -220,26 +242,34 @@ func list(c *cli.Context, t *toxiproxy.Client) error {
 	}
 	sort.Strings(proxyNames)
 
-	fmt.Fprintf(os.Stderr, "%sListen\t\t%sUpstream\t%sName\t%sEnabled\t%sToxics\n%s", blueColor, yellowColor,
-		greenColor, purpleColor, redColor, noColor)
-	fmt.Fprintf(os.Stderr, "%s======================================================================\n", noColor)
+	if isTTY {
+		fmt.Printf("%sName\t\t\t%sListen\t\t%sUpstream\t\t%sEnabled\t\t%sToxics\n%s", color(GREEN), color(BLUE),
+			color(YELLOW), color(PURPLE), color(RED), color(NONE))
+		fmt.Printf("%s======================================================================================\n", color(NONE))
 
-	if len(proxyNames) == 0 {
-		fmt.Printf("%sno proxies\n\n%s", redColor, noColor)
-		hint("create a proxy with `toxiproxy-cli create`")
-		return nil
+		if len(proxyNames) == 0 {
+			fmt.Printf("%sno proxies\n%s", color(RED), color(NONE))
+			hint("create a proxy with `toxiproxy-cli create`")
+			return nil
+		}
 	}
 
 	for _, proxyName := range proxyNames {
 		proxy := proxies[proxyName]
 		numToxics := strconv.Itoa(len(proxy.ActiveToxics))
-		if numToxics == "0" {
+		if numToxics == "0" && isTTY {
 			numToxics = "None"
 		}
-		fmt.Printf("%s%s\t%s%s\t%s%s\t%s%v\t%s%s%s\n", blueColor, proxy.Listen, yellowColor, proxy.Upstream,
-			enabledColor(proxy.Enabled), proxy.Name, purpleColor, proxy.Enabled, redColor, numToxics, noColor)
+		if proxy.Enabled {
+			printWidth(GREEN, proxy.Name, 3)
+		} else {
+			printWidth(RED, proxy.Name, 3)
+		}
+		printWidth(BLUE, proxy.Listen, 2)
+		printWidth(YELLOW, proxy.Upstream, 3)
+		printWidth(PURPLE, enabledText(proxy.Enabled), 2)
+		fmt.Printf("%s%s%s\n", color(RED), numToxics, color(NONE))
 	}
-	fmt.Println()
 	hint("inspect toxics with `toxiproxy-cli inspect <proxyName>`")
 	return nil
 }
@@ -256,35 +286,38 @@ func inspectProxy(c *cli.Context, t *toxiproxy.Client) error {
 		return errorf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 
-	fmt.Printf("%sName: %s%s\t", purpleColor, noColor, proxy.Name)
-	fmt.Printf("%sListen: %s%s\t", blueColor, noColor, proxy.Listen)
-	fmt.Printf("%sUpstream: %s%s\n", yellowColor, noColor, proxy.Upstream)
-	fmt.Printf("%s======================================================================\n", noColor)
+	if isTTY {
+		fmt.Printf("%sName: %s%s\t", color(PURPLE), color(NONE), proxy.Name)
+		fmt.Printf("%sListen: %s%s\t", color(BLUE), color(NONE), proxy.Listen)
+		fmt.Printf("%sUpstream: %s%s\n", color(YELLOW), color(NONE), proxy.Upstream)
+		fmt.Printf("%s======================================================================\n", color(NONE))
 
-	splitToxics := func(toxics toxiproxy.Toxics) (toxiproxy.Toxics, toxiproxy.Toxics) {
-		upstream := make(toxiproxy.Toxics, 0)
-		downstream := make(toxiproxy.Toxics, 0)
-		for _, toxic := range toxics {
-			if toxic.Stream == "upstream" {
-				upstream = append(upstream, toxic)
-			} else {
-				downstream = append(downstream, toxic)
+		splitToxics := func(toxics toxiproxy.Toxics) (toxiproxy.Toxics, toxiproxy.Toxics) {
+			upstream := make(toxiproxy.Toxics, 0)
+			downstream := make(toxiproxy.Toxics, 0)
+			for _, toxic := range toxics {
+				if toxic.Stream == "upstream" {
+					upstream = append(upstream, toxic)
+				} else {
+					downstream = append(downstream, toxic)
+				}
 			}
+			return upstream, downstream
 		}
-		return upstream, downstream
-	}
 
-	if len(proxy.ActiveToxics) == 0 {
-		fmt.Printf("%sProxy has no toxics enabled.\n%s", redColor, noColor)
+		if len(proxy.ActiveToxics) == 0 {
+			fmt.Printf("%sProxy has no toxics enabled.\n%s", color(RED), color(NONE))
+		} else {
+			up, down := splitToxics(proxy.ActiveToxics)
+			listToxics(up, "Upstream")
+			fmt.Println()
+			listToxics(down, "Downstream")
+		}
+
+		hint("add a toxic with `toxiproxy-cli toxic add`")
 	} else {
-		up, down := splitToxics(proxy.ActiveToxics)
-		listToxics(up, "Upstream")
-		fmt.Println()
-		listToxics(down, "Downstream")
+		listToxics(proxy.ActiveToxics, "")
 	}
-	fmt.Println()
-
-	hint("add a toxic with `toxiproxy-cli toxic add`")
 	return nil
 }
 
@@ -307,7 +340,7 @@ func toggleProxy(c *cli.Context, t *toxiproxy.Client) error {
 		return errorf("Failed to toggle proxy %s: %s\n", proxyName, err.Error())
 	}
 
-	fmt.Printf("Proxy %s%s%s is now %s%s%s\n", enabledColor(proxy.Enabled), proxyName, noColor, enabledColor(proxy.Enabled), enabledText(proxy.Enabled), noColor)
+	fmt.Printf("Proxy %s%s%s is now %s%s%s\n", colorEnabled(proxy.Enabled), proxyName, color(NONE), colorEnabled(proxy.Enabled), enabledText(proxy.Enabled), color(NONE))
 	return nil
 }
 
@@ -376,10 +409,6 @@ func addToxic(c *cli.Context, t *toxiproxy.Client) error {
 	if err != nil {
 		return err
 	}
-	toxicAttributes, err := getArgOrFail(c, "attributes")
-	if err != nil {
-		return err
-	}
 
 	upstream := c.Bool("upstream")
 	downstream := c.Bool("downstream")
@@ -389,10 +418,7 @@ func addToxic(c *cli.Context, t *toxiproxy.Client) error {
 		return err
 	}
 
-	attributes, err := parseAttributes(toxicAttributes)
-	if err != nil {
-		return err
-	}
+	attributes := parseAttributes(c, "attributes")
 
 	p, err := t.Proxy(proxyName)
 	if err != nil {
@@ -432,15 +458,8 @@ func updateToxic(c *cli.Context, t *toxiproxy.Client) error {
 	if err != nil {
 		return err
 	}
-	toxicAttributes, err := getArgOrFail(c, "attributes")
-	if err != nil {
-		return err
-	}
 
-	attributes, err := parseAttributes(toxicAttributes)
-	if err != nil {
-		return err
-	}
+	attributes := parseAttributes(c, "attributes")
 
 	p, err := t.Proxy(proxyName)
 	if err != nil {
@@ -486,29 +505,30 @@ func removeToxic(c *cli.Context, t *toxiproxy.Client) error {
 	return nil
 }
 
-func parseAttributes(raw string) (toxiproxy.Attributes, error) {
+func parseAttributes(c *cli.Context, name string) toxiproxy.Attributes {
 	parsed := map[string]interface{}{}
-	keyValues := strings.Split(raw, ",")
-	for _, keyValue := range keyValues {
-		kv := strings.SplitN(keyValue, "=", 2)
-		if len(kv) != 2 {
-			return nil, errorf("Attributes should be in format key1=value1,key2=value2\n")
+	args := c.StringSlice(name)
+
+	for _, raw := range args {
+		kv := strings.SplitN(raw, "=", 2)
+		if len(kv) < 2 {
+			continue
 		}
-		value, err := strconv.Atoi(kv[1])
-		if err != nil {
-			return nil, errorf("Toxic attributes was expected to be an integer.\n")
+		if float, err := strconv.ParseFloat(kv[1], 64); err == nil {
+			parsed[kv[0]] = float
+		} else {
+			parsed[kv[0]] = kv[1]
 		}
-		parsed[kv[0]] = value
 	}
-	return parsed, nil
+	return parsed
 }
 
-func enabledColor(enabled bool) string {
+func colorEnabled(enabled bool) string {
 	if enabled {
-		return greenColor
+		return color(GREEN)
 	}
 
-	return redColor
+	return color(RED)
 }
 
 func enabledText(enabled bool) string {
@@ -540,23 +560,29 @@ func sortedAttributes(attrs toxiproxy.Attributes) attributeList {
 }
 
 func listToxics(toxics toxiproxy.Toxics, stream string) {
-	fmt.Printf("%s%s toxics:\n%s", greenColor, stream, noColor)
-	if len(toxics) == 0 {
-		fmt.Printf("%sProxy has no %s toxics enabled.\n%s", redColor, stream, noColor)
-		return
+	if isTTY {
+		fmt.Printf("%s%s toxics:\n%s", color(GREEN), stream, color(NONE))
+		if len(toxics) == 0 {
+			fmt.Printf("%sProxy has no %s toxics enabled.\n%s", color(RED), stream, color(NONE))
+			return
+		}
 	}
 	for _, t := range toxics {
-		fmt.Printf("%s%s:%s ", redColor, t.Name, noColor)
-		fmt.Printf("type=%s ", t.Type)
-		fmt.Printf("stream=%s ", t.Stream)
-		fmt.Printf("toxicity=%.2f ", t.Toxicity)
+		if isTTY {
+			fmt.Printf("%s%s:%s\t", color(BLUE), t.Name, color(NONE))
+		} else {
+			fmt.Printf("%s\t", t.Name)
+		}
+		fmt.Printf("type=%s\t", t.Type)
+		fmt.Printf("stream=%s\t", t.Stream)
+		fmt.Printf("toxicity=%.2f\t", t.Toxicity)
 		fmt.Printf("attributes=[")
 		sorted := sortedAttributes(t.Attributes)
 		for _, a := range sorted {
-			fmt.Printf(" %s=", a.key)
+			fmt.Printf("\t%s=", a.key)
 			fmt.Print(a.value)
 		}
-		fmt.Printf(" ]\n")
+		fmt.Printf("\t]\n")
 	}
 }
 
@@ -570,9 +596,23 @@ func getArgOrFail(c *cli.Context, name string) (string, error) {
 }
 
 func hint(m string) {
-	fmt.Printf("%sHint: %s\n", noColor, m)
+	if isTTY {
+		fmt.Printf("\n%sHint: %s\n", color(NONE), m)
+	}
 }
 
 func errorf(m string, args ...interface{}) error {
 	return cli.NewExitError(fmt.Sprintf(m, args...), 1)
+}
+
+func printWidth(col int, m string, numTabs int) {
+	if !isTTY {
+		numTabs = 0
+	} else {
+		numTabs -= len(m)/8 + 1
+		if numTabs < 0 {
+			numTabs = 0
+		}
+	}
+	fmt.Printf("%s%s%s\t%s", color(col), m, color(NONE), strings.Repeat("\t", numTabs))
 }
