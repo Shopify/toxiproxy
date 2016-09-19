@@ -199,21 +199,19 @@ func main() {
 	app.Run(os.Args)
 }
 
-type toxiAction func(*cli.Context, *toxiproxy.Client)
+type toxiAction func(*cli.Context, *toxiproxy.Client) error
 
 func withToxi(f toxiAction) func(*cli.Context) error {
 	return func(c *cli.Context) error {
 		toxiproxyClient := toxiproxy.NewClient(hostname)
-		f(c, toxiproxyClient)
-
-		return nil
+		return f(c, toxiproxyClient)
 	}
 }
 
-func list(c *cli.Context, t *toxiproxy.Client) {
+func list(c *cli.Context, t *toxiproxy.Client) error {
 	proxies, err := t.Proxies()
 	if err != nil {
-		fatalf("Failed to retrieve proxies: %s", err)
+		return errorf("Failed to retrieve proxies: %s", err)
 	}
 
 	var proxyNames []string
@@ -229,7 +227,7 @@ func list(c *cli.Context, t *toxiproxy.Client) {
 	if len(proxyNames) == 0 {
 		fmt.Printf("%sno proxies\n\n%s", redColor, noColor)
 		hint("create a proxy with `toxiproxy-cli create`")
-		return
+		return nil
 	}
 
 	for _, proxyName := range proxyNames {
@@ -243,17 +241,19 @@ func list(c *cli.Context, t *toxiproxy.Client) {
 	}
 	fmt.Println()
 	hint("inspect toxics with `toxiproxy-cli inspect <proxyName>`")
+	return nil
 }
-func inspectProxy(c *cli.Context, t *toxiproxy.Client) {
+
+func inspectProxy(c *cli.Context, t *toxiproxy.Client) error {
 	proxyName := c.Args().First()
 	if proxyName == "" {
 		cli.ShowSubcommandHelp(c)
-		fatalf("Proxy name is required as the first argument.\n")
+		return errorf("Proxy name is required as the first argument.\n")
 	}
 
 	proxy, err := t.Proxy(proxyName)
 	if err != nil {
-		fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
+		return errorf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 
 	fmt.Printf("%sName: %s%s\t", purpleColor, noColor, proxy.Name)
@@ -285,178 +285,222 @@ func inspectProxy(c *cli.Context, t *toxiproxy.Client) {
 	fmt.Println()
 
 	hint("add a toxic with `toxiproxy-cli toxic add`")
+	return nil
 }
 
-func toggleProxy(c *cli.Context, t *toxiproxy.Client) {
+func toggleProxy(c *cli.Context, t *toxiproxy.Client) error {
 	proxyName := c.Args().First()
 	if proxyName == "" {
 		cli.ShowSubcommandHelp(c)
-		fatalf("Proxy name is required as the first argument.\n")
+		return errorf("Proxy name is required as the first argument.\n")
 	}
 
 	proxy, err := t.Proxy(proxyName)
 	if err != nil {
-		fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
+		return errorf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 
 	proxy.Enabled = !proxy.Enabled
 
 	err = proxy.Save()
 	if err != nil {
-		fatalf("Failed to toggle proxy %s: %s\n", proxyName, err.Error())
+		return errorf("Failed to toggle proxy %s: %s\n", proxyName, err.Error())
 	}
 
 	fmt.Printf("Proxy %s%s%s is now %s%s%s\n", enabledColor(proxy.Enabled), proxyName, noColor, enabledColor(proxy.Enabled), enabledText(proxy.Enabled), noColor)
+	return nil
 }
 
-func createProxy(c *cli.Context, t *toxiproxy.Client) {
+func createProxy(c *cli.Context, t *toxiproxy.Client) error {
 	proxyName := c.Args().First()
 	if proxyName == "" {
 		cli.ShowSubcommandHelp(c)
-		fatalf("Proxy name is required as the first argument.\n")
+		return errorf("Proxy name is required as the first argument.\n")
 	}
-	listen := getArgOrFail(c, "listen")
-	upstream := getArgOrFail(c, "upstream")
-	_, err := t.CreateProxy(proxyName, listen, upstream)
+	listen, err := getArgOrFail(c, "listen")
 	if err != nil {
-		fatalf("Failed to create proxy: %s\n", err.Error())
+		return err
+	}
+	upstream, err := getArgOrFail(c, "upstream")
+	if err != nil {
+		return err
+	}
+	_, err = t.CreateProxy(proxyName, listen, upstream)
+	if err != nil {
+		return errorf("Failed to create proxy: %s\n", err.Error())
 	}
 	fmt.Printf("Created new proxy %s\n", proxyName)
+	return nil
 }
 
-func deleteProxy(c *cli.Context, t *toxiproxy.Client) {
+func deleteProxy(c *cli.Context, t *toxiproxy.Client) error {
 	proxyName := c.Args().First()
 	if proxyName == "" {
 		cli.ShowSubcommandHelp(c)
-		fatalf("Proxy name is required as the first argument.\n")
+		return errorf("Proxy name is required as the first argument.\n")
 	}
 	p, err := t.Proxy(proxyName)
 	if err != nil {
-		fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
+		return errorf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 
 	err = p.Delete()
 	if err != nil {
-		fatalf("Failed to delete proxy: %s\n", err.Error())
+		return errorf("Failed to delete proxy: %s\n", err.Error())
 	}
 	fmt.Printf("Deleted proxy %s\n", proxyName)
+	return nil
 }
 
-func parseToxicity(c *cli.Context, defaultToxicity float32) float32 {
+func parseToxicity(c *cli.Context, defaultToxicity float32) (float32, error) {
 	var toxicity = defaultToxicity
 	toxicityString := c.String("toxicity")
 	if toxicityString != "" {
 		tox, err := strconv.ParseFloat(toxicityString, 32)
 		if err != nil || tox > 1 || tox < 0 {
-			fatalf("toxicity should be a float between 0 and 1.\n")
+			return 0, errorf("toxicity should be a float between 0 and 1.\n")
 		}
 		toxicity = float32(tox)
 	}
-	return toxicity
+	return toxicity, nil
 }
 
-func addToxic(c *cli.Context, t *toxiproxy.Client) {
+func addToxic(c *cli.Context, t *toxiproxy.Client) error {
 	proxyName := c.Args().First()
 	if proxyName == "" {
 		cli.ShowSubcommandHelp(c)
-		fatalf("Proxy name is required as the first argument.\n")
+		return errorf("Proxy name is required as the first argument.\n")
 	}
 	toxicName := c.String("toxicName")
-	toxicType := getArgOrFail(c, "type")
-	toxicAttributes := getArgOrFail(c, "attributes")
+	toxicType, err := getArgOrFail(c, "type")
+	if err != nil {
+		return err
+	}
+	toxicAttributes, err := getArgOrFail(c, "attributes")
+	if err != nil {
+		return err
+	}
 
 	upstream := c.Bool("upstream")
 	downstream := c.Bool("downstream")
 
-	toxicity := parseToxicity(c, 1.0)
+	toxicity, err := parseToxicity(c, 1.0)
+	if err != nil {
+		return err
+	}
 
-	attributes := parseAttributes(toxicAttributes)
+	attributes, err := parseAttributes(toxicAttributes)
+	if err != nil {
+		return err
+	}
 
 	p, err := t.Proxy(proxyName)
 	if err != nil {
-		fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
+		return errorf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 
-	addToxic := func(stream string) {
+	addToxic := func(stream string) error {
 		t, err := p.AddToxic(toxicName, toxicType, stream, toxicity, attributes)
 		if err != nil {
-			fatalf("Failed to add toxic: %s\n", err.Error())
+			return errorf("Failed to add toxic: %s\n", err.Error())
 		}
 		toxicName = t.Name
 		fmt.Printf("Added %s %s toxic '%s' on proxy '%s'\n", stream, toxicType, toxicName, proxyName)
+		return nil
 	}
 
 	if upstream {
-		addToxic("upstream")
+		err := addToxic("upstream")
+		if err != nil {
+			return err
+		}
 	}
 	// Default to downstream.
 	if downstream || (!downstream && !upstream) {
-		addToxic("downstream")
+		return addToxic("downstream")
 	}
+	return nil
 }
 
-func updateToxic(c *cli.Context, t *toxiproxy.Client) {
+func updateToxic(c *cli.Context, t *toxiproxy.Client) error {
 	proxyName := c.Args().First()
 	if proxyName == "" {
 		cli.ShowSubcommandHelp(c)
-		fatalf("Proxy name is required as the first argument.\n")
+		return errorf("Proxy name is required as the first argument.\n")
 	}
-	toxicName := getArgOrFail(c, "toxicName")
-	toxicAttributes := getArgOrFail(c, "attributes")
+	toxicName, err := getArgOrFail(c, "toxicName")
+	if err != nil {
+		return err
+	}
+	toxicAttributes, err := getArgOrFail(c, "attributes")
+	if err != nil {
+		return err
+	}
 
-	attributes := parseAttributes(toxicAttributes)
+	attributes, err := parseAttributes(toxicAttributes)
+	if err != nil {
+		return err
+	}
 
 	p, err := t.Proxy(proxyName)
 	if err != nil {
-		fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
+		return errorf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 
-	toxicity := parseToxicity(c, -1)
+	toxicity, err := parseToxicity(c, -1)
+	if err != nil {
+		return nil
+	}
 
 	_, err = p.UpdateToxic(toxicName, toxicity, attributes)
 	if err != nil {
-		fatalf("Failed to update toxic: %s\n", err.Error())
+		return errorf("Failed to update toxic: %s\n", err.Error())
 	}
 
 	fmt.Printf("Updated toxic '%s' on proxy '%s'\n", toxicName, proxyName)
+	return nil
 }
 
-func removeToxic(c *cli.Context, t *toxiproxy.Client) {
+func removeToxic(c *cli.Context, t *toxiproxy.Client) error {
 	proxyName := c.Args().First()
 	if proxyName == "" {
 		cli.ShowSubcommandHelp(c)
-		fatalf("Proxy name is required as the first argument.\n")
+		return errorf("Proxy name is required as the first argument.\n")
 	}
-	toxicName := getArgOrFail(c, "toxicName")
+	toxicName, err := getArgOrFail(c, "toxicName")
+	if err != nil {
+		return err
+	}
 
 	p, err := t.Proxy(proxyName)
 	if err != nil {
-		fatalf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
+		return errorf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
 	}
 
 	err = p.RemoveToxic(toxicName)
 	if err != nil {
-		fatalf("Failed to remove toxic: %s\n", err.Error())
+		return errorf("Failed to remove toxic: %s\n", err.Error())
 	}
 
 	fmt.Printf("Removed toxic '%s' on proxy '%s'\n", toxicName, proxyName)
+	return nil
 }
 
-func parseAttributes(raw string) toxiproxy.Attributes {
+func parseAttributes(raw string) (toxiproxy.Attributes, error) {
 	parsed := map[string]interface{}{}
 	keyValues := strings.Split(raw, ",")
 	for _, keyValue := range keyValues {
 		kv := strings.SplitN(keyValue, "=", 2)
 		if len(kv) != 2 {
-			fatalf("Attributes should be in format key1=value1,key2=value2\n")
+			return nil, errorf("Attributes should be in format key1=value1,key2=value2\n")
 		}
 		value, err := strconv.Atoi(kv[1])
 		if err != nil {
-			fatalf("Toxic attributes was expected to be an integer.\n")
+			return nil, errorf("Toxic attributes was expected to be an integer.\n")
 		}
 		parsed[kv[0]] = value
 	}
-	return parsed
+	return parsed, nil
 }
 
 func enabledColor(enabled bool) string {
@@ -516,20 +560,19 @@ func listToxics(toxics toxiproxy.Toxics, stream string) {
 	}
 }
 
-func getArgOrFail(c *cli.Context, name string) string {
+func getArgOrFail(c *cli.Context, name string) (string, error) {
 	arg := c.String(name)
 	if arg == "" {
 		cli.ShowSubcommandHelp(c)
-		fatalf("Required argument '%s' was empty.\n", name)
+		return "", errorf("Required argument '%s' was empty.\n", name)
 	}
-	return arg
+	return arg, nil
 }
 
 func hint(m string) {
 	fmt.Printf("%sHint: %s\n", noColor, m)
 }
 
-func fatalf(m string, args ...interface{}) {
-	fmt.Printf(m, args...)
-	os.Exit(1)
+func errorf(m string, args ...interface{}) error {
+	return cli.NewExitError(fmt.Sprintf(m, args...), 1)
 }
