@@ -14,30 +14,19 @@ import (
 )
 
 const (
-	RED = iota
-	GREEN
-	YELLOW
-	BLUE
-	CYAN
-	PURPLE
-	GRAY
-	NONE
+	RED    = "\x1b[31m"
+	GREEN  = "\x1b[32m"
+	YELLOW = "\x1b[33m"
+	BLUE   = "\x1b[34m"
+	CYAN   = "\x1b[36m"
+	PURPLE = "\x1b[35m"
+	GRAY   = "\x1b[37m"
+	NONE   = "\x1b[0m"
 )
 
-var colors = map[int]string{
-	RED:    "\x1b[31m",
-	GREEN:  "\x1b[32m",
-	YELLOW: "\x1b[33m",
-	BLUE:   "\x1b[34m",
-	CYAN:   "\x1b[36m",
-	PURPLE: "\x1b[35m",
-	GRAY:   "\x1b[37m",
-	NONE:   "\x1b[0m",
-}
-
-func color(color int) string {
+func color(color string) string {
 	if isTTY {
-		return colors[color]
+		return color
 	} else {
 		return ""
 	}
@@ -260,11 +249,7 @@ func list(c *cli.Context, t *toxiproxy.Client) error {
 		if numToxics == "0" && isTTY {
 			numToxics = "None"
 		}
-		if proxy.Enabled {
-			printWidth(GREEN, proxy.Name, 3)
-		} else {
-			printWidth(RED, proxy.Name, 3)
-		}
+		printWidth(color(colorEnabled(proxy.Enabled)), proxy.Name, 3)
 		printWidth(BLUE, proxy.Listen, 2)
 		printWidth(YELLOW, proxy.Upstream, 3)
 		printWidth(PURPLE, enabledText(proxy.Enabled), 2)
@@ -605,14 +590,14 @@ func errorf(m string, args ...interface{}) error {
 	return cli.NewExitError(fmt.Sprintf(m, args...), 1)
 }
 
-func printWidth(col int, m string, numTabs int) {
-	if !isTTY {
-		numTabs = 0
-	} else {
+func printWidth(col string, m string, numTabs int) {
+	if isTTY {
 		numTabs -= len(m)/8 + 1
 		if numTabs < 0 {
 			numTabs = 0
 		}
+	} else {
+		numTabs = 0
 	}
 	fmt.Printf("%s%s%s\t%s", color(col), m, color(NONE), strings.Repeat("\t", numTabs))
 }
