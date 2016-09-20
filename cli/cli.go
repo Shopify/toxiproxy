@@ -51,13 +51,13 @@ var toxicDescription = `
 
 	toxic add:
 		usage: toxiproxy-cli add <proxyName> --type <toxicType> --toxicName <toxicName> \
-		--attributes <key1=value1,key2=value2...> --upstream --downstream
+		--attribute <key=value> --upstream --downstream
 
 		example: toxiproxy-cli toxic add myProxy -t latency -n myToxic -f latency=100,jitter=50
 
 	toxic update:
 		usage: toxiproxy-cli update <proxyName> --toxicName <toxicName> \
-		--attributes <key1=value1,key2=value2...>
+		--attribute <key1=value1> --attribute <key2=value2>
 
 		example: toxiproxy-cli toxic update myProxy -n myToxic -f jitter=25
 
@@ -141,8 +141,8 @@ func main() {
 							Usage: "toxicity of toxic",
 						},
 						cli.StringSliceFlag{
-							Name:  "attributes, a",
-							Usage: "comma seperated key=value toxic attributes",
+							Name:  "attribute, a",
+							Usage: "toxic attribute in key=value format",
 						},
 						cli.BoolFlag{
 							Name:  "upstream, u",
@@ -170,8 +170,8 @@ func main() {
 							Usage: "toxicity of toxic",
 						},
 						cli.StringSliceFlag{
-							Name:  "attributes, a",
-							Usage: "comma seperated key=value toxic attributes",
+							Name:  "attribute, a",
+							Usage: "toxic attribute in key=value format",
 						},
 					},
 					Action: withToxi(updateToxic),
@@ -403,7 +403,7 @@ func addToxic(c *cli.Context, t *toxiproxy.Client) error {
 		return err
 	}
 
-	attributes := parseAttributes(c, "attributes")
+	attributes := parseAttributes(c, "attribute")
 
 	p, err := t.Proxy(proxyName)
 	if err != nil {
@@ -444,7 +444,7 @@ func updateToxic(c *cli.Context, t *toxiproxy.Client) error {
 		return err
 	}
 
-	attributes := parseAttributes(c, "attributes")
+	attributes := parseAttributes(c, "attribute")
 
 	p, err := t.Proxy(proxyName)
 	if err != nil {
