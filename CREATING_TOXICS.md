@@ -152,7 +152,7 @@ Bidirectional toxics allow state to be shared for the `upstream` and `downstream
 toxic implementation. They also ensure direction-specific code is always run on the correct pipe
 (a toxic that only works on the `upstream` can't be added to the `downstream`).
 
-Creating a bidirectional toxic is done by implementing a second `Pipe()` function called `PipeRequest()`.
+Creating a bidirectional toxic is done by implementing a second `Pipe()` function called `PipeUpstream()`.
 The implementation is same as a regular toxic, and can be paired with other types such as a stateful toxic.
 
 One use case of a bidirectional toxic is to mock out the backend server entirely, which is shown below:
@@ -164,8 +164,8 @@ type EchoToxicState struct {
     Request          chan *stream.StreamChunk
 }
 
-// PipeRequest handles the upstream direction
-func (t *EchoToxic) PipeRequest(stub *toxics.ToxicStub) {
+// PipeUpstream handles the upstream direction
+func (t *EchoToxic) PipeUpstream(stub *toxics.ToxicStub) {
     state := stub.State.(*EchoToxicState)
 
     for {

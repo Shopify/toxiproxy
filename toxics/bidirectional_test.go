@@ -23,7 +23,7 @@ type EchoToxicState struct {
 	UpstreamToxicity float32
 }
 
-func (t *EchoToxic) PipeRequest(stub *toxics.ToxicStub) {
+func (t *EchoToxic) PipeUpstream(stub *toxics.ToxicStub) {
 	state := stub.State.(*EchoToxicState)
 	state.UpstreamToxicity = stub.Toxicity
 

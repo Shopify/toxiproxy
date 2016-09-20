@@ -46,10 +46,10 @@ type StatefulToxic interface {
 }
 
 // Bidirectional toxics operate on both TCP streams and allow state to be shared.
-// PipeRequest() will oparate on the upstream, while Pipe() will operate on the downstream.
+// PipeUpstream() will oparate on the upstream, while Pipe() will operate on the downstream.
 type BidirectionalToxic interface {
 	// Defines the packet flow through an upstream ToxicStub. Operates the same as Pipe().
-	PipeRequest(*ToxicStub)
+	PipeUpstream(*ToxicStub)
 }
 
 type ToxicWrapper struct {
@@ -95,7 +95,7 @@ func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 			toxic.Pipe(s)
 		} else {
 			bidirectional := toxic.Toxic.(BidirectionalToxic)
-			bidirectional.PipeRequest(s)
+			bidirectional.PipeUpstream(s)
 		}
 	} else {
 		new(NoopToxic).Pipe(s)

@@ -1,6 +1,6 @@
 # 2.2.0 (unreleased)
 
-* Add bidirectional toxics #132
+* Add support for bidirectional toxics (for protocol-aware toxics) #132
 
 # 2.1.3
 

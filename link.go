@@ -67,14 +67,7 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		link.input.Close()
 	}()
 	for i, toxic := range link.toxics.chain[link.direction] {
-		if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
-			if toxic.PairedToxic == nil || link.pairedLink.stubs[toxic.PairedToxic.Index].State == nil {
-				link.stubs[i].State = stateful.NewState()
-			} else {
-				link.stubs[i].State = link.pairedLink.stubs[toxic.PairedToxic.Index].State
-				link.stubs[i].Toxicity = link.pairedLink.stubs[toxic.PairedToxic.Index].Toxicity
-			}
-		}
+		link.InitPairState(toxic)
 
 		go link.stubs[i].Run(toxic)
 	}
@@ -93,6 +86,22 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 	}()
 }
 
+func (link *ToxicLink) InitPairState(toxic *toxics.ToxicWrapper) {
+	// If the toxic is stateful, create a state object or copy it from the paired link.
+	if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
+		if toxic.PairedToxic == nil || link.pairedLink.stubs[toxic.PairedToxic.Index].State == nil {
+			link.stubs[toxic.Index].State = stateful.NewState()
+		} else {
+			link.stubs[toxic.Index].State = link.pairedLink.stubs[toxic.PairedToxic.Index].State
+		}
+	}
+
+	// If the toxic is paired, synchronize the toxicity so they are always in the same state.
+	if toxic.PairedToxic != nil {
+		link.stubs[toxic.Index].Toxicity = link.pairedLink.stubs[toxic.PairedToxic.Index].Toxicity
+	}
+}
+
 // Add a toxic to the end of the chain.
 func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	i := len(link.stubs)
@@ -104,14 +113,7 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	if link.stubs[i-1].InterruptToxic() {
 		link.stubs[i-1].Output = newin
 
-		if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
-			if toxic.PairedToxic == nil || link.pairedLink.stubs[toxic.PairedToxic.Index].State == nil {
-				link.stubs[i].State = stateful.NewState()
-			} else {
-				link.stubs[i].State = link.pairedLink.stubs[toxic.PairedToxic.Index].State
-				link.stubs[i].Toxicity = link.pairedLink.stubs[toxic.PairedToxic.Index].Toxicity
-			}
-		}
+		link.InitPairState(toxic)
 
 		go link.stubs[i].Run(toxic)
 		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1])
