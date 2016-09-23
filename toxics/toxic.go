@@ -51,21 +51,26 @@ type ToxicWrapper struct {
 }
 
 type ToxicStub struct {
-	Input     <-chan *stream.StreamChunk
-	Output    chan<- *stream.StreamChunk
-	State     interface{}
-	Interrupt chan struct{}
-	running   chan struct{}
-	closed    chan struct{}
+	Input      <-chan *stream.StreamChunk
+	Output     chan<- *stream.StreamChunk
+	State      interface{}
+	ReadWriter *stream.ChanReadWriter
+	Interrupt  chan struct{}
+	running    chan struct{}
+	closed     chan struct{}
 }
 
 func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.StreamChunk) *ToxicStub {
-	return &ToxicStub{
+	stub := &ToxicStub{
 		Interrupt: make(chan struct{}),
 		closed:    make(chan struct{}),
 		Input:     input,
 		Output:    output,
 	}
+	stub.ReadWriter = stream.NewChanReadWriter(input, output)
+	stub.ReadWriter.SetInterrupt(stub.Interrupt)
+	stub.ReadWriter.SetCloser(stub)
+	return stub
 }
 
 // Begin running a toxic on this stub, can be interrupted.

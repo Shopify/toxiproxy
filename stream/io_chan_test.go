@@ -153,6 +153,55 @@ func TestMultiWriteWithCopy(t *testing.T) {
 	}
 }
 
+func TestMultiRead(t *testing.T) {
+	send := []byte("hello world")
+	c := make(chan *StreamChunk)
+	writer := NewChanWriter(c)
+	reader := NewChanReader(c)
+	passed := make(chan bool)
+	go func() {
+		writer.Write(send)
+		select {
+		case c <- &StreamChunk{[]byte("garbage"), time.Now()}:
+		case <-passed:
+		}
+		writer.Close()
+	}()
+	buf := make([]byte, len(send))
+
+	n, err := reader.Read(buf[:8])
+	if n != 8 {
+		t.Fatalf("Read wrong number of bytes: %d expected 8", n)
+	}
+	if err != nil {
+		t.Fatal("Couldn't read from stream", err)
+	}
+	if !bytes.Equal(buf[:8], send[:8]) {
+		t.Fatal("Got wrong message from stream", string(buf[:8]))
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	n, err = reader.Read(buf[8:])
+	if n != len(buf[8:]) {
+		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(buf[8:]))
+	}
+	if err != nil {
+		t.Fatal("Couldn't read from stream", err)
+	}
+	if !bytes.Equal(buf, send) {
+		t.Fatal("Got wrong message from stream", string(buf))
+	}
+
+	passed <- true
+
+	n, err = reader.Read(buf)
+	if n != 0 {
+		t.Fatalf("Read from channel occured when it shouldn't have: %s", string(buf[:n]))
+	} else if err != io.EOF {
+		t.Fatal("Read returned wrong error after close:", err)
+	}
+}
+
 func TestReadInterrupt(t *testing.T) {
 	send := []byte("hello world")
 	c := make(chan *StreamChunk)
@@ -197,5 +246,17 @@ func TestReadInterrupt(t *testing.T) {
 	}
 	if !bytes.Equal(buf, send) {
 		t.Fatal("Got wrong message from stream", string(buf))
+	}
+}
+
+func TestBlankWrite(t *testing.T) {
+	c := make(chan *StreamChunk, 2)
+	writer := NewChanWriter(c)
+	writer.Write([]byte{})
+	writer.Write(nil)
+	writer.Close()
+
+	for v := range c {
+		t.Fatalf("Unexpected write to channel: %+v", v)
 	}
 }
