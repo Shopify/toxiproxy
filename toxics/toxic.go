@@ -67,9 +67,8 @@ func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.Stream
 		Input:     input,
 		Output:    output,
 	}
-	stub.ReadWriter = stream.NewChanReadWriter(input, output)
+	stub.ReadWriter = stream.NewChanReadWriter(input, output, stub)
 	stub.ReadWriter.SetInterrupt(stub.Interrupt)
-	stub.ReadWriter.SetCloser(stub)
 	return stub
 }
 

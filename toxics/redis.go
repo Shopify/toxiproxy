@@ -51,8 +51,6 @@ func (t *RedisToxic) Pipe(stub *ToxicStub) {
 			return
 		} else {
 			select {
-			case <-stub.Interrupt:
-				return
 			case cmd := <-state.Command:
 				str := cmd.StringArray()
 				if len(str) > 0 && str[0] == "SET" {
