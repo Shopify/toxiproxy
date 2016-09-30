@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"testing"
@@ -283,7 +284,10 @@ func AssertRead(t *testing.T, rw *ChanReadWriter, buf []byte, msg string, expect
 	ret = rw.HandleError(err)
 
 	if n != len(msg) {
-		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(msg))
+		t.Fatalf("Read wrong number of bytes: %d expected %d (%s expected %s)", n, len(msg), string(buf[:n]), msg)
+	}
+	if !bytes.Equal(buf[:n], []byte(msg)) {
+		t.Fatalf("Got wrong message from stream: %s expected %s", string(buf[:n]), msg)
 	}
 
 	if err != expectedErr {
@@ -297,9 +301,6 @@ func AssertRead(t *testing.T, rw *ChanReadWriter, buf []byte, msg string, expect
 		if ret {
 			t.Fatal("HandleError() did not return true for error:", err)
 		}
-	}
-	if !bytes.Equal(buf[:n], []byte(msg)) {
-		t.Fatalf("Got wrong message from stream: %s expected %s", string(buf[:n]), msg)
 	}
 	return
 }
@@ -330,9 +331,9 @@ func TestReadWriterBasicFull(t *testing.T) {
 	buf := make([]byte, 32)
 
 	AssertRead(t, rw, buf, "hello world", nil)
-	rw.Checkpoint()
+	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "foobar", nil)
-	rw.Checkpoint()
+	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "", io.EOF)
 
 	AssertClosed(t, output, closer, nil)
@@ -343,15 +344,15 @@ func TestReadWriterCheckpointRollback(t *testing.T) {
 	buf := make([]byte, 8)
 
 	AssertRead(t, rw, buf, "hello wo", nil)
-	rw.Checkpoint()
+	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "rldfooba", nil)
 	rw.Rollback()
 	AssertRead(t, rw, buf, "rldfooba", nil)
-	rw.Checkpoint()
+	rw.Checkpoint(-3)
 	AssertRead(t, rw, buf, "r", nil)
 	rw.Rollback()
-	AssertRead(t, rw, buf, "r", nil)
-	rw.Checkpoint()
+	AssertRead(t, rw, buf, "obar", nil)
+	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "", io.EOF)
 
 	AssertClosed(t, output, closer, nil)
@@ -364,7 +365,7 @@ func TestReadWriterFlush(t *testing.T) {
 	AssertRead(t, rw, buf, "hello wo", nil)
 	rw.Flush()
 	AssertRead(t, rw, buf, "foobar", nil)
-	rw.Checkpoint()
+	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "", io.EOF)
 
 	AssertClosed(t, output, closer, []byte("rld"))
@@ -382,17 +383,83 @@ func TestReadWriterNoCheckpoint(t *testing.T) {
 }
 
 func TestReadWriterInterrupt(t *testing.T) {
-	rw, output, closer := NewTestReadWriter()
-	interrupt := make(chan struct{}, 1)
+	input := make(chan *StreamChunk, 1)
+	output := make(chan *StreamChunk, 1)
+	closer := make(mockCloser)
+	rw := NewChanReadWriter(input, output, closer)
+	input <- &StreamChunk{[]byte("hello world"), time.Now()}
+	interrupt := make(chan struct{})
 	rw.SetInterrupt(interrupt)
 	buf := make([]byte, 32)
 
 	AssertRead(t, rw, buf, "hello world", nil)
-	rw.Checkpoint()
-	interrupt <- struct{}{}
+	rw.Checkpoint(0)
+	go func() {
+		interrupt <- struct{}{}
+		input <- &StreamChunk{[]byte("foobar"), time.Now()}
+		close(input)
+	}()
 	AssertRead(t, rw, buf, "", ErrInterrupted)
 	AssertRead(t, rw, buf, "foobar", nil)
-	rw.Checkpoint()
+	rw.Checkpoint(0)
+	AssertRead(t, rw, buf, "", io.EOF)
+
+	AssertClosed(t, output, closer, nil)
+}
+
+func TestReadWriterBufferedReader(t *testing.T) {
+	rw, output, closer := NewTestReadWriter()
+	buf := make([]byte, 32)
+	reader := bufio.NewReader(rw)
+	msg, err := reader.ReadString(' ')
+	ret := rw.HandleError(err)
+
+	if ret || err != nil {
+		t.Fatal("Read failed through bufio.Reader:", err, ret)
+	}
+	if msg != "hello " {
+		t.Fatal("Buffered reader read wrong message:", msg)
+	}
+	if reader.Buffered() != 5 {
+		t.Fatal("Unexpected number of buffered bytes in reader:", reader.Buffered())
+	}
+
+	rw.Checkpoint(-reader.Buffered())
+	rw.Rollback()
+
+	AssertRead(t, rw, buf, "world", nil)
+	rw.Checkpoint(0)
+	AssertRead(t, rw, buf, "foobar", nil)
+	rw.Checkpoint(0)
+	AssertRead(t, rw, buf, "", io.EOF)
+
+	AssertClosed(t, output, closer, nil)
+}
+
+func TestReadWriterBufferedReaderAlternate(t *testing.T) {
+	rw, output, closer := NewTestReadWriter()
+	buf := make([]byte, 32)
+	reader := bufio.NewReader(rw)
+	msg, err := reader.ReadString(' ')
+	ret := rw.HandleError(err)
+
+	if ret || err != nil {
+		t.Fatal("Read failed through bufio.Reader:", err, ret)
+	}
+	if msg != "hello " {
+		t.Fatal("Buffered reader read wrong message:", msg)
+	}
+	if reader.Buffered() != 5 {
+		t.Fatal("Unexpected number of buffered bytes in reader:", reader.Buffered())
+	}
+
+	rw.Checkpoint(len(msg))
+	rw.Rollback()
+
+	AssertRead(t, rw, buf, "world", nil)
+	rw.Checkpoint(0)
+	AssertRead(t, rw, buf, "foobar", nil)
+	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "", io.EOF)
 
 	AssertClosed(t, output, closer, nil)

@@ -33,10 +33,10 @@ func (t *RedisToxic) PipeUpstream(stub *ToxicStub) {
 			fmt.Println("Command:", str)
 			if len(str) > 0 && str[0] == "SET" {
 				// Skip the backend server
-				stub.ReadWriter.Checkpoint()
 			} else {
 				stub.ReadWriter.Write(cmd.Raw())
 			}
+			stub.ReadWriter.Checkpoint(-reader.Buffered())
 		}
 	}
 }
@@ -59,7 +59,9 @@ func (t *RedisToxic) Pipe(stub *ToxicStub) {
 					stub.ReadWriter.Write(resp.Raw())
 				}
 			default:
+				stub.ReadWriter.Write(resp.Raw())
 			}
+			stub.ReadWriter.Checkpoint(-reader.Buffered())
 		}
 	}
 }

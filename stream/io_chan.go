@@ -178,7 +178,6 @@ func (c *ChanReadWriter) Read(out []byte) (int, error) {
 // Writes directly to the output channel and sets a checkpoint in the reader.
 func (c *ChanReadWriter) Write(buf []byte) (int, error) {
 	n, err := c.writer.Write(buf)
-	c.Checkpoint()
 	return n, err
 }
 
@@ -201,11 +200,26 @@ func (c *ChanReadWriter) Flush() {
 }
 
 // Sets a checkpoint in the reader. A call to Rollback() will begin reading from this point.
-func (c *ChanReadWriter) Checkpoint() {
+// If offset is negative, the checkpoint will be set N bytes before the current position.
+// If the offset is positive, the checkpoint will be set N bytes after the previous checkpoint.
+// An offset of 0 will set the checkpoint to the current position.
+func (c *ChanReadWriter) Checkpoint(offset int) {
+	current := c.buffer.Len()
 	if c.bufReader != nil {
-		c.buffer.Next(int(c.bufReader.Size()) - c.bufReader.Len())
+		current = int(c.bufReader.Size()) - c.bufReader.Len()
+	}
+
+	n := current
+	if offset > 0 {
+		n = offset
 	} else {
+		n = current + offset
+	}
+
+	if n >= current {
 		c.buffer.Reset()
+	} else {
+		c.buffer.Next(n)
 	}
 }
 
