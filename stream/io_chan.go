@@ -163,7 +163,11 @@ func (c *ChanReadWriter) Read(out []byte) (int, error) {
 		n, err := c.bufReader.Read(out)
 		if err == io.EOF {
 			c.bufReader = nil
-			return n, nil
+			if n > 0 {
+				return n, nil
+			} else {
+				return c.tee.Read(out)
+			}
 		}
 		return n, err
 	} else {
