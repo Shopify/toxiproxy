@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"time"
-
-	"github.com/Sirupsen/logrus"
 )
 
 type Direction uint8
@@ -43,6 +41,10 @@ func (c *ChanWriter) Write(buf []byte) (int, error) {
 	copy(packet.Data, buf) // Make a copy before sending it to the channel
 	c.output <- packet
 	return len(buf), nil
+}
+
+func (c *ChanWriter) SetOutput(output chan<- *StreamChunk) {
+	c.output = output
 }
 
 // Close the output channel
@@ -114,99 +116,73 @@ func (c *ChanReader) Read(out []byte) (int, error) {
 	return n + n2, nil
 }
 
-// ToxicStub can't be imported due to an import loop, so we use an interface instead
-type Closer interface {
-	Close()
-}
-
-// Reader:
+// TransactionalReader is a ChanReader that can rollback its progress to checkpoints.
+// This is useful when using other buffered readers, since they may read past the end of a message.
+// The buffered reader can later be removed by rolling back any buffered bytes.
+//
 // chan []byte ->  ChanReader -> TeeReader  ->    Read()   -> output
 //                                   V              ^
 //                             bytes.Buffer -> bytes.Reader
-//
-// Writer:
-// chan []byte <- ChanWriter <- Write() <- input
-type ChanReadWriter struct {
+type TransactionalReader struct {
 	buffer    *bytes.Buffer
 	bufReader *bytes.Reader
 	reader    *ChanReader
-	writer    *ChanWriter
 	tee       io.Reader
-	closer    Closer
 }
 
-// Handles errors returned by Read(). Returns true if the channel has closed and the caller should exit.
-// Unknown errors will flush all data since the last checkpoint to the writer and return false so the
-// caller can handle the error.
-func (c *ChanReadWriter) HandleError(err error) bool {
-	if err == ErrInterrupted {
-		c.Rollback()
-		return true
-	} else if err == io.EOF || err == io.ErrUnexpectedEOF {
-		c.Rollback()
-		c.Flush()
-		if c.closer != nil {
-			c.closer.Close()
-		}
-		return true
-	} else if err != nil {
-		c.Rollback()
-		c.Flush()
-		logrus.Warn("Read error in toxic: ", err)
+func NewTransactionalReader(input <-chan *StreamChunk) *TransactionalReader {
+	t := &TransactionalReader{
+		buffer: bytes.NewBuffer(make([]byte, 0, 32*1024)),
+		reader: NewChanReader(input),
 	}
-	return false
+	t.tee = io.TeeReader(t.reader, t.buffer)
+	return t
 }
 
 // Reads from the input channel either directly, or from a buffer if Rollback() has been called.
-func (c *ChanReadWriter) Read(out []byte) (int, error) {
-	if c.bufReader != nil {
-		n, err := c.bufReader.Read(out)
+func (t *TransactionalReader) Read(out []byte) (int, error) {
+	if t.bufReader != nil {
+		n, err := t.bufReader.Read(out)
 		if err == io.EOF {
-			c.bufReader = nil
+			t.bufReader = nil
 			if n > 0 {
 				return n, nil
 			} else {
-				return c.tee.Read(out)
+				return t.tee.Read(out)
 			}
 		}
 		return n, err
 	} else {
-		return c.tee.Read(out)
+		return t.tee.Read(out)
 	}
 }
 
-// Writes directly to the output channel and sets a checkpoint in the reader.
-func (c *ChanReadWriter) Write(buf []byte) (int, error) {
-	n, err := c.writer.Write(buf)
-	return n, err
-}
-
-// Flushes all buffers in the reader and writes them to the output channel.
-func (c *ChanReadWriter) Flush() {
+// Flushes all buffers in the reader to the specified writer.
+func (t *TransactionalReader) FlushTo(writer io.Writer) {
 	n := 0
-	if c.bufReader != nil {
-		n = c.bufReader.Len()
+	if t.bufReader != nil {
+		n = t.bufReader.Len()
 	}
-	buf := make([]byte, n+len(c.reader.buffer))
+	buf := make([]byte, n+len(t.reader.buffer))
 	if n > 0 {
-		c.bufReader.Read(buf[:n])
+		t.bufReader.Read(buf[:n])
 	}
 	if len(buf[n:]) > 0 {
-		c.reader.Read(buf[n:])
+		t.reader.Read(buf[n:])
 	}
-	c.writer.Write(buf)
-	c.bufReader = nil
-	c.buffer.Reset()
+	writer.Write(buf)
+	t.bufReader = nil
+	t.buffer.Reset()
 }
 
 // Sets a checkpoint in the reader. A call to Rollback() will begin reading from this point.
 // If offset is negative, the checkpoint will be set N bytes before the current position.
 // If the offset is positive, the checkpoint will be set N bytes after the previous checkpoint.
 // An offset of 0 will set the checkpoint to the current position.
-func (c *ChanReadWriter) Checkpoint(offset int) {
-	current := c.buffer.Len()
-	if c.bufReader != nil {
-		current = int(c.bufReader.Size()) - c.bufReader.Len()
+func (t *TransactionalReader) Checkpoint(offset int) {
+	current := t.buffer.Len()
+	if t.bufReader != nil {
+		current = int(t.bufReader.Size()) - t.bufReader.Len()
 	}
 
 	n := current
@@ -217,32 +193,17 @@ func (c *ChanReadWriter) Checkpoint(offset int) {
 	}
 
 	if n >= current {
-		c.buffer.Reset()
+		t.buffer.Reset()
 	} else {
-		c.buffer.Next(n)
+		t.buffer.Next(n)
 	}
 }
 
 // Rolls back the reader to start from the last checkpoint.
-func (c *ChanReadWriter) Rollback() {
-	c.bufReader = bytes.NewReader(c.buffer.Bytes())
+func (t *TransactionalReader) Rollback() {
+	t.bufReader = bytes.NewReader(t.buffer.Bytes())
 }
 
-func (c *ChanReadWriter) SetOutput(output chan<- *StreamChunk) {
-	c.writer.output = output
-}
-
-func (c *ChanReadWriter) SetInterrupt(interrupt <-chan struct{}) {
-	c.reader.SetInterrupt(interrupt)
-}
-
-func NewChanReadWriter(input <-chan *StreamChunk, output chan<- *StreamChunk, stub Closer) *ChanReadWriter {
-	rw := &ChanReadWriter{
-		buffer: bytes.NewBuffer(make([]byte, 0, 32*1024)),
-		reader: NewChanReader(input),
-		writer: NewChanWriter(output),
-		closer: stub,
-	}
-	rw.tee = io.TeeReader(rw.reader, rw.buffer)
-	return rw
+func (t *TransactionalReader) SetInterrupt(interrupt <-chan struct{}) {
+	t.reader.SetInterrupt(interrupt)
 }

@@ -97,7 +97,7 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	// Interrupt the last toxic so that we don't have a race when moving channels
 	if link.stubs[i-1].InterruptToxic() {
 		link.stubs[i-1].Output = newin
-		link.stubs[i-1].ReadWriter.SetOutput(newin)
+		link.stubs[i-1].Writer.SetOutput(newin)
 
 		if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
 			link.stubs[i].State = stateful.NewState()
@@ -131,7 +131,7 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 		}()
 
 		// Flush toxic's internal buffer
-		link.stubs[i].ReadWriter.Flush()
+		link.stubs[i].Reader.FlushTo(link.stubs[i].Writer)
 
 		// Unblock the previous toxic if it is trying to flush.
 		// If the previous toxic is closed, continue flushing until we reach the end.
@@ -164,7 +164,7 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 		}
 
 		link.stubs[i-1].Output = link.stubs[i].Output
-		link.stubs[i-1].ReadWriter.SetOutput(link.stubs[i].Output)
+		link.stubs[i-1].Writer.SetOutput(link.stubs[i].Output)
 		link.stubs = append(link.stubs[:i], link.stubs[i+1:]...)
 
 		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1])

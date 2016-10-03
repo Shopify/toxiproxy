@@ -262,26 +262,47 @@ func TestBlankWrite(t *testing.T) {
 	}
 }
 
-type mockCloser chan struct{}
-
-func (c mockCloser) Close() {
-	close(c)
+type TestReadWriter struct {
+	*TransactionalReader
+	*ChanWriter
+	input  chan *StreamChunk
+	output chan *StreamChunk
+	closer chan struct{}
 }
 
-func NewTestReadWriter() (*ChanReadWriter, chan *StreamChunk, chan struct{}) {
-	input := make(chan *StreamChunk, 2)
-	output := make(chan *StreamChunk, 1)
-	closer := make(mockCloser)
-	rw := NewChanReadWriter(input, output, closer)
-	input <- &StreamChunk{[]byte("hello world"), time.Now()}
-	input <- &StreamChunk{[]byte("foobar"), time.Now()}
-	close(input)
-	return rw, output, closer
+func (c *TestReadWriter) Close() {
+	close(c.closer)
 }
 
-func AssertRead(t *testing.T, rw *ChanReadWriter, buf []byte, msg string, expectedErr error) (n int, err error, ret bool) {
-	n, err = rw.Read(buf)
-	ret = rw.HandleError(err)
+func NewTestReadWriter() *TestReadWriter {
+	rw := &TestReadWriter{
+		input:  make(chan *StreamChunk, 2),
+		output: make(chan *StreamChunk, 1),
+		closer: make(chan struct{}),
+	}
+	rw.TransactionalReader = NewTransactionalReader(rw.input)
+	rw.ChanWriter = NewChanWriter(rw.output)
+	rw.input <- &StreamChunk{[]byte("hello world"), time.Now()}
+	rw.input <- &StreamChunk{[]byte("foobar"), time.Now()}
+	close(rw.input)
+	return rw
+}
+
+func HandleError(t *testing.T, rw *TestReadWriter, err error, expectedErr error) {
+	if err != expectedErr {
+		t.Fatalf("Unexpected error during read: %v != %v", err, expectedErr)
+	}
+	if err == ErrInterrupted {
+		rw.Rollback()
+	} else if err == io.EOF {
+		rw.Rollback()
+		rw.FlushTo(rw)
+		rw.Close()
+	}
+}
+
+func AssertRead(t *testing.T, rw *TestReadWriter, buf []byte, msg string, expectedErr error) {
+	n, err := rw.Read(buf)
 
 	if n != len(msg) {
 		t.Fatalf("Read wrong number of bytes: %d expected %d (%s expected %s)", n, len(msg), string(buf[:n]), msg)
@@ -290,24 +311,12 @@ func AssertRead(t *testing.T, rw *ChanReadWriter, buf []byte, msg string, expect
 		t.Fatalf("Got wrong message from stream: %s expected %s", string(buf[:n]), msg)
 	}
 
-	if err != expectedErr {
-		t.Fatal("Unexpected error during read:", err)
-	}
-	if err == io.EOF || err == io.ErrUnexpectedEOF || err == ErrInterrupted {
-		if !ret {
-			t.Fatal("HandleError() returned true without error")
-		}
-	} else {
-		if ret {
-			t.Fatal("HandleError() did not return true for error:", err)
-		}
-	}
-	return
+	HandleError(t, rw, err, expectedErr)
 }
 
-func AssertClosed(t *testing.T, output chan *StreamChunk, closer chan struct{}, expectedOutput []byte) {
+func AssertClosed(t *testing.T, rw *TestReadWriter, expectedOutput []byte) {
 	select {
-	case msg := <-output:
+	case msg := <-rw.output:
 		if expectedOutput == nil {
 			t.Fatal("Unexpected message written to output channel:", string(msg.Data))
 		} else if !bytes.Equal(msg.Data, expectedOutput) {
@@ -320,14 +329,14 @@ func AssertClosed(t *testing.T, output chan *StreamChunk, closer chan struct{}, 
 	}
 
 	select {
-	case <-closer:
+	case <-rw.closer:
 	default:
 		t.Fatal("Closer was not closed at end of stream")
 	}
 }
 
 func TestReadWriterBasicFull(t *testing.T) {
-	rw, output, closer := NewTestReadWriter()
+	rw := NewTestReadWriter()
 	buf := make([]byte, 32)
 
 	AssertRead(t, rw, buf, "hello world", nil)
@@ -336,11 +345,11 @@ func TestReadWriterBasicFull(t *testing.T) {
 	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "", io.EOF)
 
-	AssertClosed(t, output, closer, nil)
+	AssertClosed(t, rw, nil)
 }
 
 func TestReadWriterCheckpointRollback(t *testing.T) {
-	rw, output, closer := NewTestReadWriter()
+	rw := NewTestReadWriter()
 	buf := make([]byte, 8)
 
 	AssertRead(t, rw, buf, "hello wo", nil)
@@ -355,39 +364,43 @@ func TestReadWriterCheckpointRollback(t *testing.T) {
 	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "", io.EOF)
 
-	AssertClosed(t, output, closer, nil)
+	AssertClosed(t, rw, nil)
 }
 
 func TestReadWriterFlush(t *testing.T) {
-	rw, output, closer := NewTestReadWriter()
+	rw := NewTestReadWriter()
 	buf := make([]byte, 8)
 
 	AssertRead(t, rw, buf, "hello wo", nil)
-	rw.Flush()
+	rw.FlushTo(rw)
 	AssertRead(t, rw, buf, "foobar", nil)
 	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "", io.EOF)
 
-	AssertClosed(t, output, closer, []byte("rld"))
+	AssertClosed(t, rw, []byte("rld"))
 }
 
 func TestReadWriterNoCheckpoint(t *testing.T) {
-	rw, output, closer := NewTestReadWriter()
+	rw := NewTestReadWriter()
 	buf := make([]byte, 32)
 
 	AssertRead(t, rw, buf, "hello world", nil)
 	AssertRead(t, rw, buf, "foobar", nil)
 	AssertRead(t, rw, buf, "", io.EOF)
 
-	AssertClosed(t, output, closer, []byte("hello worldfoobar"))
+	AssertClosed(t, rw, []byte("hello worldfoobar"))
 }
 
 func TestReadWriterInterrupt(t *testing.T) {
-	input := make(chan *StreamChunk, 1)
-	output := make(chan *StreamChunk, 1)
-	closer := make(mockCloser)
-	rw := NewChanReadWriter(input, output, closer)
-	input <- &StreamChunk{[]byte("hello world"), time.Now()}
+	rw := &TestReadWriter{
+		input:  make(chan *StreamChunk, 1),
+		output: make(chan *StreamChunk, 1),
+		closer: make(chan struct{}),
+	}
+	rw.TransactionalReader = NewTransactionalReader(rw.input)
+	rw.ChanWriter = NewChanWriter(rw.output)
+	rw.input <- &StreamChunk{[]byte("hello world"), time.Now()}
+
 	interrupt := make(chan struct{})
 	rw.SetInterrupt(interrupt)
 	buf := make([]byte, 32)
@@ -396,27 +409,24 @@ func TestReadWriterInterrupt(t *testing.T) {
 	rw.Checkpoint(0)
 	go func() {
 		interrupt <- struct{}{}
-		input <- &StreamChunk{[]byte("foobar"), time.Now()}
-		close(input)
+		rw.input <- &StreamChunk{[]byte("foobar"), time.Now()}
+		close(rw.input)
 	}()
 	AssertRead(t, rw, buf, "", ErrInterrupted)
 	AssertRead(t, rw, buf, "foobar", nil)
 	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "", io.EOF)
 
-	AssertClosed(t, output, closer, nil)
+	AssertClosed(t, rw, nil)
 }
 
 func TestReadWriterBufferedReader(t *testing.T) {
-	rw, output, closer := NewTestReadWriter()
+	rw := NewTestReadWriter()
 	buf := make([]byte, 32)
 	reader := bufio.NewReader(rw)
 	msg, err := reader.ReadString(' ')
-	ret := rw.HandleError(err)
+	HandleError(t, rw, err, nil)
 
-	if ret || err != nil {
-		t.Fatal("Read failed through bufio.Reader:", err, ret)
-	}
 	if msg != "hello " {
 		t.Fatal("Buffered reader read wrong message:", msg)
 	}
@@ -433,19 +443,16 @@ func TestReadWriterBufferedReader(t *testing.T) {
 	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "", io.EOF)
 
-	AssertClosed(t, output, closer, nil)
+	AssertClosed(t, rw, nil)
 }
 
 func TestReadWriterBufferedReaderAlternate(t *testing.T) {
-	rw, output, closer := NewTestReadWriter()
+	rw := NewTestReadWriter()
 	buf := make([]byte, 32)
 	reader := bufio.NewReader(rw)
 	msg, err := reader.ReadString(' ')
-	ret := rw.HandleError(err)
+	HandleError(t, rw, err, nil)
 
-	if ret || err != nil {
-		t.Fatal("Read failed through bufio.Reader:", err, ret)
-	}
 	if msg != "hello " {
 		t.Fatal("Buffered reader read wrong message:", msg)
 	}
@@ -462,5 +469,5 @@ func TestReadWriterBufferedReaderAlternate(t *testing.T) {
 	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "", io.EOF)
 
-	AssertClosed(t, output, closer, nil)
+	AssertClosed(t, rw, nil)
 }

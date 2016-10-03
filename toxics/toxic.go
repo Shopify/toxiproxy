@@ -1,11 +1,13 @@
 package toxics
 
 import (
+	"io"
 	"math/rand"
 	"reflect"
 	"sync"
 
 	"github.com/Shopify/toxiproxy/stream"
+	"github.com/Sirupsen/logrus"
 )
 
 // A Toxic is something that can be attatched to a link to modify the way
@@ -51,13 +53,14 @@ type ToxicWrapper struct {
 }
 
 type ToxicStub struct {
-	Input      <-chan *stream.StreamChunk
-	Output     chan<- *stream.StreamChunk
-	State      interface{}
-	ReadWriter *stream.ChanReadWriter
-	Interrupt  chan struct{}
-	running    chan struct{}
-	closed     chan struct{}
+	Input     <-chan *stream.StreamChunk
+	Output    chan<- *stream.StreamChunk
+	State     interface{}
+	Reader    *stream.TransactionalReader
+	Writer    *stream.ChanWriter
+	Interrupt chan struct{}
+	running   chan struct{}
+	closed    chan struct{}
 }
 
 func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.StreamChunk) *ToxicStub {
@@ -66,9 +69,10 @@ func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.Stream
 		closed:    make(chan struct{}),
 		Input:     input,
 		Output:    output,
+		Reader:    stream.NewTransactionalReader(input),
+		Writer:    stream.NewChanWriter(output),
 	}
-	stub.ReadWriter = stream.NewChanReadWriter(input, output, stub)
-	stub.ReadWriter.SetInterrupt(stub.Interrupt)
+	stub.Reader.SetInterrupt(stub.Interrupt)
 	return stub
 }
 
@@ -99,6 +103,27 @@ func (s *ToxicStub) InterruptToxic() bool {
 func (s *ToxicStub) Close() {
 	close(s.closed)
 	close(s.Output)
+}
+
+// Handles errors returned by the stub's TransactionalReader. Returns true if the channel
+// has closed and the caller should exit.
+// Unknown errors will flush all data since the last checkpoint to the writer and return false so the
+// caller can handle the error.
+func (s *ToxicStub) HandleReadError(err error) bool {
+	if err == stream.ErrInterrupted {
+		s.Reader.Rollback()
+		return true
+	} else if err == io.EOF || err == io.ErrUnexpectedEOF {
+		s.Reader.Rollback()
+		s.Reader.FlushTo(s.Writer)
+		s.Close()
+		return true
+	} else if err != nil {
+		s.Reader.Rollback()
+		s.Reader.FlushTo(s.Writer)
+		logrus.Warn("Read error in toxic: ", err)
+	}
+	return false
 }
 
 var ToxicRegistry map[string]Toxic
