@@ -380,6 +380,20 @@ func TestReadWriterFlush(t *testing.T) {
 	AssertClosed(t, rw, []byte("rld"))
 }
 
+func TestReadWriterDoubleFlush(t *testing.T) {
+	rw := NewTestReadWriter()
+	buf := make([]byte, 8)
+
+	AssertRead(t, rw, buf, "hello wo", nil)
+	rw.FlushTo(rw)
+	rw.FlushTo(rw)
+	AssertRead(t, rw, buf, "foobar", nil)
+	rw.FlushTo(rw)
+	AssertRead(t, rw, buf, "", io.EOF)
+
+	AssertClosed(t, rw, []byte("rld"))
+}
+
 func TestReadWriterNoCheckpoint(t *testing.T) {
 	rw := NewTestReadWriter()
 	buf := make([]byte, 32)
