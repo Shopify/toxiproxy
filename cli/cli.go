@@ -53,13 +53,13 @@ var toxicDescription = `
 		usage: toxiproxy-cli add <proxyName> --type <toxicType> --toxicName <toxicName> \
 		--attribute <key=value> --upstream --downstream
 
-		example: toxiproxy-cli toxic add myProxy -t latency -n myToxic -f latency=100,jitter=50
+		example: toxiproxy-cli toxic add myProxy -t latency -n myToxic -a latency=100,jitter=50
 
 	toxic update:
 		usage: toxiproxy-cli update <proxyName> --toxicName <toxicName> \
 		--attribute <key1=value1> --attribute <key2=value2>
 
-		example: toxiproxy-cli toxic update myProxy -n myToxic -f jitter=25
+		example: toxiproxy-cli toxic update myProxy -n myToxic -a jitter=25
 
 	toxic delete:
 		usage: toxiproxy-cli update <proxyName> --toxicName <toxicName>
