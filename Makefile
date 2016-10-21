@@ -68,6 +68,6 @@ $(DEB): tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
 
 docker:
 	docker build --tag="shopify/toxiproxy:$(VERSION)" .
-	docker tag -f shopify/toxiproxy:$(VERSION) shopify/toxiproxy:latest
+	docker tag shopify/toxiproxy:$(VERSION) shopify/toxiproxy:latest
 	docker push shopify/toxiproxy:$(VERSION)
 	docker push shopify/toxiproxy:latest
