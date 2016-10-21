@@ -25,6 +25,10 @@
 			"Rev": "1efa31f08b9333f1bd4882d61f9d668a70cd902e"
 		},
 		{
+			"ImportPath": "golang.org/x/crypto/ssh/",
+			"Rev": "47ff8dfbc528fea3003fc0ce2d88ffbbfbc46a43"
+		},
+		{
 			"ImportPath": "gopkg.in/tomb.v1",
 			"Rev": "c131134a1947e9afd9cecfe11f4c6dff0732ae58"
 		}
