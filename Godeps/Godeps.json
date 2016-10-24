@@ -25,6 +25,14 @@
 			"Rev": "1efa31f08b9333f1bd4882d61f9d668a70cd902e"
 		},
 		{
+			"ImportPath": "golang.org/x/crypto/ssh/terminal",
+			"Rev": "3c0d69f1777220f1a1d2ec373cb94a282f03eb42"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "c200b10b5d5e122be351b67af224adc6128af5bf"
+		},
+		{
 			"ImportPath": "gopkg.in/tomb.v1",
 			"Rev": "c131134a1947e9afd9cecfe11f4c6dff0732ae58"
 		}
