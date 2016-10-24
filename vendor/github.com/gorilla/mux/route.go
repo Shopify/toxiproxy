@@ -135,12 +135,12 @@ func (r *Route) addMatcher(m matcher) *Route {
 }
 
 // addRegexpMatcher adds a host or path matcher and builder to a route.
-func (r *Route) addRegexpMatcher(tpl string, matchHost, matchPrefix, matchQuery bool) error {
+func (r *Route) addRegexpMatcher(tpl string, matchHost, matchPrefix bool) error {
 	if r.err != nil {
 		return r.err
 	}
 	r.regexp = r.getRegexpGroup()
-	if !matchHost && !matchQuery {
+	if !matchHost {
 		if len(tpl) == 0 || tpl[0] != '/' {
 			return fmt.Errorf("mux: path must start with a slash, got %q", tpl)
 		}
@@ -148,14 +148,9 @@ func (r *Route) addRegexpMatcher(tpl string, matchHost, matchPrefix, matchQuery 
 			tpl = strings.TrimRight(r.regexp.path.template, "/") + tpl
 		}
 	}
-	rr, err := newRouteRegexp(tpl, matchHost, matchPrefix, matchQuery, r.strictSlash)
+	rr, err := newRouteRegexp(tpl, matchHost, matchPrefix, r.strictSlash)
 	if err != nil {
 		return err
-	}
-	for _, q := range r.regexp.queries {
-		if err = uniqueVars(rr.varsN, q.varsN); err != nil {
-			return err
-		}
 	}
 	if matchHost {
 		if r.regexp.path != nil {
@@ -170,11 +165,7 @@ func (r *Route) addRegexpMatcher(tpl string, matchHost, matchPrefix, matchQuery 
 				return err
 			}
 		}
-		if matchQuery {
-			r.regexp.queries = append(r.regexp.queries, rr)
-		} else {
-			r.regexp.path = rr
-		}
+		r.regexp.path = rr
 	}
 	r.addMatcher(rr)
 	return nil
@@ -228,7 +219,7 @@ func (r *Route) Headers(pairs ...string) *Route {
 // Variable names must be unique in a given route. They can be retrieved
 // calling mux.Vars(request).
 func (r *Route) Host(tpl string) *Route {
-	r.err = r.addRegexpMatcher(tpl, true, false, false)
+	r.err = r.addRegexpMatcher(tpl, true, false)
 	return r
 }
 
@@ -268,8 +259,7 @@ func (r *Route) Methods(methods ...string) *Route {
 // Path -----------------------------------------------------------------------
 
 // Path adds a matcher for the URL path.
-// It accepts a template with zero or more URL variables enclosed by {}. The
-// template must start with a "/".
+// It accepts a template with zero or more URL variables enclosed by {}.
 // Variables can define an optional regexp pattern to me matched:
 //
 // - {name} matches anything until the next slash.
@@ -287,58 +277,44 @@ func (r *Route) Methods(methods ...string) *Route {
 // Variable names must be unique in a given route. They can be retrieved
 // calling mux.Vars(request).
 func (r *Route) Path(tpl string) *Route {
-	r.err = r.addRegexpMatcher(tpl, false, false, false)
+	r.err = r.addRegexpMatcher(tpl, false, false)
 	return r
 }
 
 // PathPrefix -----------------------------------------------------------------
 
-// PathPrefix adds a matcher for the URL path prefix. This matches if the given
-// template is a prefix of the full URL path. See Route.Path() for details on
-// the tpl argument.
-//
-// Note that it does not treat slashes specially ("/foobar/" will be matched by
-// the prefix "/foo") so you may want to use a trailing slash here.
-//
-// Also note that the setting of Router.StrictSlash() has no effect on routes
-// with a PathPrefix matcher.
+// PathPrefix adds a matcher for the URL path prefix.
 func (r *Route) PathPrefix(tpl string) *Route {
-	r.err = r.addRegexpMatcher(tpl, false, true, false)
+	r.strictSlash = false
+	r.err = r.addRegexpMatcher(tpl, false, true)
 	return r
 }
 
 // Query ----------------------------------------------------------------------
 
+// queryMatcher matches the request against URL queries.
+type queryMatcher map[string]string
+
+func (m queryMatcher) Match(r *http.Request, match *RouteMatch) bool {
+	return matchMap(m, r.URL.Query(), false)
+}
+
 // Queries adds a matcher for URL query values.
-// It accepts a sequence of key/value pairs. Values may define variables.
-// For example:
+// It accepts a sequence of key/value pairs. For example:
 //
 //     r := mux.NewRouter()
-//     r.Queries("foo", "bar", "id", "{id:[0-9]+}")
+//     r.Queries("foo", "bar", "baz", "ding")
 //
 // The above route will only match if the URL contains the defined queries
-// values, e.g.: ?foo=bar&id=42.
+// values, e.g.: ?foo=bar&baz=ding.
 //
 // It the value is an empty string, it will match any value if the key is set.
-//
-// Variables can define an optional regexp pattern to me matched:
-//
-// - {name} matches anything until the next slash.
-//
-// - {name:pattern} matches the given regexp pattern.
 func (r *Route) Queries(pairs ...string) *Route {
-	length := len(pairs)
-	if length%2 != 0 {
-		r.err = fmt.Errorf(
-			"mux: number of parameters must be multiple of 2, got %v", pairs)
-		return nil
+	if r.err == nil {
+		var queries map[string]string
+		queries, r.err = mapFromPairs(pairs...)
+		return r.addMatcher(queryMatcher(queries))
 	}
-	for i := 0; i < length; i += 2 {
-		if r.err = r.addRegexpMatcher(pairs[i]+"="+pairs[i+1], false, true, true); r.err != nil {
-			return r
-		}
-	}
-
 	return r
 }
 
@@ -514,9 +490,8 @@ func (r *Route) getRegexpGroup() *routeRegexpGroup {
 		} else {
 			// Copy.
 			r.regexp = &routeRegexpGroup{
-				host:    regexp.host,
-				path:    regexp.path,
-				queries: regexp.queries,
+				host: regexp.host,
+				path: regexp.path,
 			}
 		}
 	}

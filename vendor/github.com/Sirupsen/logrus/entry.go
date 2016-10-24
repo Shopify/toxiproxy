@@ -28,8 +28,6 @@ type Entry struct {
 	Message string
 }
 
-var baseTimestamp time.Time
-
 func NewEntry(logger *Logger) *Entry {
 	return &Entry{
 		Logger: logger,
@@ -72,18 +70,18 @@ func (entry *Entry) WithFields(fields Fields) *Entry {
 	return &Entry{Logger: entry.Logger, Data: data}
 }
 
-func (entry *Entry) log(level Level, msg string) string {
+func (entry *Entry) log(level Level, msg string) {
 	entry.Time = time.Now()
 	entry.Level = level
 	entry.Message = msg
 
 	if err := entry.Logger.Hooks.Fire(level, entry); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to fire hook", err)
+		fmt.Fprintf(os.Stderr, "Failed to fire hook\n", err)
 	}
 
 	reader, err := entry.Reader()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to obtain reader, %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to obtain reader, %v\n", err)
 	}
 
 	entry.Logger.mu.Lock()
@@ -91,10 +89,15 @@ func (entry *Entry) log(level Level, msg string) string {
 
 	_, err = io.Copy(entry.Logger.Out, reader)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to write to log, %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
 	}
 
-	return reader.String()
+	// To avoid Entry#log() returning a value that only would make sense for
+	// panic() to use in Entry#Panic(), we avoid the allocation by checking
+	// directly here.
+	if level <= PanicLevel {
+		panic(reader.String())
+	}
 }
 
 func (entry *Entry) Debug(args ...interface{}) {
@@ -134,8 +137,7 @@ func (entry *Entry) Fatal(args ...interface{}) {
 
 func (entry *Entry) Panic(args ...interface{}) {
 	if entry.Logger.Level >= PanicLevel {
-		msg := entry.log(PanicLevel, fmt.Sprint(args...))
-		panic(msg)
+		entry.log(PanicLevel, fmt.Sprint(args...))
 	}
 	panic(fmt.Sprint(args...))
 }

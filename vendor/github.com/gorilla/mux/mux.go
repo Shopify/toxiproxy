@@ -69,7 +69,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if p := cleanPath(req.URL.Path); p != req.URL.Path {
 
 		// Added 3 lines (Philip Schlump) - It was droping the query string and #whatever from query.
-		// This matches with fix in go 1.2 r.c. 4 for same problem.  Go Issue:
+		// This matches with fix in go 1.2 r.c. 4 for same problem.  Go Issue: 
 		// http://code.google.com/p/go/issues/detail?id=5252
 		url := *req.URL
 		url.Path = p
@@ -87,10 +87,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		setCurrentRoute(req, match.Route)
 	}
 	if handler == nil {
-		handler = r.NotFoundHandler
-		if handler == nil {
-			handler = http.NotFoundHandler()
+		if r.NotFoundHandler == nil {
+			r.NotFoundHandler = http.NotFoundHandler()
 		}
+		handler = r.NotFoundHandler
 	}
 	if !r.KeepContext {
 		defer context.Clear(req)
@@ -109,20 +109,14 @@ func (r *Router) GetRoute(name string) *Route {
 	return r.getNamedRoutes()[name]
 }
 
-// StrictSlash defines the trailing slash behavior for new routes. The initial
-// value is false.
+// StrictSlash defines the slash behavior for new routes.
 //
 // When true, if the route path is "/path/", accessing "/path" will redirect
-// to the former and vice versa. In other words, your application will always
-// see the path as specified in the route.
+// to the former and vice versa.
 //
-// When false, if the route path is "/path", accessing "/path/" will not match
-// this route and vice versa.
-//
-// Special case: when a route sets a path prefix using the PathPrefix() method,
-// strict slash is ignored for that route because the redirect behavior can't
-// be determined from a prefix alone. However, any subrouters created from that
-// route inherit the original StrictSlash setting.
+// Special case: when a route sets a path prefix, strict slash is
+// automatically set to false for that route because the redirect behavior
+// can't be determined for prefixes.
 func (r *Router) StrictSlash(value bool) *Router {
 	r.strictSlash = value
 	return r
