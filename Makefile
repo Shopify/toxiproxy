@@ -67,9 +67,10 @@ $(DEB): tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
 		./share/toxiproxy.conf=/etc/init/toxiproxy.conf
 
 docker:
-	docker build --tag="shopify/toxiproxy:$(VERSION)" .
+	docker build --tag="shopify/toxiproxy:git" .
 
-docker-release: docker
+docker-release:
+	docker build --tag="shopify/toxiproxy:$(VERSION)" .
 	docker tag shopify/toxiproxy:$(VERSION) shopify/toxiproxy:latest
 	docker push shopify/toxiproxy:$(VERSION)
 	docker push shopify/toxiproxy:latest
