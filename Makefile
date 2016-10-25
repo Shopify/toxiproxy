@@ -19,7 +19,7 @@ darwin: tmp/build/$(SERVER_NAME)-darwin-amd64 tmp/build/$(CLI_NAME)-darwin-amd64
 linux: tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
 windows: tmp/build/$(SERVER_NAME)-windows-amd64.exe tmp/build/$(CLI_NAME)-windows-amd64.exe
 
-release: all docker
+release: all docker-release
 
 clean:
 	rm -f tmp/build/*
@@ -67,7 +67,10 @@ $(DEB): tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
 		./share/toxiproxy.conf=/etc/init/toxiproxy.conf
 
 docker:
+	docker build --tag="shopify/toxiproxy:git" .
+
+docker-release:
 	docker build --tag="shopify/toxiproxy:$(VERSION)" .
-	docker tag -f shopify/toxiproxy:$(VERSION) shopify/toxiproxy:latest
+	docker tag shopify/toxiproxy:$(VERSION) shopify/toxiproxy:latest
 	docker push shopify/toxiproxy:$(VERSION)
 	docker push shopify/toxiproxy:latest
