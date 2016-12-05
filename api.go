@@ -46,6 +46,9 @@ func (server *ApiServer) Listen(host string, port string) {
 		"version": Version,
 	}).Info("API HTTP server starting")
 
+
+
+
 	err := http.ListenAndServe(net.JoinHostPort(host, port), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)

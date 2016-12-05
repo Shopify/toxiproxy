@@ -59,7 +59,6 @@ func NewProxy() *Proxy {
 func (proxy *Proxy) Start() error {
 	proxy.Lock()
 	defer proxy.Unlock()
-
 	return start(proxy)
 }
 

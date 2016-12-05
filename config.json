@@ -1,0 +1,9 @@
+{
+  "service": [
+    {
+      "name": "sm",
+      "host": "localhost:8989",
+      "listen": "localhost:9878"
+    }
+  ]
+}
