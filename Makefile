@@ -69,9 +69,7 @@ $(DEB): tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
 docker:
 	docker build --tag="shopify/toxiproxy:git" .
 
-docker-release:
-	mkdir -p tmp
-	docker run -it --rm -v `pwd`/tmp:/go/bin -v `pwd`:/go/src/github.com/Shopify/toxiproxy golang:1.7 sh -c 'go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(cat /go/src/github.com/Shopify/toxiproxy/VERSION)" -o /go/bin/toxiproxy github.com/Shopify/toxiproxy/cmd && go build -o /go/bin/toxiproxy-cli github.com/Shopify/toxiproxy/cli'
+docker-release: linux
 	docker build --rm=true --tag="shopify/toxiproxy:$(VERSION)" .
 	docker tag shopify/toxiproxy:$(VERSION) shopify/toxiproxy:latest
 	docker push shopify/toxiproxy:$(VERSION)
