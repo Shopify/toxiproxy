@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/Shopify/toxiproxy/toxics"
 	"github.com/Sirupsen/logrus"
@@ -19,6 +20,29 @@ type ApiServer struct {
 func NewServer() *ApiServer {
 	return &ApiServer{
 		Collection: NewProxyCollection(),
+	}
+}
+
+func (server *ApiServer) PopulateConfig(filename string) {
+	file, err := os.Open(filename)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"config": filename,
+			"error":  err,
+		}).Error("Error reading config file")
+	} else {
+		proxies, err := server.Collection.PopulateJson(file)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"config": filename,
+				"error":  err,
+			}).Error("Failed to populate proxies from file")
+		} else {
+			logrus.WithFields(logrus.Fields{
+				"config":  filename,
+				"proxies": len(proxies),
+			}).Info("Populated proxies from file")
+		}
 	}
 }
 

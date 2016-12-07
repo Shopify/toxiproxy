@@ -3,11 +3,9 @@ package main
 import (
 	"flag"
 	"math/rand"
-	"os"
 	"time"
 
 	"github.com/Shopify/toxiproxy"
-	"github.com/Sirupsen/logrus"
 )
 
 var host string
@@ -26,26 +24,7 @@ func init() {
 func main() {
 	server := toxiproxy.NewServer()
 	if len(config) > 0 {
-		file, err := os.Open(config)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"config": config,
-				"error":  err,
-			}).Error("Error reading config file")
-		} else {
-			proxies, err := server.Collection.PopulateJson(file)
-			if err != nil {
-				logrus.WithFields(logrus.Fields{
-					"config": config,
-					"error":  err,
-				}).Error("Failed to populate proxies from file")
-			} else {
-				logrus.WithFields(logrus.Fields{
-					"config":  config,
-					"proxies": len(proxies),
-				}).Info("Populated proxies from file")
-			}
-		}
+		server.PopulateConfig(config)
 	}
 	server.Listen(host, port)
 }
