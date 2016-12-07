@@ -2,6 +2,8 @@ package toxiproxy
 
 import "sync"
 
+
+
 // ProxyCollection is a collection of proxies. It's the interface for anything
 // to add and remove proxies from the toxiproxy instance. It's responsibilty is
 // to maintain the integrity of the proxy set, by guarding for things such as
@@ -12,9 +14,14 @@ type ProxyCollection struct {
 	proxies map[string]*Proxy
 }
 
+
+
+
 func NewProxyCollection() *ProxyCollection {
+
+
 	return &ProxyCollection{
-		proxies: make(map[string]*Proxy),
+		proxies : make(map[string]*Proxy),
 	}
 }
 
