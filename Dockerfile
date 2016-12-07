@@ -1,9 +1,7 @@
-FROM golang:1.7
+FROM alpine
 
-COPY . /go/src/github.com/Shopify/toxiproxy
-
-RUN go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(cat /go/src/github.com/Shopify/toxiproxy/VERSION)" -o /go/bin/toxiproxy github.com/Shopify/toxiproxy/cmd && \
-    go build -o /go/bin/toxiproxy-cli github.com/Shopify/toxiproxy/cli
+COPY tmp/build/toxiproxy-server-linux-amd64 /go/bin/toxiproxy
+COPY tmp/build/toxiproxy-cli-linux-amd64 /go/bin/toxiproxy-cli
 
 EXPOSE 8474
 ENTRYPOINT ["/go/bin/toxiproxy"]
