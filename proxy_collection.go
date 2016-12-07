@@ -1,6 +1,11 @@
 package toxiproxy
 
-import "sync"
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"sync"
+)
 
 // ProxyCollection is a collection of proxies. It's the interface for anything
 // to add and remove proxies from the toxiproxy instance. It's responsibilty is
@@ -59,6 +64,49 @@ func (collection *ProxyCollection) AddOrReplace(proxy *Proxy, start bool) error 
 	collection.proxies[proxy.Name] = proxy
 
 	return nil
+}
+
+func (collection *ProxyCollection) PopulateJson(data io.Reader) ([]*Proxy, error) {
+	input := []struct {
+		Proxy
+		Enabled *bool `json:"enabled"` // Overrides Proxy field to make field nullable
+	}{}
+
+	err := json.NewDecoder(data).Decode(&input)
+	if err != nil {
+		return nil, joinError(err, ErrBadRequestBody)
+	}
+
+	// Check for valid input before creating any proxies
+	t := true
+	for i, p := range input {
+		if len(p.Name) < 1 {
+			return nil, joinError(fmt.Errorf("name at proxy %d", i+1), ErrMissingField)
+		}
+		if len(p.Upstream) < 1 {
+			return nil, joinError(fmt.Errorf("upstream at proxy %d", i+1), ErrMissingField)
+		}
+		if p.Enabled == nil {
+			input[i].Enabled = &t
+		}
+	}
+
+	proxies := make([]*Proxy, 0, len(input))
+
+	for _, p := range input {
+		proxy := NewProxy()
+		proxy.Name = p.Name
+		proxy.Listen = p.Listen
+		proxy.Upstream = p.Upstream
+
+		err = collection.AddOrReplace(proxy, *p.Enabled)
+		if err != nil {
+			break
+		}
+
+		proxies = append(proxies, proxy)
+	}
+	return proxies, err
 }
 
 func (collection *ProxyCollection) Proxies() map[string]*Proxy {
