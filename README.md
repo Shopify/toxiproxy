@@ -196,8 +196,8 @@ binaries and system packages for your architecture.
 **Ubuntu**
 
 ```bash
-$ wget -O toxiproxy-2.0.0.deb https://github.com/Shopify/toxiproxy/releases/download/v2.0.0/toxiproxy_2.0.0_amd64.deb
-$ sudo dpkg -i toxiproxy-2.0.0.deb
+$ wget -O toxiproxy-2.1.0.deb https://github.com/Shopify/toxiproxy/releases/download/v2.1.0/toxiproxy_2.1.0_amd64.deb
+$ sudo dpkg -i toxiproxy-2.1.0.deb
 $ sudo service toxiproxy start
 ```
 
@@ -210,7 +210,7 @@ $ brew install toxiproxy
 
 **Windows**
 
-Toxiproxy for Windows is available for download at https://github.com/Shopify/toxiproxy/releases/download/v2.0.0/toxiproxy-server-windows-amd64.exe
+Toxiproxy for Windows is available for download at https://github.com/Shopify/toxiproxy/releases/download/v2.1.0/toxiproxy-server-windows-amd64.exe
 
 **Docker**
 

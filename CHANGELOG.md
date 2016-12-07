@@ -1,4 +1,4 @@
-# 2.1.0 (Unreleased)
+# 2.1.0
 
 * Add -config server option to populate on startup #154
 * Updated CLI for scriptability #133
