@@ -143,7 +143,7 @@ func NewTransactionalReader(input <-chan *StreamChunk) *TransactionalReader {
 // If the reader returns `ErrInterrupted`, it will automatically call Rollback()
 func (t *TransactionalReader) Read(out []byte) (n int, err error) {
 	defer func() {
-		if err == ErrInterrupted || err == io.EOF {
+		if err == ErrInterrupted {
 			t.Rollback()
 		}
 	}()
@@ -208,7 +208,9 @@ func (t *TransactionalReader) Checkpoint(offset int) {
 
 // Rolls back the reader to start from the last checkpoint.
 func (t *TransactionalReader) Rollback() {
-	t.bufReader = bytes.NewReader(t.buffer.Bytes())
+	if t.buffer.Len() > 0 {
+		t.bufReader = bytes.NewReader(t.buffer.Bytes())
+	}
 }
 
 func (t *TransactionalReader) SetInterrupt(interrupt <-chan struct{}) {

@@ -292,9 +292,7 @@ func HandleError(t *testing.T, rw *TestReadWriter, err error, expectedErr error)
 	if err != expectedErr {
 		t.Fatalf("Unexpected error during read: %v != %v", err, expectedErr)
 	}
-	if err == ErrInterrupted {
-		rw.Rollback()
-	} else if err == io.EOF {
+	if err == io.EOF {
 		rw.Rollback()
 		rw.FlushTo(rw)
 		rw.Close()
@@ -343,6 +341,22 @@ func TestReadWriterBasicFull(t *testing.T) {
 	rw.Checkpoint(0)
 	AssertRead(t, rw, buf, "foobar", nil)
 	rw.Checkpoint(0)
+	AssertRead(t, rw, buf, "", io.EOF)
+
+	AssertClosed(t, rw, nil)
+}
+
+func TestReadWriterNoopRollback(t *testing.T) {
+	rw := NewTestReadWriter()
+	buf := make([]byte, 32)
+
+	AssertRead(t, rw, buf, "hello world", nil)
+	AssertRead(t, rw, buf, "foobar", nil)
+	rw.Checkpoint(0)
+	rw.Rollback()
+	if rw.bufReader != nil {
+		t.Fatal("bufReader was set when it shouldn't have been")
+	}
 	AssertRead(t, rw, buf, "", io.EOF)
 
 	AssertClosed(t, rw, nil)
@@ -418,17 +432,27 @@ func TestReadWriterInterrupt(t *testing.T) {
 	interrupt := make(chan struct{})
 	rw.SetInterrupt(interrupt)
 	buf := make([]byte, 32)
+	sync := make(chan struct{})
 
 	AssertRead(t, rw, buf, "hello world", nil)
 	rw.Checkpoint(0)
 	go func() {
 		interrupt <- struct{}{}
 		rw.input <- &StreamChunk{[]byte("foobar"), time.Now()}
+
+		<-sync
+		interrupt <- struct{}{}
 		close(rw.input)
 	}()
 	AssertRead(t, rw, buf, "", ErrInterrupted)
 	AssertRead(t, rw, buf, "foobar", nil)
+
+	close(sync)
+	// Interrupt should rollback automatically
+	AssertRead(t, rw, buf, "", ErrInterrupted)
+	AssertRead(t, rw, buf, "foobar", nil)
 	rw.Checkpoint(0)
+
 	AssertRead(t, rw, buf, "", io.EOF)
 
 	AssertClosed(t, rw, nil)

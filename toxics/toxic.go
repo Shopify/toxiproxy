@@ -98,12 +98,9 @@ func (s *ToxicStub) InterruptToxic() bool {
 	}
 }
 
-func (s *ToxicStub) Flush() {
-	s.Reader.FlushTo(s.Writer)
-}
-
 func (s *ToxicStub) Close() {
-	s.Flush()
+	s.Reader.Rollback()
+	s.Reader.FlushTo(s.Writer)
 
 	close(s.closed)
 	close(s.Output)
