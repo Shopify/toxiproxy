@@ -1,13 +1,11 @@
 package toxics
 
 import (
-	"io"
 	"math/rand"
 	"reflect"
 	"sync"
 
 	"github.com/Shopify/toxiproxy/stream"
-	"github.com/Sirupsen/logrus"
 )
 
 // A Toxic is something that can be attatched to a link to modify the way
@@ -100,30 +98,15 @@ func (s *ToxicStub) InterruptToxic() bool {
 	}
 }
 
-func (s *ToxicStub) Close() {
-	close(s.closed)
-	close(s.Output)
+func (s *ToxicStub) Flush() {
+	s.Reader.FlushTo(s.Writer)
 }
 
-// Handles errors returned by the stub's TransactionalReader. Returns true if the channel
-// has closed and the caller should exit.
-// Unknown errors will flush all data since the last checkpoint to the writer and return false so the
-// caller can handle the error.
-func (s *ToxicStub) HandleReadError(err error) bool {
-	if err == stream.ErrInterrupted {
-		s.Reader.Rollback()
-		return true
-	} else if err == io.EOF || err == io.ErrUnexpectedEOF {
-		s.Reader.Rollback()
-		s.Reader.FlushTo(s.Writer)
-		s.Close()
-		return true
-	} else if err != nil {
-		s.Reader.Rollback()
-		s.Reader.FlushTo(s.Writer)
-		logrus.Warn("Read error in toxic: ", err)
-	}
-	return false
+func (s *ToxicStub) Close() {
+	s.Flush()
+
+	close(s.closed)
+	close(s.Output)
 }
 
 var ToxicRegistry map[string]Toxic

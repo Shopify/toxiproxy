@@ -140,7 +140,14 @@ func NewTransactionalReader(input <-chan *StreamChunk) *TransactionalReader {
 }
 
 // Reads from the input channel either directly, or from a buffer if Rollback() has been called.
-func (t *TransactionalReader) Read(out []byte) (int, error) {
+// If the reader returns `ErrInterrupted`, it will automatically call Rollback()
+func (t *TransactionalReader) Read(out []byte) (n int, err error) {
+	defer func() {
+		if err == ErrInterrupted || err == io.EOF {
+			t.Rollback()
+		}
+	}()
+
 	if t.bufReader != nil {
 		n, err := t.bufReader.Read(out)
 		if err == io.EOF {
@@ -157,7 +164,7 @@ func (t *TransactionalReader) Read(out []byte) (int, error) {
 	}
 }
 
-// Flushes all buffers in the reader to the specified writer.
+// Flushes all buffers past the current position in the reader to the specified writer.
 func (t *TransactionalReader) FlushTo(writer io.Writer) {
 	n := 0
 	if t.bufReader != nil {

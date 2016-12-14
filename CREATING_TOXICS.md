@@ -147,7 +147,10 @@ func (t *NoopToxic) Pipe(stub *toxics.ToxicStub) {
     buf := make([]byte, 32*1024)
     for {
         n, err := stub.Reader.Read(buf)
-        if stub.HandleReadError(err) {
+        if err == stream.ErrInterrupted {
+            return
+        } else if err == io.EOF {
+            stub.Close()
             return
         }
         stub.Writer.Write(buf[:n])
