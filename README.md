@@ -1,4 +1,7 @@
 # Toxiproxy
+[![GitHub release](https://img.shields.io/github/release/Shopify/toxiproxy.svg)](https://github.com/Shopify/toxiproxy/releases/latest)
+[![Build Status](https://img.shields.io/circleci/project/github/Shopify/toxiproxy/master.svg)](https://circleci.com/gh/Shopify/toxiproxy/tree/master)
+[![IRC Channel](https://img.shields.io/badge/chat-on%20freenode-brightgreen.svg)](https://kiwiirc.com/client/irc.freenode.net/#toxiproxy)
 
 ![](http://i.imgur.com/sOaNw0o.png)
 
@@ -220,6 +223,8 @@ Toxiproxy is available on [Docker Hub](https://hub.docker.com/r/shopify/toxiprox
 $ docker pull shopify/toxiproxy
 $ docker run -it shopify/toxiproxy
 ```
+
+If using Toxiproxy from the host rather than other containers, enable host networking with `--net=host`.
 
 **Source**
 
