@@ -145,19 +145,16 @@ An implementation of the noop toxic above using the stream package would look so
 ```go
 func (t *NoopToxic) Pipe(stub *toxics.ToxicStub) {
     buf := make([]byte, 32*1024)
-    writer := stream.NewChanWriter(stub.Output)
-    reader := stream.NewChanReader(stub.Input)
-    reader.SetInterrupt(stub.Interrupt)
     for {
-        n, err := reader.Read(buf)
+        n, err := stub.Reader.Read(buf)
         if err == stream.ErrInterrupted {
-            writer.Write(buf[:n])
             return
         } else if err == io.EOF {
             stub.Close()
             return
         }
-        writer.Write(buf[:n])
+        stub.Writer.Write(buf[:n])
+        stub.Reader.Checkpoint(0)
     }
 }
 ```
