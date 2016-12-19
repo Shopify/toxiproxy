@@ -381,6 +381,25 @@ func TestReadWriterCheckpointRollback(t *testing.T) {
 	AssertClosed(t, rw, nil)
 }
 
+func TestReadWriterCheckpointMidBufReader(t *testing.T) {
+	rw := NewTestReadWriter()
+	buf := make([]byte, 8)
+
+	AssertRead(t, rw, buf, "hello wo", nil)
+	AssertRead(t, rw, buf, "rldfooba", nil)
+	rw.Rollback()
+	AssertRead(t, rw, buf, "hello wo", nil)
+	rw.Checkpoint(0)
+	AssertRead(t, rw, buf, "rldfooba", nil)
+	rw.Rollback()
+	AssertRead(t, rw, buf, "rldfooba", nil)
+	AssertRead(t, rw, buf, "r", nil)
+	rw.Checkpoint(0)
+	AssertRead(t, rw, buf, "", io.EOF)
+
+	AssertClosed(t, rw, nil)
+}
+
 func TestReadWriterFlush(t *testing.T) {
 	rw := NewTestReadWriter()
 	buf := make([]byte, 8)

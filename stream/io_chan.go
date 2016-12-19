@@ -192,14 +192,12 @@ func (t *TransactionalReader) Checkpoint(offset int) {
 		current = int(t.bufReader.Size()) - t.bufReader.Len()
 	}
 
-	n := current
-	if offset > 0 {
-		n = offset
-	} else {
+	n := offset
+	if offset <= 0 {
 		n = current + offset
 	}
 
-	if n >= current {
+	if n >= t.buffer.Len() {
 		t.buffer.Reset()
 	} else {
 		t.buffer.Next(n)
