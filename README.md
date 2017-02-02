@@ -558,14 +558,16 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 
 ### Release
 
-1. Update `CHANGELOG.md`
-2. Bump `VERSION`
-3. Change versions in `README.md`
-4. Commit
-5. Tag
-6. `make release` to create binaries, packages and push new Docker image
-7. Create [Github draft release](https://github.com/Shopify/toxiproxy/releases/new) against new tag and upload binaries and Debian package
-8. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)
+1. Ensure this release has run internally for `Shopify/shopify` for at least a
+   day which is the best fuzzy test for robustness we have.
+2. Update `CHANGELOG.md`
+3. Bump `VERSION`
+4. Change versions in `README.md`
+5. Commit
+6. Tag
+7. `make release` to create binaries, packages and push new Docker image
+8. Create [Github draft release](https://github.com/Shopify/toxiproxy/releases/new) against new tag and upload binaries and Debian package
+9. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)
 
 
 [blog]: https://engineering.shopify.com/17489072-building-and-testing-resilient-ruby-on-rails-applications
