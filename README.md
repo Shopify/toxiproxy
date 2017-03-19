@@ -5,9 +5,6 @@
 
 ![](http://i.imgur.com/sOaNw0o.png)
 
-**NOTE**: Until https://github.com/Shopify/toxiproxy/issues/159 is fixed in
-`2.1.1` we recommend using the `2.0.0` release.
-
 Toxiproxy is a framework for simulating network conditions. It's made
 specifically to work in testing, CI and development environments, supporting
 deterministic tampering with connections, but with support for randomized chaos
@@ -201,9 +198,6 @@ binaries and system packages for your architecture.
 
 **Ubuntu**
 
-**NOTE**: Until https://github.com/Shopify/toxiproxy/issues/159 is fixed in
-`2.1.1` we recommend using the `2.0.0` release.
-
 ```bash
 $ wget -O toxiproxy-2.1.0.deb https://github.com/Shopify/toxiproxy/releases/download/v2.1.0/toxiproxy_2.1.0_amd64.deb
 $ sudo dpkg -i toxiproxy-2.1.0.deb
@@ -212,9 +206,6 @@ $ sudo service toxiproxy start
 
 **OS X**
 
-**NOTE**: Until https://github.com/Shopify/toxiproxy/issues/159 is fixed in
-`2.1.1` we recommend using the `2.0.0` release.
-
 ```bash
 $ brew tap shopify/shopify
 $ brew install toxiproxy
@@ -222,15 +213,9 @@ $ brew install toxiproxy
 
 **Windows**
 
-**NOTE**: Until https://github.com/Shopify/toxiproxy/issues/159 is fixed in
-`2.1.1` we recommend using the `2.0.0` release.
-
 Toxiproxy for Windows is available for download at https://github.com/Shopify/toxiproxy/releases/download/v2.1.0/toxiproxy-server-windows-amd64.exe
 
 **Docker**
-
-**NOTE**: Until https://github.com/Shopify/toxiproxy/issues/159 is fixed in
-`2.1.1` we recommend using the `2.0.0` release.
 
 Toxiproxy is available on [Docker Hub](https://hub.docker.com/r/shopify/toxiproxy/).
 
