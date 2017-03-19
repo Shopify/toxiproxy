@@ -12,17 +12,29 @@ type TimeoutToxic struct {
 func (t *TimeoutToxic) Pipe(stub *ToxicStub) {
 	timeout := time.Duration(t.Timeout) * time.Millisecond
 	if timeout > 0 {
-		select {
-		case <-time.After(timeout):
-			stub.Close()
-			return
-		case <-stub.Interrupt:
-			return
+		for {
+			select {
+			case <-time.After(timeout):
+				stub.Close()
+				return
+			case <-stub.Interrupt:
+				return
+			case <-stub.Input:
+				// Drop the data on the ground.
+			}
 		}
 	} else {
-		<-stub.Interrupt
-		return
+		select {
+		case <-stub.Interrupt:
+			return
+		case <-stub.Input:
+			// Drop the data on the ground.
+		}
 	}
+}
+
+func (t *TimeoutToxic) Cleanup(stub *ToxicStub) {
+	stub.Close()
 }
 
 func init() {

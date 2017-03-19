@@ -26,6 +26,11 @@ type Toxic interface {
 	Pipe(*ToxicStub)
 }
 
+type CleanupToxic interface {
+	// Cleanup is called before a toxic is removed.
+	Cleanup(*ToxicStub)
+}
+
 type BufferedToxic interface {
 	// Defines the size of buffer this toxic should use
 	GetBufferSize() int
@@ -92,9 +97,20 @@ func (s *ToxicStub) InterruptToxic() bool {
 	}
 }
 
+func (s *ToxicStub) Closed() bool {
+	select {
+	case <-s.closed:
+		return true
+	default:
+		return false
+	}
+}
+
 func (s *ToxicStub) Close() {
-	close(s.closed)
-	close(s.Output)
+	if !s.Closed() {
+		close(s.closed)
+		close(s.Output)
+	}
 }
 
 var ToxicRegistry map[string]Toxic

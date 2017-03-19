@@ -19,10 +19,10 @@ import (
 type ToxicCollection struct {
 	sync.Mutex
 
-	noop   *toxics.ToxicWrapper
-	proxy  *Proxy
-	chain  [][]*toxics.ToxicWrapper
-	links  map[string]*ToxicLink
+	noop  *toxics.ToxicWrapper
+	proxy *Proxy
+	chain [][]*toxics.ToxicWrapper
+	links map[string]*ToxicLink
 }
 
 func NewToxicCollection(proxy *Proxy) *ToxicCollection {
@@ -31,9 +31,9 @@ func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 			Toxic: new(toxics.NoopToxic),
 			Type:  "noop",
 		},
-		proxy:  proxy,
-		chain:  make([][]*toxics.ToxicWrapper, stream.NumDirections),
-		links:  make(map[string]*ToxicLink),
+		proxy: proxy,
+		chain: make([][]*toxics.ToxicWrapper, stream.NumDirections),
+		links: make(map[string]*ToxicLink),
 	}
 	for dir := range collection.chain {
 		collection.chain[dir] = make([]*toxics.ToxicWrapper, 1, toxics.Count()+1)
