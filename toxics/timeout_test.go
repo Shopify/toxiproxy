@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Shopify/toxiproxy/testhelper"
 	"github.com/Shopify/toxiproxy/toxics"
 )
 
@@ -47,16 +48,11 @@ func TestTimeoutToxicDoesNotCauseHang(t *testing.T) {
 
 	time.Sleep(1 * time.Second) // Shitty sync waiting for latency toxi to get data.
 
-	done := make(chan struct{})
-	go func() {
+	err = testhelper.TimeoutAfter(time.Second, func() {
 		proxy.Toxics.RemoveToxic("might_block")
-		close(done)
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(1 * time.Second):
-		t.Fatal("timeout toxic is causing latency toxic to block")
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -98,20 +94,14 @@ func TestTimeoutToxicClosesConnectionOnRemove(t *testing.T) {
 
 	proxy.Toxics.RemoveToxic("to_delete")
 
-	closed := make(chan error)
-
-	go func() {
+	err = testhelper.TimeoutAfter(time.Second, func() {
 		buf = make([]byte, 1)
 		_, err = conn.Read(buf)
-		closed <- err
-	}()
-
-	select {
-	case err := <-closed:
 		if err != io.EOF {
 			t.Fatal("expected EOF from closed connetion")
 		}
-	case <-time.After(1 * time.Second):
-		t.Fatal("connection was not closed in time")
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }

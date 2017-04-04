@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Shopify/toxiproxy/stream"
+	"github.com/Shopify/toxiproxy/testhelper"
 	"github.com/Shopify/toxiproxy/toxics"
 )
 
@@ -191,9 +192,7 @@ func TestToxicity(t *testing.T) {
 	toxic.Toxic.(*toxics.TimeoutToxic).Timeout = 100
 	collection.chainUpdateToxic(toxic)
 
-	// Toxic should timeout after 100ms
-	done := make(chan struct{})
-	go func() {
+	err = testhelper.TimeoutAfter(150*time.Millisecond, func() {
 		n, err = link.input.Write([]byte{42})
 		if n != 1 || err != nil {
 			t.Fatalf("Write failed: %d %v", n, err)
@@ -202,12 +201,9 @@ func TestToxicity(t *testing.T) {
 		if n != 0 || err != io.EOF {
 			t.Fatalf("Read did not get EOF: %d %v", n, err)
 		}
-		close(done)
-	}()
-	select {
-	case <-done:
-	case <-time.After(150 * time.Millisecond):
-		t.Fatalf("Expected timeout after 100ms")
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
