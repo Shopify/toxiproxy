@@ -70,16 +70,17 @@ func WithEstablishedProxy(t *testing.T, f func(net.Conn, net.Conn, *toxiproxy.Pr
 func TestTimeoutToxicDoesNotCauseHang(t *testing.T) {
 	WithEstablishedProxy(t, func(conn, _ net.Conn, proxy *toxiproxy.Proxy) {
 		proxy.Toxics.AddToxicJson(ToxicToJson(t, "might_block", "latency", "upstream", &toxics.LatencyToxic{Latency: 10}))
-		proxy.Toxics.AddToxicJson(ToxicToJson(t, "to_delete", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 0}))
+		proxy.Toxics.AddToxicJson(ToxicToJson(t, "timeout", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 0}))
 
-		_, err := conn.Write([]byte("hello"))
-		if err != nil {
-			t.Fatal("Unable to write to proxy", err)
+		for i := 0; i < 5; i++ {
+			_, err := conn.Write([]byte("hello"))
+			if err != nil {
+				t.Fatal("Unable to write to proxy", err)
+			}
+			time.Sleep(200 * time.Millisecond) // Shitty sync waiting for latency toxi to get data.
 		}
 
-		time.Sleep(1 * time.Second) // Shitty sync waiting for latency toxi to get data.
-
-		err = testhelper.TimeoutAfter(time.Second, func() {
+		err := testhelper.TimeoutAfter(time.Second, func() {
 			proxy.Toxics.RemoveToxic("might_block")
 		})
 		if err != nil {

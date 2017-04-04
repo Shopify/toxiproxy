@@ -24,11 +24,13 @@ func (t *TimeoutToxic) Pipe(stub *ToxicStub) {
 			}
 		}
 	} else {
-		select {
-		case <-stub.Interrupt:
-			return
-		case <-stub.Input:
-			// Drop the data on the ground.
+		for {
+			select {
+			case <-stub.Interrupt:
+				return
+			case <-stub.Input:
+				// Drop the data on the ground.
+			}
 		}
 	}
 }
