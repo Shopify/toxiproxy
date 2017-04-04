@@ -4,8 +4,10 @@ import (
 	"encoding/binary"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/Shopify/toxiproxy/stream"
+	"github.com/Shopify/toxiproxy/testhelper"
 	"github.com/Shopify/toxiproxy/toxics"
 )
 
@@ -190,14 +192,18 @@ func TestToxicity(t *testing.T) {
 	toxic.Toxic.(*toxics.TimeoutToxic).Timeout = 100
 	collection.chainUpdateToxic(toxic)
 
-	// Toxic should timeout after 100ms
-	n, err = link.input.Write([]byte{42})
-	if n != 1 || err != nil {
-		t.Fatalf("Write failed: %d %v", n, err)
-	}
-	n, err = link.output.Read(buf)
-	if n != 0 || err != io.EOF {
-		t.Fatalf("Read did not get EOF: %d %v", n, err)
+	err = testhelper.TimeoutAfter(150*time.Millisecond, func() {
+		n, err = link.input.Write([]byte{42})
+		if n != 1 || err != nil {
+			t.Fatalf("Write failed: %d %v", n, err)
+		}
+		n, err = link.output.Read(buf)
+		if n != 0 || err != io.EOF {
+			t.Fatalf("Read did not get EOF: %d %v", n, err)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

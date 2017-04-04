@@ -123,6 +123,15 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 	i := toxic.Index
 
 	if link.stubs[i].InterruptToxic() {
+		cleanup, ok := toxic.Toxic.(toxics.CleanupToxic)
+		if ok {
+			cleanup.Cleanup(link.stubs[i])
+			// Cleanup could have closed the stub.
+			if link.stubs[i].Closed() {
+				return
+			}
+		}
+
 		stop := make(chan bool)
 		// Interrupt the previous toxic to update its output
 		go func() {
