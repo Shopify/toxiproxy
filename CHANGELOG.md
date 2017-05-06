@@ -1,3 +1,7 @@
+# 2.1.1
+
+* Fix timeout toxic causing hang (issue #159)
+
 # 2.1.0
 
 * Add -config server option to populate on startup #154
