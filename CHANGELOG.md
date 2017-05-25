@@ -1,3 +1,7 @@
+# 2.1.2 (unreleased)
+
+* Handle SIGTERM to exit cleanly (issue #180)
+
 # 2.1.1
 
 * Fix timeout toxic causing hang (issue #159)
