@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"math/rand"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/Shopify/toxiproxy"
@@ -26,5 +29,14 @@ func main() {
 	if len(config) > 0 {
 		server.PopulateConfig(config)
 	}
+
+	// Handle SIGTERM to exit cleanly
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGTERM)
+	go func() {
+		<-signals
+		os.Exit(0)
+	}()
+
 	server.Listen(host, port)
 }
