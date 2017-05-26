@@ -328,10 +328,19 @@ Please consult your respective client library on usage.
 ### Toxics
 
 Toxics manipulate the pipe between the client and upstream. They can be added
-and removed from proxies using the [HTTP api](#http-api). Each toxic has its own parameters
-to change how it affects the proxy links.
+and removed from proxies using the [HTTP api](#http-api).
 
 For documentation on implementing custom toxics, see [CREATING_TOXICS.md](https://github.com/Shopify/toxiproxy/blob/master/CREATING_TOXICS.md)
+
+Every Toxic has the following parameters:
+
+ - `name`: toxic name (string, defaults to `<type>_<stream>`)
+ - `type`: toxic type (string)
+ - `stream`: link direction to affect (defaults to downstream)
+ - `toxicity`: probability of the toxic being applied to a link (defaults to 1.0, 100%).  This
+   is evaluated for every newly created connection and remains in effect for the lifetime of the connection..
+
+Each toxic also has its own attributes, documented below.
 
 #### latency
 
