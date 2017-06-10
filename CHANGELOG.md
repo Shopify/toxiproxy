@@ -1,5 +1,6 @@
 # 2.1.2 (unreleased)
 
+* go 1.8, make Sirupsen lower case, update godeps (issue #179)
 * Handle SIGTERM to exit cleanly (issue #180)
 
 # 2.1.1

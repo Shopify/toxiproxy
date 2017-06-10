@@ -87,7 +87,7 @@ development and CI environments.
 
 Let's walk through an example with a Rails application. Note that Toxiproxy is
 in no way tied to Ruby, it's just been our first use case. You can see the full example at
-[Sirupsen/toxiproxy-rails-example](https://github.com/Sirupsen/toxiproxy-rails-example).
+[sirupsen/toxiproxy-rails-example](https://github.com/sirupsen/toxiproxy-rails-example).
 To get started right away, jump down to [Usage](#usage).
 
 For our popular blog, for some reason we're storing the tags for our posts in
@@ -179,7 +179,7 @@ coverage you should also write an integration test that wraps fetching the
 entire blog post page when Redis is down.
 
 Full example application is at
-[Sirupsen/toxiproxy-rails-example](https://github.com/Sirupsen/toxiproxy-rails-example).
+[sirupsen/toxiproxy-rails-example](https://github.com/sirupsen/toxiproxy-rails-example).
 
 ## Usage
 

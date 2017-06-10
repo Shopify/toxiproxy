@@ -46,11 +46,6 @@ type Command struct {
 	Flags []Flag
 	// Treat all flags as normal arguments if true
 	SkipFlagParsing bool
-	// Skip argument reordering which attempts to move flags before arguments,
-	// but only works if all flags appear after all arguments. This behavior was
-	// removed n version 2 since it only works under specific conditions so we
-	// backport here by exposing it as an option for compatibility.
-	SkipArgReorder bool
 	// Boolean to hide built-in help command
 	HideHelp bool
 	// Boolean to hide this command from help or completion
@@ -94,9 +89,7 @@ func (c Command) Run(ctx *Context) (err error) {
 	set := flagSet(c.Name, c.Flags)
 	set.SetOutput(ioutil.Discard)
 
-	if c.SkipFlagParsing {
-		err = set.Parse(append([]string{"--"}, ctx.Args().Tail()...))
-	} else if !c.SkipArgReorder {
+	if !c.SkipFlagParsing {
 		firstFlagIndex := -1
 		terminatorIndex := -1
 		for index, arg := range ctx.Args() {
@@ -129,7 +122,9 @@ func (c Command) Run(ctx *Context) (err error) {
 			err = set.Parse(ctx.Args().Tail())
 		}
 	} else {
-		err = set.Parse(ctx.Args().Tail())
+		if c.SkipFlagParsing {
+			err = set.Parse(append([]string{"--"}, ctx.Args().Tail()...))
+		}
 	}
 
 	if err != nil {
