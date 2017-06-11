@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/Shopify/toxiproxy/toxics"
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/gorilla/mux"
 )
 

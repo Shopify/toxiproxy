@@ -62,11 +62,10 @@ type App struct {
 	// An action to execute after any subcommands are run, but after the subcommand has finished
 	// It is run even if Action() panics
 	After AfterFunc
-
 	// The action to execute when no subcommands are specified
-	// Expects a `cli.ActionFunc` but will accept the *deprecated* signature of `func(*cli.Context) {}`
-	// *Note*: support for the deprecated `Action` signature will be removed in a future version
 	Action interface{}
+	// TODO: replace `Action: interface{}` with `Action: ActionFunc` once some kind
+	// of deprecation period has passed, maybe?
 
 	// Execute this function if the proper command cannot be found
 	CommandNotFound CommandNotFoundFunc
@@ -161,10 +160,6 @@ func (a *App) Setup() {
 		a.categories = a.categories.AddCommand(command.Category, command)
 	}
 	sort.Sort(a.categories)
-
-	if a.Metadata == nil {
-		a.Metadata = make(map[string]interface{})
-	}
 }
 
 // Run is the entry point to the cli app. Parses the arguments slice and routes
@@ -248,12 +243,11 @@ func (a *App) Run(arguments []string) (err error) {
 	return err
 }
 
-// RunAndExitOnError calls .Run() and exits non-zero if an error was returned
-//
-// Deprecated: instead you should return an error that fulfills cli.ExitCoder
-// to cli.App.Run. This will cause the application to exit with the given eror
-// code in the cli.ExitCoder
+// DEPRECATED: Another entry point to the cli app, takes care of passing arguments and error handling
 func (a *App) RunAndExitOnError() {
+	fmt.Fprintf(a.errWriter(),
+		"DEPRECATED cli.App.RunAndExitOnError.  %s  See %s\n",
+		contactSysadmin, runAndExitOnErrorDeprecationURL)
 	if err := a.Run(os.Args); err != nil {
 		fmt.Fprintln(a.errWriter(), err)
 		OsExiter(1)
@@ -473,7 +467,7 @@ func HandleAction(action interface{}, context *Context) (err error) {
 			// swallowing all panics that may happen when calling an Action func.
 			s := fmt.Sprintf("%v", r)
 			if strings.HasPrefix(s, "reflect: ") && strings.Contains(s, "too many input arguments") {
-				err = NewExitError(fmt.Sprintf("ERROR unknown Action error: %v.", r), 2)
+				err = NewExitError(fmt.Sprintf("ERROR unknown Action error: %v.  See %s", r, appActionDeprecationURL), 2)
 			} else {
 				panic(r)
 			}
@@ -487,6 +481,9 @@ func HandleAction(action interface{}, context *Context) (err error) {
 	vals := reflect.ValueOf(action).Call([]reflect.Value{reflect.ValueOf(context)})
 
 	if len(vals) == 0 {
+		fmt.Fprintf(ErrWriter,
+			"DEPRECATED Action signature.  Must be `cli.ActionFunc`.  %s  See %s\n",
+			contactSysadmin, appActionDeprecationURL)
 		return nil
 	}
 

@@ -24,7 +24,7 @@ func NewMultiError(err ...error) MultiError {
 	return MultiError{Errors: err}
 }
 
-// Error implements the error interface.
+// Error implents the error interface.
 func (m MultiError) Error() string {
 	errs := make([]string, len(m.Errors))
 	for i, err := range m.Errors {
@@ -88,11 +88,5 @@ func HandleExitCoder(err error) {
 		for _, merr := range multiErr.Errors {
 			HandleExitCoder(merr)
 		}
-		return
 	}
-
-	if err.Error() != "" {
-		fmt.Fprintln(ErrWriter, err)
-	}
-	OsExiter(1)
 }
