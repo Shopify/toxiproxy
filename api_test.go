@@ -36,6 +36,36 @@ func WithServer(t *testing.T, f func(string)) {
 	f("http://localhost:8475")
 }
 
+func TestBrowserGets403(t *testing.T) {
+	WithServer(t, func(addr string) {
+		client := http.Client{}
+
+		req, _ := http.NewRequest("GET", "http://localhost:8475/proxies", nil)
+		req.Header.Add("User-Agent", "Mozilla/5.0 (Linux; Android 4.4.2); Nexus 5 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Mobile Safari/537.36 OPR/20.0.1396.72047")
+
+		resp, _ := client.Do(req)
+
+		if resp.StatusCode != 403 {
+			t.Fatal("Browser-like UserAgent was not denied access to Toxiproxy")
+		}
+	})
+}
+
+func TestNonBrowserGets200(t *testing.T) {
+	WithServer(t, func(addr string) {
+		client := http.Client{}
+
+		req, _ := http.NewRequest("GET", "http://localhost:8475/proxies", nil)
+		req.Header.Add("User-Agent", "Wget/2.1")
+
+		resp, _ := client.Do(req)
+
+		if resp.StatusCode == 403 {
+			t.Fatal("Non-Browser-like UserAgent was denied access to Toxiproxy")
+		}
+	})
+}
+
 func TestIndexWithNoProxies(t *testing.T) {
 	WithServer(t, func(addr string) {
 		client := tclient.NewClient(addr)
