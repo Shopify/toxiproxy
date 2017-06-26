@@ -7,10 +7,11 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/Shopify/toxiproxy/toxics"
-	"github.com/sirupsen/logrus"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 type ApiServer struct {
@@ -46,6 +47,16 @@ func (server *ApiServer) PopulateConfig(filename string) {
 	}
 }
 
+func StopBrowsersMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.UserAgent(), "Mozilla/") {
+			http.Error(w, "User agent not allowed", 403)
+		} else {
+			h.ServeHTTP(w, r)
+		}
+	})
+}
+
 func (server *ApiServer) Listen(host string, port string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/reset", server.ResetState).Methods("POST")
@@ -62,7 +73,8 @@ func (server *ApiServer) Listen(host string, port string) {
 	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE")
 
 	r.HandleFunc("/version", server.Version).Methods("GET")
-	http.Handle("/", r)
+
+	http.Handle("/", StopBrowsersMiddleware(r))
 
 	logrus.WithFields(logrus.Fields{
 		"host":    host,
