@@ -1,7 +1,8 @@
-# 2.1.2 (unreleased)
+# 2.1.2
 
 * go 1.8, make Sirupsen lower case, update godeps (issue #179)
 * Handle SIGTERM to exit cleanly (issue #180)
+* Address security issue by disallowing browsers from accessing API
 
 # 2.1.1
 
