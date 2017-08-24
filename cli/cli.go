@@ -50,19 +50,19 @@ var toxicDescription = `
 	        	average_size=<byes>,size_variation=<bytes>,delay=<microseconds>
 
 	toxic add:
-		usage: toxiproxy-cli add <proxyName> --type <toxicType> --toxicName <toxicName> \
+		usage: toxiproxy-cli toxic add <proxyName> --type <toxicType> --toxicName <toxicName> \
 		--attribute <key=value> --upstream --downstream
 
 		example: toxiproxy-cli toxic add myProxy -t latency -n myToxic -a latency=100 -a jitter=50
 
 	toxic update:
-		usage: toxiproxy-cli update <proxyName> --toxicName <toxicName> \
+		usage: toxiproxy-cli toxic update <proxyName> --toxicName <toxicName> \
 		--attribute <key1=value1> --attribute <key2=value2>
 
 		example: toxiproxy-cli toxic update myProxy -n myToxic -a jitter=25
 
 	toxic delete:
-		usage: toxiproxy-cli update <proxyName> --toxicName <toxicName>
+		usage: toxiproxy-cli toxic delete <proxyName> --toxicName <toxicName>
 
 		example: toxiproxy-cli toxic delete myProxy -n myToxic
 `
