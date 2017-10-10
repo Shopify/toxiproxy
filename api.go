@@ -49,7 +49,7 @@ func (server *ApiServer) PopulateConfig(filename string) {
 
 func StopBrowsersMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.UserAgent(), "Mozilla/") {
+		if strings.HasPrefix(r.UserAgent(), "Mozilla/") && r.URL.Path != "/dashboard" {
 			http.Error(w, "User agent not allowed", 403)
 		} else {
 			h.ServeHTTP(w, r)
