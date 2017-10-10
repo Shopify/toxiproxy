@@ -11,7 +11,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
+	"regexp"
 )
 
 // Client holds information about where to connect to Toxiproxy.
@@ -47,7 +47,8 @@ type Proxy struct {
 // with Toxiproxy. Endpoint is the address to the proxy (e.g. localhost:8474 if
 // not overriden)
 func NewClient(endpoint string) *Client {
-	if !strings.HasPrefix(endpoint, "http://") {
+	protocolProvided, _ := regexp.MatchString(`^https?://`, endpoint)
+	if !protocolProvided {
 		endpoint = "http://" + endpoint
 	}
 	return &Client{endpoint: endpoint}
