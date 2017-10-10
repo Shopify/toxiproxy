@@ -74,6 +74,8 @@ func (server *ApiServer) Listen(host string, port string) {
 
 	r.HandleFunc("/version", server.Version).Methods("GET")
 
+	r.HandleFunc("/dashboard", server.Dashboard).Methods("GET")
+
 	http.Handle("/", StopBrowsersMiddleware(r))
 
 	logrus.WithFields(logrus.Fields{
@@ -384,6 +386,14 @@ func (server *ApiServer) ToxicDelete(response http.ResponseWriter, request *http
 func (server *ApiServer) Version(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Content-Type", "text/plain")
 	_, err := response.Write([]byte(Version))
+	if err != nil {
+		logrus.Warn("Version: Failed to write response to client", err)
+	}
+}
+
+func (server *ApiServer) Dashboard(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "text/plain")
+	_, err := response.Write([]byte(":wave:"))
 	if err != nil {
 		logrus.Warn("Version: Failed to write response to client", err)
 	}
