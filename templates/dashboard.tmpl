@@ -1,0 +1,10 @@
+<table>
+    {{ range . }}
+    <tr>
+        <td>{{ .Name }}</td>
+        <td>listen: {{ .Listen }}</td>
+        <td>upstream: {{ .Upstream }}</td>
+        <td>enabled: <input type="checkbox" {{ if .Enabled }}checked{{ end }}/></td>
+    </tr>
+    {{ end }}
+</table>

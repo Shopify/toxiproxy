@@ -2,6 +2,7 @@ package toxiproxy
 
 import (
 	"encoding/json"
+	"html/template"
 	"fmt"
 	"log"
 	"net"
@@ -392,11 +393,8 @@ func (server *ApiServer) Version(response http.ResponseWriter, request *http.Req
 }
 
 func (server *ApiServer) Dashboard(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "text/plain")
-	_, err := response.Write([]byte(":wave:"))
-	if err != nil {
-		logrus.Warn("Version: Failed to write response to client", err)
-	}
+	tmpl := template.Must(template.ParseFiles("templates/dashboard.tmpl"))
+	tmpl.Execute(response, server.Collection.Proxies())
 }
 
 type ApiError struct {
