@@ -393,8 +393,13 @@ func (server *ApiServer) Version(response http.ResponseWriter, request *http.Req
 }
 
 func (server *ApiServer) Dashboard(response http.ResponseWriter, request *http.Request) {
+	var dashboardData []proxyToxics
+	for _, proxyName := range server.Collection.Proxies() {
+		dashboardData = append(dashboardData, proxyWithToxics(proxyName))
+	}
+
 	tmpl := template.Must(template.ParseFiles("templates/dashboard.tmpl"))
-	tmpl.Execute(response, server.Collection.Proxies())
+	tmpl.Execute(response, dashboardData)
 }
 
 type ApiError struct {
