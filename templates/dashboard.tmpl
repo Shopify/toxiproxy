@@ -1,10 +1,55 @@
 <table>
     {{ range . }}
     <tr>
-        <td>{{ .Name }}</td>
-        <td>listen: {{ .Listen }}</td>
-        <td>upstream: {{ .Upstream }}</td>
-        <td>enabled: <input type="checkbox" {{ if .Enabled }}checked{{ end }}/></td>
+        <td><strong>{{ .Proxy.Name }}</strong> listen: {{ .Proxy.Listen }}  upstream: {{ .Proxy.Upstream }}
+        Enabled? <input type="checkbox" {{ if .Proxy.Enabled }} checked{{ end }} /></td>
     </tr>
+    {{ range .Toxics }}
+    <tr>
+        <td>
+            name: {{ .Name }}
+        </td><td>
+            type: {{ .Type }}
+        </td><td>
+            stream: {{ .Stream }}
+        </td><td>
+            toxicity: {{ .Toxicity }}
+        </td><td>
+            direction: {{ .Direction }}
+        </td><td>
+            index: {{ .Index }}
+        </td><td>
+            buffer: {{ .BufferSize }}
+        </td><td>
+        </td><td>
+            {{ if eq .Type "latency" }}
+                jitter: {{ .Toxic.Jitter }}ms<br>
+                latency: {{ .Toxic.Latency}}ms
+            {{ end }}
+
+            {{ if eq .Type "bandwidth" }}
+                rate: {{ .Toxic.Rate }}KB/s
+            {{ end }}
+
+            {{ if eq .Type "limit_data" }}
+                bytes: {{ .Toxic.Bytes }} bytes
+            {{ end }}
+
+            {{ if eq .Type "slicer" }}
+                average size: {{ .Toxic.AverageSize }} bytes<br>
+                size variation: {{ .Toxic.SizeVariation }} bytes<br>
+                delay: {{ .Toxic.Delay }} microseconds
+            {{ end }}
+
+            {{ if eq .Type "slow_close" }}
+                delay: {{ .Toxic.Delay }}ms
+            {{ end }}
+
+            {{ if eq .Type "timeout" }}
+                timeout: {{ .Toxic.Timeout }}ms
+            {{ end }}
+        </td>
+        {{ end }}
     {{ end }}
+    </tr>
 </table>
