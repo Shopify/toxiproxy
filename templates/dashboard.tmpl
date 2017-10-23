@@ -23,30 +23,30 @@
         </td><td>
         </td><td>
             {{ if eq .Type "latency" }}
-                jitter: {{ .Toxic.Jitter }}ms<br>
-                latency: {{ .Toxic.Latency}}ms
+                jitter: <input type="text" name="jitter" value="{{ .Toxic.Jitter }}" size="6" />ms<br>
+                latency: <input type="text" name="latency" value="{{ .Toxic.Latency}}" size="6" />ms
             {{ end }}
 
             {{ if eq .Type "bandwidth" }}
-                rate: {{ .Toxic.Rate }}KB/s
+                rate: <input type="text" name="bandwidth_rate" value="{{ .Toxic.Rate }}" size="6" />KB/s
             {{ end }}
 
             {{ if eq .Type "limit_data" }}
-                bytes: {{ .Toxic.Bytes }} bytes
+                bytes: <input type="text" name="limit_data_bytes" value="{{ .Toxic.Bytes }}" size="6" /> bytes
             {{ end }}
 
             {{ if eq .Type "slicer" }}
-                average size: {{ .Toxic.AverageSize }} bytes<br>
-                size variation: {{ .Toxic.SizeVariation }} bytes<br>
-                delay: {{ .Toxic.Delay }} microseconds
+                average size: <input type="text" name="slicer_average_size" value="{{ .Toxic.AverageSize }}" size="6" /> bytes<br>
+                size variation: <input type="text" name="slicer_size_variation" value="{{ .Toxic.SizeVariation }}" size="6" /> bytes<br>
+                delay: <input type="text" name="slicer_delay" value="{{ .Toxic.Delay }}" size="6" /> microseconds
             {{ end }}
 
             {{ if eq .Type "slow_close" }}
-                delay: {{ .Toxic.Delay }}ms
+                delay: <input type="text" name="slow_close_delay" value="{{ .Toxic.Delay }}" size="6" />ms
             {{ end }}
 
             {{ if eq .Type "timeout" }}
-                timeout: {{ .Toxic.Timeout }}ms
+                timeout: <input type="text" name="timeout" value="{{ .Toxic.Timeout }}" size="6" />ms
             {{ end }}
         </td>
         {{ end }}
