@@ -10,7 +10,3 @@ commands:
   test:
     run: godep go test ./...
     desc: 'run unit tests'
-
-packages:
-  - git@github.com:Shopify/dev-shopify.git
-
