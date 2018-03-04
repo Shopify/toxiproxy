@@ -382,7 +382,7 @@ func (server *ApiServer) ToxicDelete(response http.ResponseWriter, request *http
 }
 
 func (server *ApiServer) Version(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "text/plain")
+	response.Header().Set("Content-Type", "text/plain;charset=utf-8")
 	_, err := response.Write([]byte(Version))
 	if err != nil {
 		logrus.Warn("Version: Failed to write response to client", err)
