@@ -1,3 +1,9 @@
+# 2.1.3
+
+* Update `/version` endpoint to also return a charset of utf-8. #204
+* Bug fix: Double http concatination. #191
+* Update cli examples to be more accurate. #187
+
 # 2.1.2
 
 * go 1.8, make Sirupsen lower case, update godeps (issue #179)
