@@ -287,8 +287,9 @@ Toxiproxy.
 
 For large application we recommend storing the Toxiproxy configurations in a
 separate configuration file. We use `config/toxiproxy.json`. This file can be
-passed to the server using the `-config` option, or loaded by the application
-to use with the `populate` function.
+passed to the server using the `-configFile` option, or loaded by the application
+to use with the `populate` function. Alternatively you can pass a json string 
+with the `-configJson` option to populate these configurations.
 
 Use ports outside the ephemeral port range to avoid random port conflicts.
 It's `32,768` to `61,000` on Linux by default, see
