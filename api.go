@@ -1,8 +1,10 @@
 package toxiproxy
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -24,7 +26,7 @@ func NewServer() *ApiServer {
 	}
 }
 
-func (server *ApiServer) PopulateConfig(filename string) {
+func (server *ApiServer) PopulateConfigFromFile(filename string) {
 	file, err := os.Open(filename)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -32,18 +34,26 @@ func (server *ApiServer) PopulateConfig(filename string) {
 			"error":  err,
 		}).Error("Error reading config file")
 	} else {
-		proxies, err := server.Collection.PopulateJson(file)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"config": filename,
-				"error":  err,
-			}).Error("Failed to populate proxies from file")
-		} else {
-			logrus.WithFields(logrus.Fields{
-				"config":  filename,
-				"proxies": len(proxies),
-			}).Info("Populated proxies from file")
-		}
+		server.populateConfig(file)
+	}
+}
+
+func (server *ApiServer) PopulateConfigFromJsonString(json string) {
+	var data = bytes.NewReader([]byte(json))
+
+	server.populateConfig(data)
+}
+
+func (server *ApiServer) populateConfig(data io.Reader) {
+	proxies, err := server.Collection.PopulateJson(data)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"error": err,
+		}).Error("Failed to populate proxies from file")
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"proxies": len(proxies),
+		}).Info("Populated proxies from file")
 	}
 }
 
