@@ -323,7 +323,7 @@ func TestPopulateProxyWithBadDataShouldReturnError(t *testing.T) {
 
 		for _, p := range proxies {
 			if p.Name == "two" || p.Name == "three" {
-				t.Fatalf("Proxy %s exists, populate did not fail correctly.")
+				t.Fatalf("Proxy %s exists, populate did not fail correctly.", p.Name)
 			}
 		}
 	})
