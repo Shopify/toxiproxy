@@ -392,6 +392,12 @@ Closes connection when transmitted data exceeded limit.
 
  - `bytes`: number of bytes it should transmit before connection is closed
 
+#### http_request_headers
+
+Modifies http request headers. This toxic only has effect when the direction equals `upstream`. The most common use case would be modifying the Host header when using reverse proxies.
+
+ - `headers`: a key value map with the headers to set.
+
 ### HTTP API
 
 All communication with the Toxiproxy daemon from the client happens through the
