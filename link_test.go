@@ -223,7 +223,3 @@ func TestStateCreated(t *testing.T) {
 		t.Fatalf("New toxic did not have state object created.")
 	}
 }
-
-func TestFailingTest(t *testing.T) {
-	t.Fatal("This is a failing test.")
-}
