@@ -31,6 +31,7 @@ type CleanupToxic interface {
 	Cleanup(*ToxicStub)
 }
 
+// Buffered toxics include a buffer for incoming data so that delays don't block other toxics.
 type BufferedToxic interface {
 	// Defines the size of buffer this toxic should use
 	GetBufferSize() int
@@ -44,21 +45,30 @@ type StatefulToxic interface {
 	NewState() interface{}
 }
 
+// Bidirectional toxics operate on both TCP streams and allow state to be shared.
+// PipeUpstream() will oparate on the upstream, while Pipe() will operate on the downstream.
+type BidirectionalToxic interface {
+	// Defines the packet flow through an upstream ToxicStub. Operates the same as Pipe().
+	PipeUpstream(*ToxicStub)
+}
+
 type ToxicWrapper struct {
-	Toxic      `json:"attributes"`
-	Name       string           `json:"name"`
-	Type       string           `json:"type"`
-	Stream     string           `json:"stream"`
-	Toxicity   float32          `json:"toxicity"`
-	Direction  stream.Direction `json:"-"`
-	Index      int              `json:"-"`
-	BufferSize int              `json:"-"`
+	Toxic       `json:"attributes"`
+	Name        string           `json:"name"`
+	Type        string           `json:"type"`
+	Stream      string           `json:"stream"`
+	Toxicity    float32          `json:"toxicity"`
+	Direction   stream.Direction `json:"-"`
+	Index       int              `json:"-"`
+	BufferSize  int              `json:"-"`
+	PairedToxic *ToxicWrapper    `json:"-"`
 }
 
 type ToxicStub struct {
 	Input     <-chan *stream.StreamChunk
 	Output    chan<- *stream.StreamChunk
 	State     interface{}
+	Toxicity  float32
 	Interrupt chan struct{}
 	running   chan struct{}
 	closed    chan struct{}
@@ -70,6 +80,7 @@ func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.Stream
 		closed:    make(chan struct{}),
 		Input:     input,
 		Output:    output,
+		Toxicity:  rand.Float32(),
 	}
 }
 
@@ -78,8 +89,14 @@ func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.Stream
 func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 	s.running = make(chan struct{})
 	defer close(s.running)
-	if rand.Float32() < toxic.Toxicity {
-		toxic.Pipe(s)
+
+	if s.Toxicity < toxic.Toxicity {
+		if toxic.PairedToxic == nil || toxic.Direction == stream.Downstream {
+			toxic.Pipe(s)
+		} else {
+			bidirectional := toxic.Toxic.(BidirectionalToxic)
+			bidirectional.PipeUpstream(s)
+		}
 	} else {
 		new(NoopToxic).Pipe(s)
 	}
@@ -139,6 +156,15 @@ func New(wrapper *ToxicWrapper) Toxic {
 		wrapper.BufferSize = buffered.GetBufferSize()
 	} else {
 		wrapper.BufferSize = 0
+	}
+	if _, ok := wrapper.Toxic.(BidirectionalToxic); ok {
+		wrapper.PairedToxic = &ToxicWrapper{
+			Toxic:       wrapper.Toxic,
+			Type:        wrapper.Type,
+			Toxicity:    wrapper.Toxicity,
+			BufferSize:  wrapper.BufferSize,
+			PairedToxic: wrapper,
+		}
 	}
 	return wrapper.Toxic
 }

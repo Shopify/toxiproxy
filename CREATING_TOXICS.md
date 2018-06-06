@@ -118,9 +118,18 @@ and how much memory you are comfortable with using.
 ## Stateful toxics
 
 If a toxic needs to store extra information for a connection such as the number of bytes
-transferred (See `limit_data` toxic), a state object can be created by implementing the
-`StatefulToxic` interface. This interface defines the `NewState()` function that can create
-a new state object with default values set.
+transferred (See the [limit_data toxic](https://github.com/Shopify/toxiproxy/blob/master/toxics/limit_data.go)),
+a state object can be created by implementing the `StatefulToxic` interface. This interface
+defines the `NewState()` function that can create a new state object with default values set.
+
+```go
+func (t *ExampleToxic) NewState() interface{} {
+    return &ExampleToxicState{
+        BytesRemaining: t.BytesAllowed,
+        SomeOtherState: true,
+    }
+}
+```
 
 When a stateful toxic is created, the state object will be stored on the `ToxicStub` and
 can be accessed from `toxic.Pipe()`:
@@ -132,6 +141,78 @@ state := stub.State.(*ExampleToxicState)
 If necessary, some global state can be stored in the toxic struct, which will not be
 instanced per-connection. These fields cannot have a custom default value set and will
 not be thread-safe, so proper locking or atomic operations will need to be used.
+
+## Bidirectional toxics
+
+Regular toxics are limited to data flowing in a single direction, so they can't make decisions
+for the `downstream` based on a request in the `upstream`. For things like protocol aware toxics
+this is a problem.
+
+Bidirectional toxics allow state to be shared for the `upstream` and `downstream` pipes in a single
+toxic implementation. They also ensure direction-specific code is always run on the correct pipe
+(a toxic that only works on the `upstream` can't be added to the `downstream`).
+
+Creating a bidirectional toxic is done by implementing a second `Pipe()` function called `PipeUpstream()`.
+The implementation is same as a regular toxic, and can be paired with other types such as a stateful toxic.
+
+One use case of a bidirectional toxic is to mock out the backend server entirely, which is shown below:
+
+```go
+type EchoToxic struct {}
+
+type EchoToxicState struct {
+    Request          chan *stream.StreamChunk
+}
+
+// PipeUpstream handles the upstream direction
+func (t *EchoToxic) PipeUpstream(stub *toxics.ToxicStub) {
+    state := stub.State.(*EchoToxicState)
+
+    for {
+        select {
+        case <-stub.Interrupt:
+            return
+        case c := <-stub.Input:
+            if c == nil {
+                // Close the downstream when the client closes
+                close(state.Request)
+                stub.Close()
+                return
+            }
+            // Send the data to the downstream through the state object
+            state.Request <- c
+        }
+    }
+}
+
+// Pipe() will only handle the downstream on a bidirectional toxic
+func (t *EchoToxic) Pipe(stub *toxics.ToxicStub) {
+    state := stub.State.(*EchoToxicState)
+
+    for {
+        select {
+        case <-stub.Interrupt:
+            return
+        case c := <-state.Request: // Read from the upstream instead of the server
+            if c == nil {
+                stub.Close()
+                return
+            }
+            stub.Output <- c
+        }
+    }
+}
+
+func (t *EchoToxic) NewState() interface{} {
+    return &EchoToxicState{
+        Request: make(chan *stream.StreamChunk),
+    }
+}
+```
+
+This example will loop back all data send to the server back to the client. Another use case seen
+within toxiproxy is to filter http response modifications based on the request URL (See the
+[http toxic](https://github.com/Shopify/toxiproxy/tree/master/toxics/http.go)).
 
 ## Using `io.Reader` and `io.Writer`
 

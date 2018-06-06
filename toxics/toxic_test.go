@@ -56,7 +56,7 @@ func WithEchoServer(t *testing.T, f func(string, chan []byte)) {
 		ln.Close()
 
 		scan := bufio.NewScanner(src)
-		if scan.Scan() {
+		for scan.Scan() {
 			received := append(scan.Bytes(), '\n')
 			response <- received
 

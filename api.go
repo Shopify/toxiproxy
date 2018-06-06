@@ -443,7 +443,7 @@ func apiError(resp http.ResponseWriter, err error) bool {
 
 type proxyToxics struct {
 	*Proxy
-	Toxics []toxics.Toxic `json:"toxics"`
+	Toxics []*toxics.ToxicWrapper `json:"toxics"`
 }
 
 func proxyWithToxics(proxy *Proxy) (result proxyToxics) {
