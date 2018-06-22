@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/Shopify/toxiproxy/toxics"
 	"github.com/gorilla/mux"
@@ -49,11 +48,7 @@ func (server *ApiServer) PopulateConfig(filename string) {
 
 func StopBrowsersMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.UserAgent(), "Mozilla/") {
-			http.Error(w, "User agent not allowed", 403)
-		} else {
-			h.ServeHTTP(w, r)
-		}
+		h.ServeHTTP(w, r)
 	})
 }
 
@@ -73,6 +68,7 @@ func (server *ApiServer) Listen(host string, port string) {
 	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE")
 
 	r.HandleFunc("/version", server.Version).Methods("GET")
+	r.HandleFunc("/dashboard/", server.Dashboard).Methods("GET")
 
 	http.Handle("/", StopBrowsersMiddleware(r))
 
@@ -387,6 +383,12 @@ func (server *ApiServer) Version(response http.ResponseWriter, request *http.Req
 	if err != nil {
 		logrus.Warn("Version: Failed to write response to client", err)
 	}
+}
+
+func (server *ApiServer) Dashboard(response http.ResponseWriter, request *http.Request) {
+	logrus.Info(request.URL.Path[1:])
+	response.Header().Set("Content-Type", "text/html;charset=utf-8")
+	http.ServeFile(response, request, request.URL.Path[1:])
 }
 
 type ApiError struct {

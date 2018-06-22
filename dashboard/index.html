@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My first Vue app</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.1/css/bulma.min.css">
+  <!-- <script defer src="https://use.fontawesome.com/releases/v5.0.7/js/all.js"></script> -->
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+</head>
+<body>
+
+  <nav class="navbar is-primary" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="https://github.com/Shopify/toxiproxy">
+        <h1 class="title">TOXIPROXY</h1>
+      </a>
+    </div>
+  </nav>
+
+  <section class="section">
+    <div id="app" class="container list-group">
+      <ul>
+        <li v-for="proxy in proxies">
+          <div class="card" style="padding: 1rem">
+            <article class="media">
+              <div class="media-content">
+                <div class="columns" style="margin: -.75rem;">
+                  <div class="column">
+                    {{ proxy.name }}
+                  </div>
+
+                  <div class="column">
+                    {{ proxy.listen }}
+                  </div>
+
+                  <div class="column">
+                    {{ proxy.upstream }}
+                  </div>
+
+                  <div class="column">
+                    {{ proxy.enabled }}
+                  </div>
+
+                  <div class="column">
+                    <input type="button" class="button is-primary" onclick="toggleToxic(this)" value="toxic" />
+                    <input type="button" class="button is-primary" onclick="openModal(this)" value="edit" />
+                  </div>
+                </div>
+
+                <div class="card events-card has-background-white-bis" style="padding: 0rem; margin: 1rem; display: none">
+                  <!-- <header class="card-header">
+                    <p class="card-header-title">
+                      Toxics
+                    </p>
+                  </header> -->
+                  <div class="card-table">
+                    <div class="content">
+                      <table class="table is-fullwidth is-striped">
+                        <tbody>
+                            <tr>
+                              <th width="5%"><i class="fa fa-bell-o"></i></th>
+                              <th>name</th>
+                              <th>type</th>
+                              <th>stream</th>
+                              <th>toxicity</th>
+                              <td><input type="button" class="button is-small" onclick="addToxic(this)" value="Add"></input></td>
+                            </tr>
+
+                          <template v-for="toxic in proxy.toxics">
+                            <tr>
+                              <td width="5%"><i class="fa fa-bell-o"></i></td>
+                              <td>{{ toxic.name }}</td>
+                              <td>{{ toxic.type }}</td>
+                              <td>{{ toxic.stream }}</td>
+                              <td>{{ toxic.toxicity }}</td>
+
+                              <td><input type="button" class="button is-small is-primary" onclick="openModal(this)" value="Edit"></input></td>
+                            </tr>
+
+                            <!-- Toxic popup-->
+                            <div id="modal-ter" class="modal">
+                                <div class="modal-background"></div>
+                                <div class="modal-card">
+                                  <header class="modal-card-head">
+                                    <p class="modal-card-title">{{ toxic.name }}</p>
+                                    <button class="delete" onclick="closeModal()" aria-label="close"></button>
+                                  </header>
+                                  <section class="modal-card-body">
+                                    <div class="content">
+
+                                      <div class="field">
+                                        <label class="label">type</label>
+                                        <div class="control">
+                                          <input class="input" type="text" v-model="toxic.type">
+                                        </div>
+                                      </div>
+
+                                      <div class="field">
+                                        <label class="label">stream</label>
+                                        <div class="control">
+                                          <input class="input" type="text" v-model="toxic.stream">
+                                        </div>
+                                      </div>
+
+                                      <div class="field">
+                                        <label class="label">toxicity</label>
+                                        <div class="control">
+                                          <input class="input" type="text" v-model="toxic.toxicity">
+                                        </div>
+                                      </div>
+
+                                      <template v-for="(value, key) in toxic.attributes">
+                                          <div class="field">
+                                            <label class="label">{{key}}</label>
+                                            <div class="control">
+                                              <input class="input" type="text" v-model="toxic.attributes[key]">
+                                            </div>
+                                          </div>
+                                      </template>
+
+                                    </div>
+                                  </section>
+                                  <footer class="modal-card-foot">
+                                    <button class="button is-success" @click>Save changes</button>
+                                    <button class="button" onclick="closeModal()" >Cancel</button>
+                                  </footer>
+                                </div>
+                              </div>
+
+                          </template>
+
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+
+              </div>
+            </article>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+
+
+  <script>
+    var app = new Vue({
+      el: '#app',
+      data: {
+        proxies: [
+
+        ]
+      }
+    });
+
+    const openModal = (ele) => {
+      const modal = $( ele.parentElement.parentElement ).next();
+      // console.log( ele.parentElement.parentElement );
+      modal.addClass("is-active");
+    };
+
+    const closeModal = () => {
+      $(".modal").removeClass("is-active");
+    };
+
+
+    fetch('/proxies', {headers: {'User-Agent':'dummy'}})
+    .then(
+    function(response) {
+      if (response.status !== 200) {
+        console.log('Looks like there was a problem. Status Code: ' +
+        response.status);
+        return;
+      }
+
+      response.json().then(function(data) {
+        app.proxies = data;
+      });
+    }
+    )
+    .catch(function(err) {
+      console.log('Fetch Error :-S', err);
+    });
+
+    const showToxic = (toxic, show) => {
+      toxic.style.display = show? "block" : "none";
+    }
+
+    const toggleToxic = (ele) => {
+      let root = ele.parentElement.parentElement.parentElement;
+      let toxic = root.children[1];
+
+      showToxic(toxic, toxic.style.display === 'none');
+    };
+
+    const enableToxicFields = (root, enable) => {
+      $( root ).find( "input" ).prop("disabled", !enable);
+    }
+
+    const editToxic = (ele) => {
+      let root = ele.parentElement.parentElement.parentElement;
+      let toxic = root.children[1];
+      showToxic(toxic, true);
+      enableToxicFields(toxic, $( toxic ).find( "input" ).prop("disabled"));
+    };
+
+  </script>
+</body>
+</html>
