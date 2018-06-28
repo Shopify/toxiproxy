@@ -1,214 +1,1015 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>My first Vue app</title>
+  <title>Toxiproxy</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.1/css/bulma.min.css">
   <!-- <script defer src="https://use.fontawesome.com/releases/v5.0.7/js/all.js"></script> -->
 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <style>
+    .table-borderless > tbody > tr > td,
+    .table-borderless > tbody > tr > th,
+    .table-borderless > tfoot > tr > td,
+    .table-borderless > tfoot > tr > th,
+    .table-borderless > thead > tr > td,
+    .table-borderless > thead > tr > th {
+      border: none;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 25px;
+    }
+
+    .switch input {display:none;}
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    input:checked + .slider {
+      background-color: rgb(255, 205, 89);
+    }
+
+    input:focus + .slider {
+      box-shadow: 0 0 1px #2196F3;
+    }
+
+    input:checked + .slider:before {
+      -webkit-transform: translateX(24px);
+      -ms-transform: translateX(24px);
+      transform: translateX(24px);
+    }
+
+    /* Rounded sliders */
+    .slider.round {
+      border-radius: 25px;
+    }
+
+    .slider.round:before {
+      border-radius: 50%;
+    }
+
+    /*Accordain*/
+    .accordion {
+      cursor: pointer;
+      transition: 0.4s;
+    }
+
+    .accordion:after {
+      color: #777;
+      font-weight: bold;
+      float: right;
+      margin-left: 5px;
+    }
+
+    .panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.2s ease-out;
+    }
+
+    .notification {
+      position: fixed;
+      z-index: 31;
+      bottom: 30px;
+      width: 25%;
+      left: 37.5%;
+    }
+  </style>
 </head>
 <body>
 
-  <nav class="navbar is-primary" role="navigation" aria-label="main navigation">
+  <nav class="navbar is-white" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
-      <a class="navbar-item" href="https://github.com/Shopify/toxiproxy">
-        <h1 class="title">TOXIPROXY</h1>
-      </a>
-    </div>
-  </nav>
+      <!-- <a class="navbar-item" href="https://bulma.io"> -->
+        <img src="http://i.imgur.com/sOaNw0o.png" alt="toxiproxy"
+        width="60" height="60" style="margin: 1rem; margin-top: 0.5rem">
+        <!-- </a> -->
 
-  <section class="section">
-    <div id="app" class="container list-group">
-      <ul>
-        <li v-for="proxy in proxies">
-          <div class="card" style="padding: 1rem">
-            <article class="media">
-              <div class="media-content">
-                <div class="columns" style="margin: -.75rem;">
-                  <div class="column">
-                    {{ proxy.name }}
-                  </div>
+        <div>
 
-                  <div class="column">
-                    {{ proxy.listen }}
-                  </div>
+          <a class="navbar-item" style="padding-bottom: 0rem" href="https://github.com/Shopify/toxiproxy">
+            <h3 class="title is-size-4" style="color:#1B120D">Toxiproxy</h3>
+          </a>
 
-                  <div class="column">
-                    {{ proxy.upstream }}
-                  </div>
+          <a class="navbar-item" style="padding-top: 0rem" href="https://github.com/Shopify/toxiproxy">
+            <h3 class="title is-size-4" style="color:#1B120D">Dashboard</h3>
+          </a>
+        </div>
+      </nav>
+      <hr style="margin-top: 0rem">
 
-                  <div class="column">
-                    {{ proxy.enabled }}
-                  </div>
+      <section class="section" style="padding-top: 1rem">
+        <div id="app" class="container list-group">
+          <ul>
+            <div class="card" style="padding: 1rem">
+              <article class="media">
+                <div class="media-content">
+                  <div class="columns" style="margin: -.75rem;">
 
-                  <div class="column">
-                    <input type="button" class="button is-primary" onclick="toggleToxic(this)" value="toxic" />
-                    <input type="button" class="button is-primary" onclick="openModal(this)" value="edit" />
-                  </div>
-                </div>
+                    <div class="column	">
+                      <strong>Name</strong>
+                    </div>
 
-                <div class="card events-card has-background-white-bis" style="padding: 0rem; margin: 1rem; display: none">
-                  <!-- <header class="card-header">
-                    <p class="card-header-title">
-                      Toxics
-                    </p>
-                  </header> -->
-                  <div class="card-table">
-                    <div class="content">
-                      <table class="table is-fullwidth is-striped">
-                        <tbody>
-                            <tr>
-                              <th width="5%"><i class="fa fa-bell-o"></i></th>
-                              <th>name</th>
-                              <th>type</th>
-                              <th>stream</th>
-                              <th>toxicity</th>
-                              <td><input type="button" class="button is-small" onclick="addToxic(this)" value="Add"></input></td>
-                            </tr>
+                    <div class="column">
+                      <strong>Listen</strong>
+                    </div>
 
-                          <template v-for="toxic in proxy.toxics">
-                            <tr>
-                              <td width="5%"><i class="fa fa-bell-o"></i></td>
-                              <td>{{ toxic.name }}</td>
-                              <td>{{ toxic.type }}</td>
-                              <td>{{ toxic.stream }}</td>
-                              <td>{{ toxic.toxicity }}</td>
+                    <div class="column">
+                      <strong>Upstream</strong>
+                    </div>
 
-                              <td><input type="button" class="button is-small is-primary" onclick="openModal(this)" value="Edit"></input></td>
-                            </tr>
+                    <div class="column">
+                      <strong>Enabled</strong>
+                    </div>
 
-                            <!-- Toxic popup-->
-                            <div id="modal-ter" class="modal">
-                                <div class="modal-background"></div>
-                                <div class="modal-card">
-                                  <header class="modal-card-head">
-                                    <p class="modal-card-title">{{ toxic.name }}</p>
-                                    <button class="delete" onclick="closeModal()" aria-label="close"></button>
-                                  </header>
-                                  <section class="modal-card-body">
-                                    <div class="content">
-
-                                      <div class="field">
-                                        <label class="label">type</label>
-                                        <div class="control">
-                                          <input class="input" type="text" v-model="toxic.type">
-                                        </div>
-                                      </div>
-
-                                      <div class="field">
-                                        <label class="label">stream</label>
-                                        <div class="control">
-                                          <input class="input" type="text" v-model="toxic.stream">
-                                        </div>
-                                      </div>
-
-                                      <div class="field">
-                                        <label class="label">toxicity</label>
-                                        <div class="control">
-                                          <input class="input" type="text" v-model="toxic.toxicity">
-                                        </div>
-                                      </div>
-
-                                      <template v-for="(value, key) in toxic.attributes">
-                                          <div class="field">
-                                            <label class="label">{{key}}</label>
-                                            <div class="control">
-                                              <input class="input" type="text" v-model="toxic.attributes[key]">
-                                            </div>
-                                          </div>
-                                      </template>
-
-                                    </div>
-                                  </section>
-                                  <footer class="modal-card-foot">
-                                    <button class="button is-success" @click>Save changes</button>
-                                    <button class="button" onclick="closeModal()" >Cancel</button>
-                                  </footer>
-                                </div>
-                              </div>
-
-                          </template>
-
-                        </tbody>
-                      </table>
+                    <div class="column is-one-fifth" style="width: 12%">
+                      <button class="button is-normal" style="width: 4rem" @click.stop="showAddProxyDialog()"> Add </button>
                     </div>
                   </div>
                 </div>
+              </article>
+            </div>
 
+            <li v-for="(proxy, proxy_index) in proxies">
+              <proxy v-bind="proxy"
+              @update-proxy="updateProxy(proxy_index, $event)"
+              @delete-proxy="deleteProxy(proxy_index)"
+              @update-toxic="updateToxic(proxy_index, $event[0], $event[1])"
+              @delete-toxic="deleteToxic(proxy_index, $event)"
+              @add-toxic="addToxic(proxy_index, $event)">
+            </proxy>
+          </li>
+        </ul>
+      </div>
+
+
+      <div id="confirm-delete" v-show="show" class="modal is-active is-small">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+          <header class="modal-card-head">
+            <p class="modal-card-title">Confirm deletion</p>
+            <button class="delete" @click.prevent="confirm(false)" aria-label="close"></button>
+          </header>
+          <section class="modal-card-body">
+            Do you really want to delete <b>{{ name }}</b>?
+          </section>
+          <footer class="modal-card-foot">
+            <button @click.prevent="confirm(true)" class="button is-success">Yes</button>
+            <button @click.prevent="confirm(false)" class="button">No</button>
+          </footer>
+        </div>
+      </div>
+
+      <!-- Proxy popup-->
+      <div id="proxy-modal" v-show="show" class="modal is-active">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+          <header class="modal-card-head">
+            <template v-if="newProxy">
+              <p class="modal-card-title">Add proxy</p>
+            </template>
+            <template v-else>
+              <p class="modal-card-title">{{ proxy.name }}</p>
+            </template>
+            <button class="delete" @click.prevent="close()" aria-label="close"></button>
+          </header>
+          <section class="modal-card-body">
+            <div class="content">
+
+              <div v-show="newProxy" class="field">
+                <label class="label">Name</label>
+                <div class="control">
+                  <input class="input" type="text" v-model="proxy.name">
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label">Listen</label>
+                <div class="control">
+                  <input id="proxy-listen" class="input" type="text" v-model="proxy.listen">
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label">Upstream</label>
+                <div class="control">
+                  <input id="proxy-upstream" class="input" type="text" v-model="proxy.upstream">
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label">Enabled</label>
+                <div class="control">
+                  <label class="switch">
+                    <input type="checkbox" v-model="proxy.enabled">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+              </div>
+
+            </div>
+          </section>
+          <footer class="modal-card-foot">
+            <button class="button is-success" @click.prevent="save()">Save</button>
+            <button class="button" @click.prevent="close()">Cancel</button>
+          </footer>
+        </div>
+      </div>
+
+      <!-- Notification-->
+      <div id="error-notification" v-show="show" class="notification is-warning">
+        <button class="delete" @click.stop="close"></button>
+        {{ message }}
+      </div>
+
+    </section>
+
+
+    <script type="text/x-template" id="toxic-template">
+      <tr>
+        <td>
+          <template v-if="newToxic">
+            <input class="input is-normal" @input="changeToxic('name', $event.target.value)"
+            v-bind:value="name">
+          </template>
+          <template v-else>
+            {{ name }}
+          </template>
+        </td>
+
+        <td>
+          <template v-if="newToxic">
+            <div class="select">
+              <select @change="updateAttributes($event.target.value)"  v-bind:value="type">
+                <template v-for="t in Object.keys(toxicTypes())">
+                  <option>{{ t }}</option>
+                </template>
+              </select>
+            </div>
+          </template>
+          <template v-else>
+            {{ type }}
+          </template>
+        </td>
+
+
+        <td>
+          <div class="select">
+            <select @change="changeToxic('stream', $event.target.value)" v-bind:value="stream">
+              <option>downstream</option>
+              <option>upstream</option>
+            </select>
+          </div>
+        </td>
+
+        <td>
+          <input class="input is-normal"  @input="changeToxic('toxicity', toNumber($event.target.value))" v-bind:value.number="toxicity">
+        </td>
+
+        <td>
+          <template v-for="(value, key) in attributes">
+            <div class="columns">
+              <div class="column">
+                {{ key }}:
+              </div>
+
+              <div class="column">
+                <input @input="changeToxic('attributes', key, toNumber($event.target.value))" style="width: auto" class="input is-normal"
+                v-model.number="attributes[key]">
+              </div>
+            </div>
+          </template>
+        </td>
+
+        <td style="text-align: center;">
+          <div class="columns">
+            <div class="column" style="text-align: right;">
+              <template v-if="newToxic">
+                <button class="delete" style="vertical-align: middle; margin-right: 1rem" @click.stop="$emit('delete')"></button>
+              </template>
+              <template v-else>
+                <button class="delete" style="vertical-align: middle; margin-right: 1rem" @click.stop="deleteCurrentToxic()"></button>
+              </template>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </script>
+
+    <script type="text/x-template" id="proxy-template">
+      <div class="card" style="padding: 1rem">
+        <article class="media">
+          <div class="media-content">
+            <div class="columns accordion" v-bind:class="{ active: rowExpanded }" style="margin: -.75rem;" @click.stop="accordionHelper()">
+
+              <div class="column">
+                {{ name }}
+              </div>
+
+              <div class="column">
+                {{ listen }}
+              </div>
+
+              <div class="column">
+                {{ upstream }}
+              </div>
+
+              <div class="column">
+                <label class="switch">
+                  <input type="checkbox" @input="enableProxy($event.target.checked)" v-bind:checked="enabled">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+
+              <div class="column is-one-fifth" style="width: 12%">
+                <div class="columns">
+                  <div class="column">
+                    <input type="button" style="margin-left: 0; width: 4rem;" class="button is-normal"
+                    @click.stop="editProxy()" value="Edit" />
+                  </div>
+                  <div class="column" style="text-align: center;">
+                    <button class="delete" style="text-align: center; vertical-align: middle"
+                    @click.stop="deleteProxy()"></button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div ref="panel" style="margin: -0.75rem; margin-top: 1rem;" class="panel toxics">
+              <hr style="margin: 0rem; background-color">
+              <div class="card-table">
+                <div class="content">
+
+                  <table class="table is-fullwidth table-borderless">
+                    <tbody style="background: rgb(252, 250, 238)">
+                      <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Stream</th>
+                        <th>Toxicity</th>
+                        <th colspan="3" >
+                          <div class="columns">
+                            <div class="column is-one-fifth">
+                              Attributes
+                            </div>
+                            <div class="column" style="text-align: right;">
+                              <input :disabled=disableSaveButton type="button" @click.stop="saveAll()"
+                              style="width: 4rem; margin-right: 1rem" class="button is-success" value="Save"></input>
+                              <input type="button" style="width: 4rem; margin-right: 4.5rem" @click="showToxicCreationRow()"
+                              class="button is-normal" value="Add"></input>
+                            </div>
+                          </div>
+                        </th>
+                      </tr>
+                      <tr><td style="border-top:1.5px solid #e9e9e9; padding-bottom: 0rem" colspan="6"></td></tr>
+                      <toxic v-show="showNewToxicRow" style="background: rgb(247, 234, 178)"
+                      v-bind="newToxic" v-bind:proxyName="name" v-bind:newToxic="true"
+                      ref="new_toxic"
+                      @new-toxic="saveNewToxic($event)"
+                      @update="newToxic = $event"
+                      @delete="hideToxicCreationRow()">
+                    </toxic>
+
+                    <template v-for="(toxic, toxic_index) in toxics">
+                      <toxic v-bind="toxic" v-bind:proxyName="name" v-bind:newToxic="false"
+                      ref="toxic_index"
+                      @update="updateChildToxic(toxic_index, $event)"
+                      @delete="$emit('delete-toxic', toxic_index)"></toxic>
+                    </template>
+
+
+                  </tbody>
+                </table>
 
               </div>
-            </article>
+            </div>
           </div>
-        </li>
-      </ul>
+
+
+        </div>
+      </article>
     </div>
-  </section>
-
-
+  </script>
 
   <script>
+
+    Vue.component('toxic', {
+      props: {
+        name: String,
+        type: String,
+        toxicity: Number,
+        stream: String,
+        attributes: Object,
+        newToxic: false,
+        proxyName: String
+      },
+
+      data: function () {
+        return {
+          isDirty: false
+        }
+      },
+
+      methods: {
+        changeToxic: function(key, ...args) {
+          // console.log(`ChagneToxic ${key}: ${args}`);
+
+          let toxic = this.getCurrent();
+          if (key === 'attributes') {
+            let [attrKey, attrValue] = args;
+            toxic.attributes[attrKey] = attrValue;
+          } else {
+            toxic[key] = args[0];
+          }
+          this.isDirty = true;
+          this.$emit('update', toxic);
+        },
+
+        toNumber: function(value) {
+          let num = parseFloat(value);
+          return isNumber(num)? num : null;
+        },
+
+        saveToxic: function () {
+          let toxic = this.getCurrent();
+          let payload = filterKeys(toxic, ['type', 'stream', 'toxicity', 'attributes', 'name']);
+          if (this.newToxic) {
+            this.saveNew(payload);
+          } else if (this.isDirty){
+            this.saveModified( payload);
+          }
+        },
+
+        saveNew: function(payload) {
+          createToxicRequest(this.proxyName, this.name, JSON.stringify(payload),
+          (toxic) => {
+            this.isDirty = false;
+            this.$emit('new-toxic', toxic);
+          },
+          errorHandler
+          );
+        },
+
+        saveModified: function(payload) {
+          updateToxicRequest(this.proxyName, this.name,  JSON.stringify(payload),
+          (toxic) => {
+            this.isDirty = false;
+            this.$emit('update', toxic);
+          },
+          errorHandler
+          );
+        },
+
+        deleteCurrentToxic: function() {
+          confimDeleteDialog.showDialog(this.name);
+
+          // confirmDialog will send an event
+          confimDeleteDialog.$on('confirm', (name) => {
+            if (name === this.name) {
+              deleteToxicRequest(this.proxyName, this.name, () => this.$emit('delete'), errorHandler);
+            }
+            confimDeleteDialog.$off();
+          });
+
+        },
+
+        updateAttributes: function(type) {
+          let toxicType = toxicTypesMap[type];
+
+          let attributes = toxicType.attributes.reduce(function(map, obj) {
+            map[obj.name] = undefined;
+            return map;
+          }, {});
+          let toxic = this.getCurrent();
+          toxic.attributes = attributes;
+          toxic.type = type;
+          this.$emit('update', toxic);
+        },
+
+        toxicTypes: function() {
+          return toxicTypesMap;
+        },
+
+        getCurrent: function() {
+          return {
+            name: this.name,
+            type: this.type,
+            toxicity: this.toxicity,
+            stream: this.stream,
+            attributes: this.attributes
+          };
+        }
+      },
+
+      template: '#toxic-template'
+    })
+
+    Vue.component('proxy', {
+      props: {
+        name: String,
+        listen: String,
+        upstream: String,
+        enabled: false,
+        toxics: Array,
+      },
+
+      data: function() {
+        return {
+          newToxic: {
+            name: null,
+            type: null,
+            stream: null,
+            toxicity: 1,
+            attributes: null
+          },
+          showNewToxicRow: false,
+          disableSaveButton: true,
+          rowExpanded: false
+        }
+      },
+
+      watch: {
+        toxics: function(newVal, oldVal) {
+          this.updateSaveButtonVisibility();
+        },
+        showNewToxicRow: function(newVal, oldVal) {
+          this.updateSaveButtonVisibility();
+        }
+      },
+
+      methods: {
+        currentProxy: function() {
+          return {
+            name: this.name,
+            listen: this.listen,
+            upstream: this.upstream,
+            enabled: this.enabled,
+            toxics: this.toxics
+          };
+        },
+
+        enableProxy: function (state) {
+          let proxy = this.currentProxy();
+          proxy.enabled = state;
+          updateProxyRequest(proxy.name, JSON.stringify(proxy),
+          (proxy) => this.$emit('update-proxy', proxy),
+          errorHandler
+          );
+        },
+
+        updateChildToxic: function(toxic_index, value){
+          this.$emit('update-toxic', [toxic_index, value]);
+        },
+
+        saveAll: function() {
+          if (this.showNewToxicRow){
+            let child = this.$refs.new_toxic;
+            child.saveToxic();
+          }
+
+          this.toxics.forEach( (toxic, index) => {
+            let child = this.$refs.toxic_index[index];
+            child.saveToxic();
+          } );
+        },
+
+        saveNewToxic: function(toxic) {
+          if (this.showNewToxicRow){
+            this.showNewToxicRow = false;
+            this.$emit('add-toxic', toxic);
+          }
+        },
+
+        updateSaveButtonVisibility: function() {
+          if (this.showNewToxicRow){
+            this.disableSaveButton = false;
+          } else {
+            let dirtyRows = this.toxics.filter( (toxic, index) => {
+              if (this.$refs.toxic_index){
+                let child = this.$refs.toxic_index[index];
+                return child && child.isDirty;
+              }
+            });
+            this.disableSaveButton = dirtyRows.length == 0;
+          }
+        },
+
+        editProxy: function() {
+          proxyDialog.showDialog(this.currentProxy(), false);
+
+          proxyDialog.$on('save', proxy => {
+            if (proxy !== null) {
+              updateProxyRequest(proxy.name, JSON.stringify(proxy),
+              (proxy) => this.$emit('update-proxy', proxy),
+              errorHandler
+              );
+            }
+            proxyDialog.$off();
+          });
+        },
+
+        hideToxicCreationRow: function() {
+          this.showNewToxicRow = false;
+          this.updateSaveButtonVisibility();
+        },
+
+        deleteProxy: function() {
+          confimDeleteDialog.showDialog(this.name);
+          // confirmDialog will send an event
+          confimDeleteDialog.$on('confirm', (name) => {
+            if (name === this.name) {
+              deleteProxyRequest(this.name, () => this.$emit('delete-proxy'), errorHandler);
+            }
+            confimDeleteDialog.$off();
+          });
+        },
+
+        accordionHelper: function() {
+          this.rowExpanded = !this.rowExpanded;
+          var panel = this.$refs.panel;
+          panel.style.maxHeight = panel.style.maxHeight? null : (panel.scrollHeight + "px");
+        },
+
+        udpateToxicPanelHeight: function () {
+          var panel = this.$refs.panel;
+          if (panel.style.maxHeight) {
+            panel.style.maxHeight = "inherit";
+          }
+        },
+
+        showToxicCreationRow: function() {
+          this.newToxic = {
+            name: "",
+            type: "",
+            stream: 'downstream',
+            attributes: null,
+            toxicity: 1
+          };
+          this.udpateToxicPanelHeight();
+          this.showNewToxicRow = true;
+        },
+
+      },
+      template: '#proxy-template'
+    });
+
+    const toxicTypesMap = {
+      "latency" : {
+        "desc":"Add a delay to all data going through the proxy. The delay is equal to latency +/- jitter.",
+        "attributes":[
+        {
+          "name":"latency",
+          "desc":"time in milliseconds"
+        },
+        {
+          "name":"jitter",
+          "desc":"time in milliseconds"
+        }
+        ]
+      },
+      "bandwidth" : {
+        "desc":"Limit a connection to a maximum number of kilobytes per second.",
+        "attributes":[
+        {
+          "name":"rate",
+          "desc":"rate in KB/s"
+        }
+        ]
+      },
+      "slow_close" : {
+        "desc":"Delay the TCP socket from closing until delay has elapsed.",
+        "attributes":[
+        {
+          "name":"delay",
+          "desc":"time in milliseconds"
+        }
+        ]
+      },
+      "timeout" : {
+        "desc":"Stops all data from getting through, and closes the connection after timeout. If timeout is 0, the connection won't close, and data will be delayed until the toxic is removed.",
+        "attributes":[
+        {
+          "name":"timeout",
+          "desc":"time in milliseconds"
+        }
+        ]
+      },
+      "slicer" : {
+        "desc":"Slices TCP data up into small bits, optionally adding a delay between each sliced packet.",
+        "attributes":[
+        {
+          "name":"average_size",
+          "desc":"size in bytes of an average packet"
+        },
+        {
+          "name":"size_variation",
+          "desc":"variation in bytes of an average packet (should be smaller than average_size)"
+        },
+        {
+          "name":"delay",
+          "desc":"time in microseconds to delay each packet by"
+        }
+        ]
+      },
+      "limit_data" : {
+        "desc":"Closes connection when transmitted data exceeded limit.",
+        "attributes":[
+        {
+          "name":"bytes",
+          "desc":"number of bytes it should transmit before connection is closed"
+        }
+        ]
+      }
+    };
+
     var app = new Vue({
       el: '#app',
       data: {
-        proxies: [
+        proxies: null,
+        toxicTypes: toxicTypesMap
+      },
 
-        ]
+      methods: {
+
+        updateProxy: function (index, proxy){
+          Vue.set(this.proxies, index, proxy);
+        },
+
+        deleteProxy: function(proxy_index){
+          this.proxies.splice(proxy_index, 1);
+        },
+
+        updateToxic: function(proxy_index, toxic_index, toxic) {
+          Vue.set(this.proxies[proxy_index].toxics, toxic_index, toxic);
+        },
+
+        deleteToxic: function(proxy_index, toxic_index){
+          console.log(`${proxy_index} : ${toxic_index}`);
+          this.proxies[proxy_index].toxics.splice(toxic_index, 1);
+        },
+
+        addToxic: function(proxy_index, toxic) {
+          this.proxies[proxy_index].toxics.push(toxic);
+        },
+
+        showAddProxyDialog: function() {
+          proxyDialog.showDialog(null, true);
+
+          proxyDialog.$on('save', proxy => {
+            if (proxy !== null) {
+              createProxyRequest(JSON.stringify(proxy),
+              proxy => this.proxies.push(proxy),
+              errorHandler);
+            }
+            proxyDialog.$off();
+          });
+        },
+
+        updateProxies: function() {
+          getRequest('/proxies', (data) => {
+            app.proxies = toArray(data);
+          });
+        }
+
       }
     });
 
-    const openModal = (ele) => {
-      const modal = $( ele.parentElement.parentElement ).next();
-      // console.log( ele.parentElement.parentElement );
-      modal.addClass("is-active");
-    };
+    var confimDeleteDialog = new Vue({
+      el: "#confirm-delete",
 
-    const closeModal = () => {
-      $(".modal").removeClass("is-active");
-    };
+      data: {
+        name: null,
+        show: false
+      },
 
+      methods: {
+        showDialog: function(name, serverBus) {
+          this.name = name;
+          this.show = true;
+        },
 
-    fetch('/proxies', {headers: {'User-Agent':'dummy'}})
-    .then(
-    function(response) {
-      if (response.status !== 200) {
-        console.log('Looks like there was a problem. Status Code: ' +
-        response.status);
-        return;
+        confirm: function(confirmed) {
+          this.$emit('confirm', confirmed? this.name : null);
+          this.show = false;
+          this.name = null;
+        }
       }
+    });
 
-      response.json().then(function(data) {
-        app.proxies = data;
+    var proxyDialog = new Vue({
+      el: "#proxy-modal",
+
+      data: {
+        show: false,
+        newProxy: false,
+        proxy: {
+          'name': null,
+          'listen': null,
+          'upstream': null,
+          'enabled': true
+        }
+      },
+
+      methods: {
+        reset: function() {
+          this.proxy.name = null;
+          this.proxy.listen = null;
+          this.proxy.upstream = null;
+          this.proxy.enabled = true;
+          this.show = false;
+        },
+
+        showDialog: function(proxy, newProxy) {
+          this.show = true;
+          this.newProxy = newProxy;
+
+          if (newProxy) {
+            this.reset();
+            this.show = true;
+          } else {
+            this.proxy = proxy;
+          }
+        },
+
+        close: function() {
+          this.$emit('save', null);
+          this.reset();
+        },
+
+        save: function() {
+          this.$emit('save', this.proxy);
+          this.reset();
+        }
+      }
+    });
+
+    const errorHandler =  function(err) {
+      errorNotification.showMessage(err.error);
+    };
+
+    var errorNotification = new Vue({
+      el: "#error-notification",
+
+      data: {
+        show: false,
+        message: null
+      },
+
+      methods: {
+        reset: function() {
+          this.show = false;
+          this.message = null;
+        },
+
+        showMessage: function(message) {
+          console.log(message);
+          this.message = message;
+          this.show = true;
+        },
+
+        close: function() {
+          this.reset();
+        }
+      }
+    });
+
+    const filterKeys = (obj, keys) => {
+      return Object.keys(obj).reduce((result, key) => {
+        if (contains(keys, key)) {
+          result[key] = obj[key];
+        }
+        return result;
+      }, {});
+    };
+
+    const contains = (arr,obj) => {
+      return (arr.indexOf(obj) != -1);
+    };
+
+    const isNumber = (n) => {
+      return !isNaN(parseFloat(n)) && isFinite(n);
+    };
+
+    const toArray = (obj) => {
+      return Object.keys(obj).map( (key) => obj[key]);
+    };
+
+    /*
+    * Toxiproxy HTTP API helpers
+    */
+
+    const createToxicRequest = (proxyName, toxicName, payload, cb, errHandler) => {
+      const endpoint = `/proxies/${proxyName}/toxics`;
+      postRequest(endpoint, payload, cb, errorHandler);
+    };
+
+    const createProxyRequest = (payload, cb, errHandler) => {
+      postRequest('/proxies', payload, cb, errorHandler);
+    };
+
+    const updateToxicRequest = (proxyName, toxic_name, payload, cb, errHandler) => {
+      const endpoint = `/proxies/${proxyName}/toxics/${toxic_name}`;
+      postRequest(endpoint, payload, cb, errHandler);
+    };
+
+    const updateProxyRequest = (proxyName, payload, cb, errHandler) => {
+      postRequest('/proxies/'+proxyName, payload, cb,errorHandler);
+    };
+
+    const deleteToxicRequest = (proxyName, toxicName, cb) => {
+      deleteRequest(`/proxies/${proxyName}/toxics/${toxicName}`, cb);
+    };
+
+    const deleteProxyRequest = (proxyName, cb) => {
+      deleteRequest(`/proxies/${proxyName}`, cb);
+    };
+
+    /*
+    * HTTP helpers
+    */
+    const deleteRequest = (endpoint, cb, errHandler) => {
+      request(endpoint,
+      {
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      },
+      cb,
+      errHandler);
+    };
+
+    const postRequest = (endpoint, data, cb, errHandler = null) => {
+      request(endpoint,
+      {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: data
+      },
+      cb,
+      errHandler);
+    };
+
+    const getRequest = (endpoint, cb) => request(endpoint, null, cb);
+
+    const request = (endpoint, payload, cb, errHandler = null) => {
+      fetch(endpoint, payload)
+      .then(genericResponseHandler(cb, errHandler) )
+      .catch(function(err) {
+        console.log('Error: ', err);
       });
-    }
-    )
-    .catch(function(err) {
-      console.log('Fetch Error :-S', err);
+    };
+
+    const genericResponseHandler = (cb, errHandler) => {
+      return (response) => {
+        if (! (response.status >= 200 && response.status < 300)) {
+          if (errHandler)
+          response.json().then(errHandler);
+        } else if (response.statusText === 'No Content') {
+          cb(); // callack is called without payload
+        } else {
+          response.json().then(cb); // callback is called with json data parsed
+        }
+      };
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // update proxies
+      app.updateProxies();
     });
-
-    const showToxic = (toxic, show) => {
-      toxic.style.display = show? "block" : "none";
-    }
-
-    const toggleToxic = (ele) => {
-      let root = ele.parentElement.parentElement.parentElement;
-      let toxic = root.children[1];
-
-      showToxic(toxic, toxic.style.display === 'none');
-    };
-
-    const enableToxicFields = (root, enable) => {
-      $( root ).find( "input" ).prop("disabled", !enable);
-    }
-
-    const editToxic = (ele) => {
-      let root = ele.parentElement.parentElement.parentElement;
-      let toxic = root.children[1];
-      showToxic(toxic, true);
-      enableToxicFields(toxic, $( toxic ).find( "input" ).prop("disabled"));
-    };
 
   </script>
 </body>

@@ -8,19 +8,37 @@ import (
 	"net/http"
 	"os"
 
+	_ "github.com/Shopify/toxiproxy/statik"
 	"github.com/Shopify/toxiproxy/toxics"
 	"github.com/gorilla/mux"
+	"github.com/rakyll/statik/fs"
 	"github.com/sirupsen/logrus"
 )
 
 type ApiServer struct {
 	Collection *ProxyCollection
+	Dashboard  http.File
 }
 
 func NewServer() *ApiServer {
 	return &ApiServer{
 		Collection: NewProxyCollection(),
+		Dashboard:  LoadDashboard(),
 	}
+}
+
+func LoadDashboard() http.File {
+	statikFS, e := fs.New()
+	if e != nil {
+		log.Fatal(e)
+	}
+
+	file, e := statikFS.Open("/index.html")
+	if e != nil {
+		log.Fatal(e)
+	}
+
+	return file
 }
 
 func (server *ApiServer) PopulateConfig(filename string) {
@@ -68,7 +86,7 @@ func (server *ApiServer) Listen(host string, port string) {
 	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE")
 
 	r.HandleFunc("/version", server.Version).Methods("GET")
-	r.HandleFunc("/dashboard/", server.Dashboard).Methods("GET")
+	r.HandleFunc("/dashboard", server.ServeDashboard).Methods("GET")
 
 	http.Handle("/", StopBrowsersMiddleware(r))
 
@@ -385,10 +403,16 @@ func (server *ApiServer) Version(response http.ResponseWriter, request *http.Req
 	}
 }
 
-func (server *ApiServer) Dashboard(response http.ResponseWriter, request *http.Request) {
-	logrus.Info(request.URL.Path[1:])
+func (server *ApiServer) ServeDashboard(response http.ResponseWriter, request *http.Request) {
+	f := server.Dashboard
+
+	info, e := f.Stat()
+	if e != nil {
+		log.Fatal(e)
+	}
+
 	response.Header().Set("Content-Type", "text/html;charset=utf-8")
-	http.ServeFile(response, request, request.URL.Path[1:])
+	http.ServeContent(response, request, info.Name(), info.ModTime(), f)
 }
 
 type ApiError struct {

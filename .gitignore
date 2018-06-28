@@ -10,3 +10,4 @@ cover*.out
 coverage.html
 *.deb
 tmp/
+statik/*

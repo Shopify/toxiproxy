@@ -9,6 +9,7 @@ COMBINED_GOPATH=$(GODEP_PATH):$(ORIGINAL_PATH)
 .PHONY: packages deb test linux darwin windows
 
 build:
+	statik -src=./dashboard
 	GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(SERVER_NAME) ./cmd
 	GOPATH=$(COMBINED_GOPATH) go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(CLI_NAME) ./cli
 
@@ -26,6 +27,7 @@ clean:
 	rm -f $(SERVER_NAME)
 	rm -f $(CLI_NAME)
 	rm -f *.deb
+	rm -f statik/*
 
 test:
 	echo "Testing with" `go version`
