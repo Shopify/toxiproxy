@@ -166,15 +166,15 @@
       </div>
 
 
-      <div id="confirm-delete" v-show="show" class="modal is-active is-small">
+      <div id="confirm-dialog" v-show="show" class="modal is-active is-small">
         <div class="modal-background"></div>
         <div class="modal-card">
           <header class="modal-card-head">
-            <p class="modal-card-title">Confirm deletion</p>
+            <p class="modal-card-title">Confirm</p>
             <button class="delete" @click.prevent="confirm(false)" aria-label="close"></button>
           </header>
           <section class="modal-card-body">
-            Do you really want to delete <b>{{ name }}</b>?
+            <span v-html="msg"></span>
           </section>
           <footer class="modal-card-foot">
             <button @click.prevent="confirm(true)" class="button is-success">Yes</button>
@@ -485,14 +485,15 @@
         },
 
         deleteCurrentToxic: function() {
-          confimDeleteDialog.showDialog(this.name);
+          const msg = `Do you really want to delete <strong>${this.name}</strong> toxic?`
+          confimDialog.showDialog(msg);
 
           // confirmDialog will send an event
-          confimDeleteDialog.$on('confirm', (name) => {
-            if (name === this.name) {
+          confimDialog.$on('confirm', (arg) => {
+            if (arg === msg) {
               deleteToxicRequest(this.proxyName, this.name, () => this.$emit('delete'), errorHandler);
             }
-            confimDeleteDialog.$off();
+            confimDialog.$off();
           });
 
         },
@@ -573,12 +574,21 @@
         },
 
         enableProxy: function (state) {
-          let proxy = this.currentProxy();
-          proxy.enabled = state;
-          updateProxyRequest(proxy.name, JSON.stringify(proxy),
-          (proxy) => this.$emit('update-proxy', proxy),
-          errorHandler
-          );
+          const msg = `<strong>${state ? "Enable" : "Disable"}</strong> ${this.name} proxy?`;
+          confimDialog.showDialog(msg);
+
+          // confirmDialog will send an event
+          confimDialog.$on('confirm', (arg) => {
+            if (arg === msg) {
+              let proxy = this.currentProxy();
+              proxy.enabled = state;
+              updateProxyRequest(proxy.name, JSON.stringify(proxy),
+              (proxy) => this.$emit('update-proxy', proxy),
+              errorHandler
+              );
+            }
+            confimDialog.$off();
+          });
         },
 
         updateChildToxic: function(toxic_index, value){
@@ -638,13 +648,15 @@
         },
 
         deleteProxy: function() {
-          confimDeleteDialog.showDialog(this.name);
+          const msg = `Do you really want to delete <strong>${this.name}</strong> proxy?`
+          confimDialog.showDialog(msg);
+
           // confirmDialog will send an event
-          confimDeleteDialog.$on('confirm', (name) => {
-            if (name === this.name) {
+          confimDialog.$on('confirm', (arg) => {
+            if (arg === msg) {
               deleteProxyRequest(this.name, () => this.$emit('delete-proxy'), errorHandler);
             }
-            confimDeleteDialog.$off();
+            confimDialog.$off();
           });
         },
 
@@ -798,24 +810,24 @@
       }
     });
 
-    var confimDeleteDialog = new Vue({
-      el: "#confirm-delete",
+    var confimDialog = new Vue({
+      el: "#confirm-dialog",
 
       data: {
-        name: null,
+        msg: null,
         show: false
       },
 
       methods: {
-        showDialog: function(name, serverBus) {
-          this.name = name;
+        showDialog: function(msg) {
+          this.msg = msg;
           this.show = true;
         },
 
         confirm: function(confirmed) {
-          this.$emit('confirm', confirmed? this.name : null);
+          this.$emit('confirm', confirmed? this.msg : null);
           this.show = false;
-          this.name = null;
+          this.msg = null;
         }
       }
     });
