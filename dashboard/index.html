@@ -277,12 +277,17 @@
 
 
         <td>
-          <div class="select">
-            <select @change="changeToxic('stream', $event.target.value)" v-bind:value="stream">
-              <option>downstream</option>
-              <option>upstream</option>
-            </select>
-          </div>
+          <template v-if="newToxic">
+            <div class="select">
+              <select @change="changeToxic('stream', $event.target.value)" v-bind:value="stream">
+                <option>downstream</option>
+                <option>upstream</option>
+              </select>
+            </div>
+          </template>
+          <template v-else>
+            {{ stream }}
+          </template>
         </td>
 
         <td>
