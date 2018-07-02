@@ -40,11 +40,11 @@ func TestDashboardIsAccessible(t *testing.T) {
 	WithServer(t, func(addr string) {
 		client := http.Client{}
 
-		req, _ := http.NewRequest("GET", "http://localhost:8475/dashboard", nil)
+		req, _ := http.NewRequest("GET", "http://localhost:8475/", nil)
 		resp, _ := client.Do(req)
 
 		if resp.StatusCode != 200 {
-			t.Fatal("Dashboard is not accessible at /dashboard")
+			t.Fatal("Dashboard is not accessible at /")
 		}
 	})
 }

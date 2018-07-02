@@ -86,7 +86,7 @@ func (server *ApiServer) Listen(host string, port string) {
 	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE")
 
 	r.HandleFunc("/version", server.Version).Methods("GET")
-	r.HandleFunc("/dashboard", server.ServeDashboard).Methods("GET")
+	r.HandleFunc("/", server.ServeDashboard).Methods("GET")
 
 	http.Handle("/", StopBrowsersMiddleware(r))
 
