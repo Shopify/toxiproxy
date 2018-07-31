@@ -571,4 +571,4 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 9. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)
 
 
-[blog]: https://engineering.shopify.com/17489072-building-and-testing-resilient-ruby-on-rails-applications
+[blog]: https://shopifyengineering.myshopify.com/blogs/engineering/building-and-testing-resilient-ruby-on-rails-applications
