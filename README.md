@@ -452,7 +452,7 @@ All endpoints are JSON.
 #### Populating Proxies
 
 Proxies can be added and configured in bulk using the `/populate` endpoint. This is done by
-passing an json array of proxies to toxiproxy. If a proxy with the same name already exists,
+passing a json array of proxies to toxiproxy. If a proxy with the same name already exists,
 it will be compared to the new proxy and replaced if the `upstream` and `listen` address don't match.
 
 A `/populate` call can be included for example at application start to ensure all required proxies
@@ -520,7 +520,7 @@ Could not connect to Redis at 127.0.0.1:26379: Connection refused
 
 **How fast is Toxiproxy?** The speed of Toxiproxy depends largely on your hardware,
 but you can expect a latency of *< 100µs* when no toxics are enabled. When running
-with `GOMAXPROCS=4` on a Macbook Pro we acheived *~1000MB/s* throughput, and as high
+with `GOMAXPROCS=4` on a Macbook Pro we achieved *~1000MB/s* throughput, and as high
 as *2400MB/s* on a higher end desktop. Basically, you can expect Toxiproxy to move
 data around at least as fast the app you're testing.
 
