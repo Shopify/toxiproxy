@@ -480,7 +480,7 @@ All endpoints are JSON.
 #### Populating Proxies
 
 Proxies can be added and configured in bulk using the `/populate` endpoint. This is done by
-passing an json array of proxies to toxiproxy. If a proxy with the same name already exists,
+passing a json array of proxies to toxiproxy. If a proxy with the same name already exists,
 it will be compared to the new proxy and replaced if the `upstream` and `listen` address don't match.
 
 A `/populate` call can be included for example at application start to ensure all required proxies
