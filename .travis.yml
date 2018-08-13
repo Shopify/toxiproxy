@@ -1,0 +1,19 @@
+sudo: false
+
+language: go
+
+go:
+  - 1.9.x
+  - 1.x
+
+git:
+  depth: 1
+
+install: true
+
+before_script:
+  - go get github.com/tools/godep
+  - godep go build
+
+script:
+  - godep go test ./...
