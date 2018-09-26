@@ -47,7 +47,7 @@ var toxicDescription = `
 	         	timeout=<ms>
 
 	slicer: 	slice data into bits with optional delay
-	        	average_size=<byes>,size_variation=<bytes>,delay=<microseconds>
+	        	average_size=<bytes>,size_variation=<bytes>,delay=<microseconds>
 
 	toxic add:
 		usage: toxiproxy-cli toxic add <proxyName> --type <toxicType> --toxicName <toxicName> \
