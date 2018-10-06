@@ -520,7 +520,7 @@ Could not connect to Redis at 127.0.0.1:26379: Connection refused
 
 **How fast is Toxiproxy?** The speed of Toxiproxy depends largely on your hardware,
 but you can expect a latency of *< 100µs* when no toxics are enabled. When running
-with `GOMAXPROCS=4` on a Macbook Pro we acheived *~1000MB/s* throughput, and as high
+with `GOMAXPROCS=4` on a Macbook Pro we achieved *~1000MB/s* throughput, and as high
 as *2400MB/s* on a higher end desktop. Basically, you can expect Toxiproxy to move
 data around at least as fast the app you're testing.
 
