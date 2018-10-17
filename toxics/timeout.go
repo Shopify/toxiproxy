@@ -19,7 +19,10 @@ func (t *TimeoutToxic) Pipe(stub *ToxicStub) {
 				return
 			case <-stub.Interrupt:
 				return
-			case <-stub.Input:
+			case c := <-stub.Input:
+				if c == nil {
+					return
+				}
 				// Drop the data on the ground.
 			}
 		}
