@@ -21,6 +21,7 @@ func (t *TimeoutToxic) Pipe(stub *ToxicStub) {
 				return
 			case c := <-stub.Input:
 				if c == nil {
+					stub.Close()
 					return
 				}
 				// Drop the data on the ground.
@@ -31,7 +32,11 @@ func (t *TimeoutToxic) Pipe(stub *ToxicStub) {
 			select {
 			case <-stub.Interrupt:
 				return
-			case <-stub.Input:
+			case c := <-stub.Input:
+				if c == nil {
+					stub.Close()
+					return
+				}
 				// Drop the data on the ground.
 			}
 		}
