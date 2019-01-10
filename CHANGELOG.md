@@ -1,3 +1,9 @@
+# 2.1.4
+
+* Bug fix: Fix OOM in toxic. #232
+* Documentation updates.
+* CI and test updates.
+
 # 2.1.3
 
 * Update `/version` endpoint to also return a charset of utf-8. #204
