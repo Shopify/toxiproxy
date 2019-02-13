@@ -24,14 +24,16 @@ type ToxicLink struct {
 	input     *stream.ChanWriter
 	output    *stream.ChanReader
 	direction stream.Direction
+	clientInfo toxics.ClientInfo
 }
 
-func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Direction) *ToxicLink {
+func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Direction, clientAddress string) *ToxicLink {
 	link := &ToxicLink{
 		stubs:     make([]*toxics.ToxicStub, len(collection.chain[direction]), cap(collection.chain[direction])),
 		proxy:     proxy,
 		toxics:    collection,
 		direction: direction,
+		clientInfo: toxics.ClientInfo{Address: clientAddress},
 	}
 
 	// Initialize the link with ToxicStubs
@@ -45,7 +47,7 @@ func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Di
 			next = make(chan *stream.StreamChunk)
 		}
 
-		link.stubs[i] = toxics.NewToxicStub(last, next)
+		link.stubs[i] = toxics.NewToxicStub(last, next, link.clientInfo)
 		last = next
 	}
 	link.output = stream.NewChanReader(last)
@@ -92,7 +94,7 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	i := len(link.stubs)
 
 	newin := make(chan *stream.StreamChunk, toxic.BufferSize)
-	link.stubs = append(link.stubs, toxics.NewToxicStub(newin, link.stubs[i-1].Output))
+	link.stubs = append(link.stubs, toxics.NewToxicStub(newin, link.stubs[i-1].Output, link.clientInfo))
 
 	// Interrupt the last toxic so that we don't have a race when moving channels
 	if link.stubs[i-1].InterruptToxic() {

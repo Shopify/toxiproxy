@@ -176,8 +176,8 @@ func (proxy *Proxy) server() {
 		proxy.connections.list[name+"upstream"] = upstream
 		proxy.connections.list[name+"downstream"] = client
 		proxy.connections.Unlock()
-		proxy.Toxics.StartLink(name+"upstream", client, upstream, stream.Upstream)
-		proxy.Toxics.StartLink(name+"downstream", upstream, client, stream.Downstream)
+		proxy.Toxics.StartLink(name+"upstream", client, upstream, stream.Upstream, client.RemoteAddr().String())
+		proxy.Toxics.StartLink(name+"downstream", upstream, client, stream.Downstream, client.RemoteAddr().String())
 	}
 }
 

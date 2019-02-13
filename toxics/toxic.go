@@ -8,7 +8,7 @@ import (
 	"github.com/Shopify/toxiproxy/stream"
 )
 
-// A Toxic is something that can be attatched to a link to modify the way
+// A Toxic is something that can be attached to a link to modify the way
 // data can be passed through (for example, by adding latency)
 //
 //              Toxic
@@ -62,14 +62,20 @@ type ToxicStub struct {
 	Interrupt chan struct{}
 	running   chan struct{}
 	closed    chan struct{}
+	clientInfo ClientInfo
 }
 
-func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.StreamChunk) *ToxicStub {
+type ClientInfo struct {
+	Address string
+}
+
+func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.StreamChunk, clientInfo ClientInfo) *ToxicStub {
 	return &ToxicStub{
 		Interrupt: make(chan struct{}),
 		closed:    make(chan struct{}),
 		Input:     input,
 		Output:    output,
+		clientInfo: clientInfo,
 	}
 }
 

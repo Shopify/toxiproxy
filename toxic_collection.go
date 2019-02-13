@@ -169,11 +169,11 @@ func (c *ToxicCollection) RemoveToxic(name string) error {
 	return ErrToxicNotFound
 }
 
-func (c *ToxicCollection) StartLink(name string, input io.Reader, output io.WriteCloser, direction stream.Direction) {
+func (c *ToxicCollection) StartLink(name string, input io.Reader, output io.WriteCloser, direction stream.Direction, clientAddress string) {
 	c.Lock()
 	defer c.Unlock()
 
-	link := NewToxicLink(c.proxy, c, direction)
+	link := NewToxicLink(c.proxy, c, direction, clientAddress)
 	link.Start(name, input, output)
 	c.links[name] = link
 }
