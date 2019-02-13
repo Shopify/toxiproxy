@@ -87,7 +87,7 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 	}()
 }
 
-// Add a toxic to the end of the chain.
+// AddToxic adds a toxic to the end of the chain.
 func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	i := len(link.stubs)
 
@@ -111,14 +111,14 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	}
 }
 
-// Update an existing toxic in the chain.
+// UpdateToxic: Update an existing toxic in the chain.
 func (link *ToxicLink) UpdateToxic(toxic *toxics.ToxicWrapper) {
 	if link.stubs[toxic.Index].InterruptToxic() {
 		go link.stubs[toxic.Index].Run(toxic)
 	}
 }
 
-// Remove an existing toxic from the chain.
+// RemoveToxic removes an existing toxic from the chain.
 func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 	i := toxic.Index
 

@@ -30,7 +30,7 @@ import (
 //     BenchmarkDirectSmall       10000            287448 ns/op
 //     BenchmarkProxySmall         5000            560694 ns/op
 
-// Test the backend server directly, use 64k random endpoint
+// BenchmarkDirect tests the backend server directly, use 64k random endpoint
 func BenchmarkDirect(b *testing.B) {
 	client := http.Client{}
 	for i := 0; i < b.N; i++ {
@@ -46,7 +46,7 @@ func BenchmarkDirect(b *testing.B) {
 	}
 }
 
-// Test the backend through toxiproxy, use 64k random endpoint
+// BenchmarkProxy tests the backend through toxiproxy, use 64k random endpoint
 func BenchmarkProxy(b *testing.B) {
 	client := http.Client{}
 	for i := 0; i < b.N; i++ {
@@ -62,7 +62,7 @@ func BenchmarkProxy(b *testing.B) {
 	}
 }
 
-// Test the backend server directly, use "hello world" endpoint
+// BenchmarkDirectSmall tests the backend server directly, use "hello world" endpoint
 func BenchmarkDirectSmall(b *testing.B) {
 	client := http.Client{}
 	for i := 0; i < b.N; i++ {
@@ -78,7 +78,7 @@ func BenchmarkDirectSmall(b *testing.B) {
 	}
 }
 
-// Test the backend through toxiproxy, use "hello world" endpoint
+// BenchmarkProxySmall tests the backend through toxiproxy, use "hello world" endpoint
 func BenchmarkProxySmall(b *testing.B) {
 	client := http.Client{}
 	for i := 0; i < b.N; i++ {

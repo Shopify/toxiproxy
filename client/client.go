@@ -81,7 +81,7 @@ func (client *Client) Proxies() (map[string]*Proxy, error) {
 	return proxies, nil
 }
 
-// Generates a new uncommitted proxy instance. In order to use the result, the
+// NewProxy: Generates a new uncommitted proxy instance. In order to use the result, the
 // proxy fields will need to be set and have `Save()` called.
 func (client *Client) NewProxy() *Proxy {
 	return &Proxy{
@@ -132,7 +132,7 @@ func (client *Client) Proxy(name string) (*Proxy, error) {
 	return proxy, nil
 }
 
-// Create a list of proxies using a configuration list. If a proxy already exists, it will be replaced
+// Populate: Create a list of proxies using a configuration list. If a proxy already exists, it will be replaced
 // with the specified configuration. For large amounts of proxies, `config` can be loaded from a file.
 // Returns a list of the successfully created proxies.
 func (client *Client) Populate(config []Proxy) ([]*Proxy, error) {

@@ -57,7 +57,7 @@ func NewChanReader(input <-chan *StreamChunk) *ChanReader {
 	return &ChanReader{input, make(chan struct{}), []byte{}}
 }
 
-// Specify a channel that can interrupt a read if it is blocking.
+// SetInterrupt: Specify a channel that can interrupt a read if it is blocking.
 func (c *ChanReader) SetInterrupt(interrupt <-chan struct{}) {
 	c.interrupt = interrupt
 }
