@@ -52,9 +52,12 @@ func addToxicAndWritePayload(t *testing.T, conn net.Conn, proxy *toxiproxy.Proxy
 func checkConnectionState(t *testing.T, conn net.Conn) {
 	tmp := make([]byte, 10)
 	_, err := conn.Read(tmp)
-	opErr, _ := err.(*net.OpError)
-	syscallErr, _ := opErr.Err.(*os.SyscallError)
-	if !(syscallErr.Err == syscall.ECONNRESET) {
+	if opErr, ok := err.(*net.OpError); ok {
+		syscallErr, _ := opErr.Err.(*os.SyscallError)
+		if !(syscallErr.Err == syscall.ECONNRESET) {
+			t.Error("Expected: upstream - connection reset by peer. Got:", err)
+		}
+	} else {
 		t.Error("Expected: upstream - connection reset by peer. Got:", err)
 	}
 	_, err = conn.Read(tmp)
