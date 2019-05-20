@@ -39,7 +39,10 @@ client := toxiproxy.NewClient("localhost:8474")
 
 You can then create a new proxy using the client:
 ```go
-proxy := client.CreateProxy("redis", "localhost:26379", "localhost:6379")
+proxy, err := client.CreateProxy("redis", "localhost:26379", "localhost:6379")
+if err != nil {
+    panic(err)
+}
 ```
 
 For large amounts of proxies, they can also be created using a configuration file:
