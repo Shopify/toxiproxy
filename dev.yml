@@ -1,12 +1,21 @@
 name: toxiproxy
 
+type: go
+
 up:
-  - go: 1.7.3
+  - homebrew:
+    - openssl
+    - gnu-tar
+  - go:
+      version: 1.12
+      modules: true
+  - ruby: 2.6.3
+  - bundler
 
 commands:
   build:
-    run: godep go build
+    run: go build ./...
     desc: 'build the project'
   test:
-    run: godep go test ./...
+    run: go test ./...
     desc: 'run unit tests'
