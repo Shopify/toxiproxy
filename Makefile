@@ -8,8 +8,8 @@ export GO111MODULE=on
 .PHONY: packages deb test linux darwin windows setup
 
 build:
-	go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(SERVER_NAME) ./cmd
-	go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(CLI_NAME) ./cli
+	go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(SERVER_NAME) ./cmd/toxiproxy
+	go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(CLI_NAME) ./cmd/toxiproxy-cli
 
 all: setup deb linux darwin windows
 deb: $(DEB)
@@ -31,22 +31,22 @@ test:
 	GOMAXPROCS=4 go test -v -race ./...
 
 tmp/build/$(SERVER_NAME)-linux-amd64:
-	GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
+	GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd/toxiproxy
 
 tmp/build/$(SERVER_NAME)-darwin-amd64:
-	GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
+	GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd/toxiproxy
 
 tmp/build/$(SERVER_NAME)-windows-amd64.exe:
-	GOOS=windows GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
+	GOOS=windows GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd/toxiproxy
 
 tmp/build/$(CLI_NAME)-linux-amd64:
-	GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
+	GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd/toxiproxy-cli
 
 tmp/build/$(CLI_NAME)-darwin-amd64:
-	GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
+	GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd/toxiproxy-cli
 
 tmp/build/$(CLI_NAME)-windows-amd64.exe:
-	GOOS=windows GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
+	GOOS=windows GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd/toxiproxy-cli
 
 $(DEB): tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
 	fpm -t deb \

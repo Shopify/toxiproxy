@@ -1,12 +1,3 @@
-toxiproxy
-toxiproxy-server
-toxiproxy-cli
-./cli/cli
-toxiproxy.test
-testing
-testing.test
-cpu.out
-cover*.out
-coverage.html
-*.deb
-tmp/
+/toxiproxy
+/toxiproxyd
+/tmp
