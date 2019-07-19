@@ -8,7 +8,7 @@ import (
 )
 
 // ProxyCollection is a collection of proxies. It's the interface for anything
-// to add and remove proxies from the toxiproxy instance. It's responsibilty is
+// to add and remove proxies from the toxiproxy instance. It's responsibility is
 // to maintain the integrity of the proxy set, by guarding for things such as
 // duplicate names.
 type ProxyCollection struct {
