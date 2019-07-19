@@ -1,8 +1,8 @@
 package testhelper
 
 import (
+	"fmt"
 	"time"
-  "fmt"
 )
 
 func TimeoutAfter(after time.Duration, f func()) error {
