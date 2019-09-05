@@ -210,6 +210,7 @@ $ sudo service toxiproxy start
 ```bash
 $ brew tap shopify/shopify
 $ brew install toxiproxy
+$ toxiproxy-server
 ```
 
 **Windows**
