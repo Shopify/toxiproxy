@@ -1,6 +1,6 @@
 # Toxiproxy
 [![GitHub release](https://img.shields.io/github/release/Shopify/toxiproxy.svg)](https://github.com/Shopify/toxiproxy/releases/latest)
-[![Build Status](https://img.shields.io/circleci/project/github/Shopify/toxiproxy/master.svg)](https://circleci.com/gh/Shopify/toxiproxy/tree/master)
+[![Build Status](https://travis-ci.org/Shopify/toxiproxy.svg?branch=master)](https://travis-ci.org/Shopify/toxiproxy)
 [![IRC Channel](https://img.shields.io/badge/chat-on%20freenode-brightgreen.svg)](https://kiwiirc.com/client/irc.freenode.net/#toxiproxy)
 
 ![](http://i.imgur.com/sOaNw0o.png)
@@ -46,22 +46,22 @@ stopping you from creating a client in any other language (see
 2. [Clients](#clients)
 3. [Example](#example)
 4. [Usage](#usage)
-  1. [Installing](#1-installing-toxiproxy)
-    1. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
-  2. [Populating](#2-populating-toxiproxy)
-  3. [Using](#3-using-toxiproxy)
+   1. [Installing](#1-installing-toxiproxy)
+      1. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
+   2. [Populating](#2-populating-toxiproxy)
+   3. [Using](#3-using-toxiproxy)
 5. [Toxics](#toxics)
-  1. [Latency](#latency)
-  2. [Down](#down)
-  3. [Bandwidth](#bandwidth)
-  4. [Slow close](#slow_close)
-  5. [Timeout](#timeout)
-  6. [Slicer](#slicer)
+   1. [Latency](#latency)
+   2. [Down](#down)
+   3. [Bandwidth](#bandwidth)
+   4. [Slow close](#slow_close)
+   5. [Timeout](#timeout)
+   6. [Slicer](#slicer)
 6. [HTTP API](#http-api)
-  1. [Proxy fields](#proxy-fields)
-  2. [Toxic fields](#toxic-fields)
-  3. [Endpoints](#endpoints)
-  4. [Populating Proxies](#populating-proxies)
+   1. [Proxy fields](#proxy-fields)
+   2. [Toxic fields](#toxic-fields)
+   3. [Endpoints](#endpoints)
+   4. [Populating Proxies](#populating-proxies)
 7. [CLI example](#cli-example)
 8. [FAQ](#frequently-asked-questions)
 9. [Development](#development)
@@ -289,6 +289,25 @@ For large application we recommend storing the Toxiproxy configurations in a
 separate configuration file. We use `config/toxiproxy.json`. This file can be
 passed to the server using the `-config` option, or loaded by the application
 to use with the `populate` function.
+
+An example `config/toxiproxy.json`:
+
+```json
+[
+  {
+    "name": "web_dev_frontend_1",
+    "listen": "[::]:18080",
+    "upstream": "webapp.domain:8080",
+    "enabled": true
+  },
+  {
+    "name": "web_dev_mysql_1",
+    "listen": "[::]:13306",
+    "upstream": "database.domain:3306",
+    "enabled": true
+  }
+]
+```
 
 Use ports outside the ephemeral port range to avoid random port conflicts.
 It's `32,768` to `61,000` on Linux by default, see
