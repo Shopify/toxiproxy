@@ -1,8 +1,0 @@
-# Don't let Circle try to do anything clever with this Go project. We isolate
-# with godep to avoid `go get` going nuts.
-dependencies:
-  override:
-
-test:
-  override:
-    - make test

@@ -1,6 +1,6 @@
 # Toxiproxy
 [![GitHub release](https://img.shields.io/github/release/Shopify/toxiproxy.svg)](https://github.com/Shopify/toxiproxy/releases/latest)
-[![Build Status](https://img.shields.io/circleci/project/github/Shopify/toxiproxy/master.svg)](https://circleci.com/gh/Shopify/toxiproxy/tree/master)
+[![Build Status](https://travis-ci.org/Shopify/toxiproxy.svg?branch=master)](https://travis-ci.org/Shopify/toxiproxy)
 [![IRC Channel](https://img.shields.io/badge/chat-on%20freenode-brightgreen.svg)](https://kiwiirc.com/client/irc.freenode.net/#toxiproxy)
 
 ![](http://i.imgur.com/sOaNw0o.png)
@@ -46,22 +46,22 @@ stopping you from creating a client in any other language (see
 2. [Clients](#clients)
 3. [Example](#example)
 4. [Usage](#usage)
-  1. [Installing](#1-installing-toxiproxy)
-    1. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
-  2. [Populating](#2-populating-toxiproxy)
-  3. [Using](#3-using-toxiproxy)
+   1. [Installing](#1-installing-toxiproxy)
+      1. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
+   2. [Populating](#2-populating-toxiproxy)
+   3. [Using](#3-using-toxiproxy)
 5. [Toxics](#toxics)
-  1. [Latency](#latency)
-  2. [Down](#down)
-  3. [Bandwidth](#bandwidth)
-  4. [Slow close](#slow_close)
-  5. [Timeout](#timeout)
-  6. [Slicer](#slicer)
+   1. [Latency](#latency)
+   2. [Down](#down)
+   3. [Bandwidth](#bandwidth)
+   4. [Slow close](#slow_close)
+   5. [Timeout](#timeout)
+   6. [Slicer](#slicer)
 6. [HTTP API](#http-api)
-  1. [Proxy fields](#proxy-fields)
-  2. [Toxic fields](#toxic-fields)
-  3. [Endpoints](#endpoints)
-  4. [Populating Proxies](#populating-proxies)
+   1. [Proxy fields](#proxy-fields)
+   2. [Toxic fields](#toxic-fields)
+   3. [Endpoints](#endpoints)
+   4. [Populating Proxies](#populating-proxies)
 7. [CLI example](#cli-example)
 8. [FAQ](#frequently-asked-questions)
 9. [Development](#development)
@@ -200,8 +200,8 @@ binaries and system packages for your architecture.
 **Ubuntu**
 
 ```bash
-$ wget -O toxiproxy-2.1.3.deb https://github.com/Shopify/toxiproxy/releases/download/v2.1.3/toxiproxy_2.1.3_amd64.deb
-$ sudo dpkg -i toxiproxy-2.1.3.deb
+$ wget -O toxiproxy-2.1.4.deb https://github.com/Shopify/toxiproxy/releases/download/v2.1.4/toxiproxy_2.1.4_amd64.deb
+$ sudo dpkg -i toxiproxy-2.1.4.deb
 $ sudo service toxiproxy start
 ```
 
@@ -214,7 +214,7 @@ $ brew install toxiproxy
 
 **Windows**
 
-Toxiproxy for Windows is available for download at https://github.com/Shopify/toxiproxy/releases/download/v2.1.3/toxiproxy-server-windows-amd64.exe
+Toxiproxy for Windows is available for download at https://github.com/Shopify/toxiproxy/releases/download/v2.1.4/toxiproxy-server-windows-amd64.exe
 
 **Docker**
 
@@ -289,6 +289,25 @@ For large application we recommend storing the Toxiproxy configurations in a
 separate configuration file. We use `config/toxiproxy.json`. This file can be
 passed to the server using the `-config` option, or loaded by the application
 to use with the `populate` function.
+
+An example `config/toxiproxy.json`:
+
+```json
+[
+  {
+    "name": "web_dev_frontend_1",
+    "listen": "[::]:18080",
+    "upstream": "webapp.domain:8080",
+    "enabled": true
+  },
+  {
+    "name": "web_dev_mysql_1",
+    "listen": "[::]:13306",
+    "upstream": "database.domain:3306",
+    "enabled": true
+  }
+]
+```
 
 Use ports outside the ephemeral port range to avoid random port conflicts.
 It's `32,768` to `61,000` on Linux by default, see
@@ -526,7 +545,7 @@ Could not connect to Redis at 127.0.0.1:26379: Connection refused
 
 **How fast is Toxiproxy?** The speed of Toxiproxy depends largely on your hardware,
 but you can expect a latency of *< 100µs* when no toxics are enabled. When running
-with `GOMAXPROCS=4` on a Macbook Pro we acheived *~1000MB/s* throughput, and as high
+with `GOMAXPROCS=4` on a Macbook Pro we achieved *~1000MB/s* throughput, and as high
 as *2400MB/s* on a higher end desktop. Basically, you can expect Toxiproxy to move
 data around at least as fast the app you're testing.
 
@@ -577,4 +596,4 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 9. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)
 
 
-[blog]: https://engineering.shopify.com/17489072-building-and-testing-resilient-ruby-on-rails-applications
+[blog]: https://shopifyengineering.myshopify.com/blogs/engineering/building-and-testing-resilient-ruby-on-rails-applications
