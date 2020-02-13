@@ -99,6 +99,8 @@ func (collection *ProxyCollection) PopulateJson(data io.Reader) ([]*Proxy, error
 		proxy.Listen = p.Listen
 		proxy.Upstream = p.Upstream
 
+		proxy.TLS = p.TLS
+
 		err = collection.AddOrReplace(proxy, *p.Enabled)
 		if err != nil {
 			break

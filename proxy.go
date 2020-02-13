@@ -1,6 +1,8 @@
 package toxiproxy
 
 import (
+	"crypto/rand"
+	"crypto/tls"
 	"errors"
 	"sync"
 
@@ -20,16 +22,22 @@ import (
 type Proxy struct {
 	sync.Mutex
 
-	Name     string `json:"name"`
-	Listen   string `json:"listen"`
-	Upstream string `json:"upstream"`
-	Enabled  bool   `json:"enabled"`
+	Name     string   `json:"name"`
+	Listen   string   `json:"listen"`
+	Upstream string   `json:"upstream"`
+	Enabled  bool     `json:"enabled"`
+	TLS      *TlsData `json:"tls,omitempty"`
 
 	started chan error
 
 	tomb        tomb.Tomb
 	connections ConnectionList
 	Toxics      *ToxicCollection `json:"-"`
+}
+
+type TlsData struct {
+	Cert string `json:"cert"`
+	Key  string `json:"key"`
 }
 
 type ConnectionList struct {
@@ -92,7 +100,38 @@ func (proxy *Proxy) Stop() {
 // server runs the Proxy server, accepting new clients and creating Links to
 // connect them to upstreams.
 func (proxy *Proxy) server() {
-	ln, err := net.Listen("tcp", proxy.Listen)
+	var (
+		ln       net.Listener
+		err      error
+		upstream net.Conn
+	)
+
+	if proxy.TLS != nil {
+		logrus.WithFields(logrus.Fields{
+			"proxy": proxy.Name,
+			"cert":  proxy.TLS.Cert,
+			"key":   proxy.TLS.Key,
+		}).Info("TLS certificates were specified")
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"proxy": proxy.Name,
+		}).Info("TLS certificates were NOT specified")
+	}
+
+	if proxy.TLS != nil {
+		cert, err := tls.LoadX509KeyPair(proxy.TLS.Cert, proxy.TLS.Key)
+		if err != nil {
+			proxy.started <- err
+			return
+		}
+
+		config := tls.Config{Certificates: []tls.Certificate{cert}}
+		config.Rand = rand.Reader
+		ln, err = tls.Listen("tcp", proxy.Listen, &config)
+	} else {
+		ln, err = net.Listen("tcp", proxy.Listen)
+	}
+
 	if err != nil {
 		proxy.started <- err
 		return
@@ -159,16 +198,37 @@ func (proxy *Proxy) server() {
 			"upstream": proxy.Upstream,
 		}).Info("Accepted client")
 
-		upstream, err := net.Dial("tcp", proxy.Upstream)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"name":     proxy.Name,
-				"client":   client.RemoteAddr(),
-				"proxy":    proxy.Listen,
-				"upstream": proxy.Upstream,
-			}).Error("Unable to open connection to upstream")
-			client.Close()
-			continue
+		if proxy.TLS != nil {
+			clientConfig := &tls.Config{InsecureSkipVerify: true}
+			upstreamTLS, err := tls.Dial("tcp", proxy.Upstream, clientConfig)
+
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"name":     proxy.Name,
+					"client":   client.RemoteAddr(),
+					"proxy":    proxy.Listen,
+					"upstream": proxy.Upstream,
+				}).Error("Unable to open connection to upstream")
+				client.Close()
+				continue
+			}
+			upstream = upstreamTLS
+
+		} else {
+			upstreamPlain, err := net.Dial("tcp", proxy.Upstream)
+
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"name":     proxy.Name,
+					"client":   client.RemoteAddr(),
+					"proxy":    proxy.Listen,
+					"upstream": proxy.Upstream,
+				}).Error("Unable to open connection to upstream")
+				client.Close()
+				continue
+			}
+
+			upstream = upstreamPlain
 		}
 
 		name := client.RemoteAddr().String()
@@ -176,6 +236,7 @@ func (proxy *Proxy) server() {
 		proxy.connections.list[name+"upstream"] = upstream
 		proxy.connections.list[name+"downstream"] = client
 		proxy.connections.Unlock()
+
 		proxy.Toxics.StartLink(name+"upstream", client, upstream, stream.Upstream)
 		proxy.Toxics.StartLink(name+"downstream", upstream, client, stream.Downstream)
 	}

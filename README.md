@@ -309,6 +309,29 @@ An example `config/toxiproxy.json`:
 ]
 ```
 
+An example `config/toxiproxy.json` with the experimental TLS feature:
+
+```json
+[
+  {
+    "name": "plain",
+    "listen": "[::]:1080",
+    "upstream": "www.arnes.si:80",
+    "enabled": true
+  },
+  {
+    "name": "ssl",
+    "listen": "[::]:1443",
+    "upstream": "www.arnes.si:443",
+    "enabled": true,
+    "tls": {
+      "cert": "./cert.crt",
+      "key": "./cert.key"
+    }
+  }
+]
+```
+
 Use ports outside the ephemeral port range to avoid random port conflicts.
 It's `32,768` to `61,000` on Linux by default, see
 `/proc/sys/net/ipv4/ip_local_port_range`.
