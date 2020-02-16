@@ -332,6 +332,8 @@ An example `config/toxiproxy.json` with the experimental TLS feature:
 ]
 ```
 
+For more details about TLS please check [TLS.md](./TLS.md).
+
 Use ports outside the ephemeral port range to avoid random port conflicts.
 It's `32,768` to `61,000` on Linux by default, see
 `/proc/sys/net/ipv4/ip_local_port_range`.
