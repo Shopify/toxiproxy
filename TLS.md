@@ -7,7 +7,7 @@ There are multiple ways how to use Toxiproxy in such a set-up.
 
 That means Toxiproxy will just act as a TCP proxy. No patches are necessary. 
 TLS handshake will still be performed with actual endpoint. Thus Toxiproxy will
-not be able to see (plain-text) traffic but may still apply toxic stuff (like delays) to the flow.
+not be able to see (plain-text) traffic but may still apply toxics (like delays) to the flow.
 
 Example `config/toxiproxy.json` 
 ```json
@@ -29,7 +29,9 @@ points to Toxiproxy IP. You could use hosts file for that with an entry like
 ```
 
 but that isn't really the best option. A more scalable solution would be to change your DNS server to return fake responses.
-Easiest is probably [Coredns](https://coredns.io) with rewrite plugin.
+Easiest is probably [Coredns](https://coredns.io) with rewrite plugin. 
+
+Other option is a transparent proxy to forward specific traffic via iptables/netfilter rules.
 
 ## TLS connection with static certificate
 
@@ -80,8 +82,7 @@ sense to be cautious about the upstream doing something similar. But you can alw
 In this mode patched Toxiproxy will observe what the hostname was in the request and use the given certificate as a CA to sign the new (dummy) certificate
 that matches this hostname. Currently it will generate 2048 bit RSA keypair for that purpose.
 
-This mode is very similar to the first one (except that Toxiproxy is doing the TLS termination and can see plain-text traffic). You centrally enable transparent
-proxying through Toxiproxy this way.
+This mode is very similar to the first one (except that Toxiproxy is doing the TLS termination and can see plain-text traffic). 
  
 An example `config/toxiproxy.json`:
 
@@ -100,10 +101,14 @@ An example `config/toxiproxy.json`:
   }
 ]
 
-Here you need to alter DNS responses and additionally also configure the given CA cert (still passed in the configuration as cert/key) as trusted on all machines
-that will be connecting to Toxiproxy. 
+Here you need to do something similar to option number 1 and additionally also configure the given CA cert (still passed in the configuration as cert/key) as trusted on all machines
+that will be connecting to Toxiproxy. Benefit is that you can centrally configure the interception rules (no need to change endpoints).
 
-When isCA is true Toxiproxy will verify that cert.crt is actually a CA certificate (but you can always create a self-signed one of course).
+You could use something like [SNIproxy](https://github.com/dlundquist/sniproxy) in front which makes it easier to just forward everything to the proxy and then route just specific
+stuff through Toxiproxy.
+
+When isCA is true Toxiproxy will verify that cert.crt is actually a CA certificate (but you can always create a self-signed one of course). For now encrypted private key is not supported
+(so be careful).
 
 It is also possible to use "verifyUpstream" setting in this mode.
 
