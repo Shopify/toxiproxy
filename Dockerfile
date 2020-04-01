@@ -1,4 +1,5 @@
 FROM alpine
+LABEL Talkdesk - Platform Team
 
 COPY tmp/build/toxiproxy-server-linux-amd64 /go/bin/toxiproxy
 COPY tmp/build/toxiproxy-cli-linux-amd64 /go/bin/toxiproxy-cli
