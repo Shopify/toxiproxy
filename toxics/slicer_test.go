@@ -16,7 +16,7 @@ func TestSlicerToxic(t *testing.T) {
 
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk)
-	stub := toxics.NewToxicStub(input, output)
+	stub := toxics.NewToxicStub(input, output, "proxy", "upstream")
 
 	done := make(chan bool)
 	go func() {

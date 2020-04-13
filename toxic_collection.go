@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 	"sync"
 
@@ -26,9 +27,15 @@ type ToxicCollection struct {
 }
 
 func NewToxicCollection(proxy *Proxy) *ToxicCollection {
+	toxic := new(toxics.NoopToxic)
+	if proxy != nil {
+		toxic.ProxyName = proxy.Name
+		toxic.Upstream = proxy.Upstream
+	}
+
 	collection := &ToxicCollection{
 		noop: &toxics.ToxicWrapper{
-			Toxic: new(toxics.NoopToxic),
+			Toxic: toxic,
 			Type:  "noop",
 		},
 		proxy: proxy,
@@ -84,11 +91,15 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 
 	var buffer bytes.Buffer
 
+	toxic := new(toxics.NoopToxic)
+	toxic.ProxyName = c.proxy.Name
+	toxic.Upstream = c.proxy.Upstream
+
 	// Default to a downstream toxic with a toxicity of 1.
 	wrapper := &toxics.ToxicWrapper{
 		Stream:   "downstream",
 		Toxicity: 1.0,
-		Toxic:    new(toxics.NoopToxic),
+		Toxic:    toxic,
 	}
 
 	err := json.NewDecoder(io.TeeReader(data, &buffer)).Decode(wrapper)
@@ -169,7 +180,7 @@ func (c *ToxicCollection) RemoveToxic(name string) error {
 	return ErrToxicNotFound
 }
 
-func (c *ToxicCollection) StartLink(name string, input io.Reader, output io.WriteCloser, direction stream.Direction) {
+func (c *ToxicCollection) StartLink(name string, input net.Conn, output io.WriteCloser, direction stream.Direction) {
 	c.Lock()
 	defer c.Unlock()
 
