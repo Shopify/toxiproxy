@@ -433,7 +433,7 @@ If `listen` is specified with a port of 0, toxiproxy will pick an ephemeral port
 in the response will be updated with the actual port.
 
 If you change `enabled` to `false`, it will take down the proxy. You can switch it
-back to `true` to reenable it.
+back to `true` to re-enable it.
 
 #### Toxic fields:
 
