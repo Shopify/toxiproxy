@@ -77,7 +77,7 @@ func (link *ToxicLink) Start(name string, source net.Conn, dest io.WriteCloser) 
 			}).Warn("Source terminated")
 
 			metrics.RegisterEvent(metrics.Event{
-				EventType: "Client Disconnected",
+				EventType: metrics.ClientDisconnected,
 				Client:    source.RemoteAddr().String(),
 				Upstream:  upstreamName,
 				ProxyName: proxyName,
