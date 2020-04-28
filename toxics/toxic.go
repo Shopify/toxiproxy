@@ -62,14 +62,18 @@ type ToxicStub struct {
 	Interrupt chan struct{}
 	running   chan struct{}
 	closed    chan struct{}
+	proxyName string
+	upstream  string
 }
 
-func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.StreamChunk) *ToxicStub {
+func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.StreamChunk, proxyName string, upstream string) *ToxicStub {
 	return &ToxicStub{
 		Interrupt: make(chan struct{}),
 		closed:    make(chan struct{}),
 		Input:     input,
 		Output:    output,
+		proxyName: proxyName,
+		upstream:  upstream,
 	}
 }
 
@@ -81,7 +85,10 @@ func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 	if rand.Float32() < toxic.Toxicity {
 		toxic.Pipe(s)
 	} else {
-		new(NoopToxic).Pipe(s)
+		noopToxic := new(NoopToxic)
+		noopToxic.ProxyName = s.proxyName
+		noopToxic.Upstream = s.upstream
+		noopToxic.Pipe(s)
 	}
 }
 

@@ -2,7 +2,9 @@ package toxiproxy
 
 import (
 	"errors"
+	"github.com/Shopify/toxiproxy/metrics"
 	"sync"
+	"time"
 
 	"github.com/Shopify/toxiproxy/stream"
 	"github.com/sirupsen/logrus"
@@ -158,6 +160,7 @@ func (proxy *Proxy) server() {
 			"proxy":    proxy.Listen,
 			"upstream": proxy.Upstream,
 		}).Info("Accepted client")
+		metrics.RegisterEvent(metrics.Event{EventType: metrics.ClientConnected, Client: client.RemoteAddr().String(), Upstream: proxy.Upstream, ProxyName: proxy.Name, Time: time.Now()})
 
 		upstream, err := net.Dial("tcp", proxy.Upstream)
 		if err != nil {
@@ -167,6 +170,7 @@ func (proxy *Proxy) server() {
 				"proxy":    proxy.Listen,
 				"upstream": proxy.Upstream,
 			}).Error("Unable to open connection to upstream")
+			metrics.RegisterEvent(metrics.Event{EventType: metrics.UpstreamUnavailable, Client: client.RemoteAddr().String(), Upstream: proxy.Upstream, ProxyName: proxy.Name, Time: time.Now()})
 			client.Close()
 			continue
 		}

@@ -466,6 +466,8 @@ All endpoints are JSON.
  - **POST /proxies/{proxy}/toxics/{toxic}** - Update an active toxic
  - **DELETE /proxies/{proxy}/toxics/{toxic}** - Remove an active toxic
  - **POST /reset** - Enable all proxies and remove all active toxics
+ - **GET /metrics** - Get metrics information (global)
+ - **GET /events** - Returns all available events history, with optional location (see bellow)
  - **GET /version** - Returns the server version number
 
 #### Populating Proxies
@@ -477,6 +479,86 @@ it will be compared to the new proxy and replaced if the `upstream` and `listen`
 A `/populate` call can be included for example at application start to ensure all required proxies
 exist. It is safe to make this call several times, since proxies will be untouched as long as their
 fields are consistent with the new data.
+
+#### Metrics and event history
+
+Toxiproxy can keep metrics and record of recent events in order to enable easy visualization of real 
+time traffic, and enabling automated tests to verify the behaviour of the networking. This feature 
+makes Toxiproxy useful also for scenarios that do not involve toxics. Please note that since Toxiproxy
+supports any kind of tcp stream, it does not count requests (which exists only in some protocols) 
+but tcp packets.
+
+The **metrics** endpoint gives global information about number of packets that passed through a specific
+proxy. For example, we have two proxies, `Main DB` and `Distributed Cahce`, so a call to the
+metrics endpoint will yield a response that looks like this:
+```json
+{
+    "Distributed Cache": 103,
+    "Main DB": 51
+}
+```
+
+The **events** endpoint gives you recent events that happened, such as client connections and disconnections, 
+packets transferred and failures. The event history is limited in time and number (to prevent excessive memory consumption), 
+both can be configured when running the server and default to 10 seconds, 100,000 events.
+
+The available event types can be seen [here](metrics/event_types.go).
+
+For example, a call to the `events` endpoint will yield a response that looks like this:
+```json
+{
+    "data": [
+        {
+            "client": "[::1]:50189",
+            "target": "127.0.0.1:4000",
+            "timestamp": "2020-04-07T17:12:09.914659+03:00",
+            "proxyName": "Distributed Cache",
+            "eventType": "Client Connected"
+        },
+        {
+            "client": "",
+            "target": "127.0.0.1:4000",
+            "timestamp": "2020-04-07T17:12:10.446332+03:00",
+            "proxyName": "Distributed Cache",
+            "eventType": "Message"
+        },
+        {
+            "client": "",
+            "target": "127.0.0.1:4000",
+            "timestamp": "2020-04-07T17:12:13.448622+03:00",
+            "proxyName": "Distributed Cache",
+            "eventType": "Message"
+        },
+        {
+            "client": "[::1]:50189",
+            "target": "127.0.0.1:4000",
+            "timestamp": "2020-04-07T17:12:15.452107+03:00",
+            "proxyName": "Distributed Cache",
+            "eventType": "Client Disconnected"
+        },
+        {
+            "client": "[::1]:50189",
+            "target": "127.0.0.1:4000",
+            "timestamp": "2020-04-07T17:12:19.914659+03:00",
+            "proxyName": "Distributed Cache",
+            "eventType": "Client Connected"
+        },
+        {
+            "client": "[::1]:50189",
+            "target": "127.0.0.1:4000",
+            "timestamp": "2020-04-07T17:12:19.914812+03:00",
+            "proxyName": "Distributed Cache",
+            "eventType": "Upstream unavailable"
+        }
+    ],
+    "location": "a439j"
+}
+```
+Here we see a client that connected, sent two packets (good chance that it is also two requests, if this is HTTP) 
+and disconnected the tcp connection. Then it tried again, but the message could not be forwarded to the target.
+
+The `location` field can be used in consecutive calls, to get only unread messages. The next call in this example
+would be `/events?afterLocation=a439j`.
 
 ### CLI Example
 
