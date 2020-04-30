@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"container/list"
+	"fmt"
 	"go/types"
 	"time"
 )
@@ -9,8 +10,8 @@ import (
 var timeToKeep time.Duration
 var maxNumOfEvents = 1 // default
 
-var eventList = list.New()
-var lastId = 0
+var eventList *list.List
+var lastId int
 
 var incomingEventsChannel = make(chan Event, 100)
 var eventsRequests = make(chan int)
@@ -27,14 +28,27 @@ type Event struct {
 	EventType string    `json:"eventType"`
 }
 
+func (e Event) String() string {
+	return fmt.Sprintf("Event {token: %d, proxy: %s}", e.token, e.ProxyName)
+}
+
 type EventsAndToken struct {
 	Data  []Event `json:"data"`
 	Token int     `json:"token,string"`
 }
 
-var messages = make(map[string]uint64)
+var messages map[string]uint64
+
+// (re) initializes data. Except for first initialization, intended to be used only in tests.
+// Not "thread-safe".
+func resetData() {
+	eventList = list.New()
+	messages = make(map[string]uint64)
+	lastId = 0
+}
 
 func init() {
+	resetData()
 	go metricsRoutine()
 }
 
@@ -66,6 +80,9 @@ func metricsRoutine() {
 }
 
 // Report an events that should be collected by metrics.
+//
+// Note: this is an asynchronous operation, so calls to Get methods in this module
+// might not reflect an event registration immediately
 func RegisterEvent(event Event) {
 	incomingEventsChannel <- event
 }
