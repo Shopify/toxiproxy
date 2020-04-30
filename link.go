@@ -1,7 +1,10 @@
 package toxiproxy
 
 import (
+	"github.com/Shopify/toxiproxy/metrics"
 	"io"
+	"net"
+	"time"
 
 	"github.com/Shopify/toxiproxy/stream"
 	"github.com/Shopify/toxiproxy/toxics"
@@ -45,7 +48,13 @@ func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Di
 			next = make(chan *stream.StreamChunk)
 		}
 
-		link.stubs[i] = toxics.NewToxicStub(last, next)
+		proxyName := "Unknown"
+		proxyUpstream := "Unknown"
+		if proxy != nil {
+			proxyName = proxy.Name
+			proxyUpstream = proxy.Upstream
+		}
+		link.stubs[i] = toxics.NewToxicStub(last, next, proxyName, proxyUpstream)
 		last = next
 	}
 	link.output = stream.NewChanReader(last)
@@ -53,15 +62,26 @@ func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Di
 }
 
 // Start the link with the specified toxics
-func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser) {
+func (link *ToxicLink) Start(name string, source net.Conn, dest io.WriteCloser) {
+	// assigned here so can be safely used in go routines
+	proxyName := link.proxy.Name
+	upstreamName := link.proxy.Upstream
+
 	go func() {
 		bytes, err := io.Copy(link.input, source)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
-				"name":  link.proxy.Name,
+				"name":  proxyName,
 				"bytes": bytes,
 				"err":   err,
 			}).Warn("Source terminated")
+
+			metrics.RegisterEvent(metrics.Event{
+				EventType: "Client Disconnected",
+				Client:    source.RemoteAddr().String(),
+				Upstream:  upstreamName,
+				ProxyName: proxyName,
+				Time:      time.Now()})
 		}
 		link.input.Close()
 	}()
@@ -76,7 +96,7 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		bytes, err := io.Copy(dest, link.output)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
-				"name":  link.proxy.Name,
+				"name":  proxyName,
 				"bytes": bytes,
 				"err":   err,
 			}).Warn("Destination terminated")
@@ -92,7 +112,15 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	i := len(link.stubs)
 
 	newin := make(chan *stream.StreamChunk, toxic.BufferSize)
-	link.stubs = append(link.stubs, toxics.NewToxicStub(newin, link.stubs[i-1].Output))
+
+	proxyName := "Unknown"
+	proxyUpstream := "Unknown"
+	if link.proxy != nil {
+		proxyName = link.proxy.Name
+		proxyUpstream = link.proxy.Upstream
+	}
+
+	link.stubs = append(link.stubs, toxics.NewToxicStub(newin, link.stubs[i-1].Output, proxyName, proxyUpstream))
 
 	// Interrupt the last toxic so that we don't have a race when moving channels
 	if link.stubs[i-1].InterruptToxic() {

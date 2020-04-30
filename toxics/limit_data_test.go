@@ -33,7 +33,7 @@ func checkRemainingChunks(t *testing.T, output chan *stream.StreamChunk) {
 func check(t *testing.T, toxic *toxics.LimitDataToxic, chunks [][]byte, expectedChunks [][]byte) {
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk, 100)
-	stub := toxics.NewToxicStub(input, output)
+	stub := toxics.NewToxicStub(input, output, "proxy", "upstream")
 	stub.State = toxic.NewState()
 
 	go toxic.Pipe(stub)
@@ -54,7 +54,7 @@ func TestLimitDataToxicMayBeRestarted(t *testing.T) {
 
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk, 100)
-	stub := toxics.NewToxicStub(input, output)
+	stub := toxics.NewToxicStub(input, output, "proxy", "upstream")
 	stub.State = toxic.NewState()
 
 	buf := buffer(90)
@@ -85,7 +85,7 @@ func TestLimitDataToxicMayBeInterrupted(t *testing.T) {
 
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk)
-	stub := toxics.NewToxicStub(input, output)
+	stub := toxics.NewToxicStub(input, output, "proxy", "upstream")
 	stub.State = toxic.NewState()
 
 	go func() {
@@ -100,7 +100,7 @@ func TestLimitDataToxicNilShouldClosePipe(t *testing.T) {
 
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk)
-	stub := toxics.NewToxicStub(input, output)
+	stub := toxics.NewToxicStub(input, output, "proxy", "upstream")
 	stub.State = toxic.NewState()
 
 	go func() {

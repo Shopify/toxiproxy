@@ -3,10 +3,12 @@ package toxiproxy
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Shopify/toxiproxy/metrics"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/Shopify/toxiproxy/toxics"
@@ -72,6 +74,8 @@ func (server *ApiServer) Listen(host string, port string) {
 	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicUpdate).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE")
 
+	r.HandleFunc("/events", server.GetMetricEvents).Methods("GET")
+	r.HandleFunc("/metrics", server.GetMetrics).Methods("GET")
 	r.HandleFunc("/version", server.Version).Methods("GET")
 
 	http.Handle("/", StopBrowsersMiddleware(r))
@@ -103,6 +107,49 @@ func (server *ApiServer) ProxyIndex(response http.ResponseWriter, request *http.
 
 	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
+	if err != nil {
+		logrus.Warn("ProxyIndex: Failed to write response to client", err)
+	}
+}
+
+func (server *ApiServer) GetMetricEvents(response http.ResponseWriter, request *http.Request) {
+	token := request.URL.Query().Get("token")
+	var result metrics.EventsAndToken
+	if len(token) >= 1 {
+		tokenNum, err := strconv.Atoi(token)
+		if err != nil {
+			apiError(response, newError("token must be a one returned from this api", http.StatusBadRequest))
+			return
+		}
+		result = metrics.GetMetricEventsStartingFrom(tokenNum)
+	} else {
+		result = metrics.GetMetricEvents()
+	}
+
+	body, err := json.Marshal(result)
+
+	if apiError(response, err) {
+		return
+	}
+
+	response.Header().Set("Content-Type", "application/json")
+	_, err = response.Write(body)
+	if err != nil {
+		logrus.Warn("ProxyIndex: Failed to write response to client", err)
+	}
+}
+
+func (server *ApiServer) GetMetrics(response http.ResponseWriter, request *http.Request) {
+	data := metrics.GetMetrics()
+
+	body, err := json.Marshal(data)
+
+	if apiError(response, err) {
+		return
+	}
+
+	response.Header().Set("Content-Type", "application/json")
+	_, err = response.Write(body)
 	if err != nil {
 		logrus.Warn("ProxyIndex: Failed to write response to client", err)
 	}
