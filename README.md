@@ -467,7 +467,7 @@ All endpoints are JSON.
  - **DELETE /proxies/{proxy}/toxics/{toxic}** - Remove an active toxic
  - **POST /reset** - Enable all proxies and remove all active toxics
  - **GET /metrics** - Get metrics information (global)
- - **GET /events** - Returns all available events history, with optional token (see bellow)
+ - **GET /events** - Returns all available events history, with optional location (see bellow)
  - **GET /version** - Returns the server version number
 
 #### Populating Proxies
@@ -549,14 +549,14 @@ For example, a call to the `events` endpoint will yield a response that looks li
             "eventType": "Upstream unavailable"
         }
     ],
-    "token": "a439j"
+    "location": "a439j"
 }
 ```
 Here we see a client that connected, sent two packets (good chance that it is also two requests, if this is HTTP) 
 and disconnected the tcp connection. Then it tried again, but the message could not be forwarded to the target.
 
-The `token` field can be used in consecutive calls, to get only unread messages. The next call in this example
-would be `/events?token=a439j`.
+The `location` field can be used in consecutive calls, to get only unread messages. The next call in this example
+would be `/events?afterLocation=a439j`.
 
 ### CLI Example
 

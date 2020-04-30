@@ -15,12 +15,12 @@ var lastId int
 
 var incomingEventsChannel = make(chan Event, 100)
 var eventsRequests = make(chan int)
-var eventsResponse = make(chan EventsAndToken)
+var eventsResponse = make(chan EventsAndLocation)
 var metricsRequests = make(chan types.Nil)
 var metricsResponse = make(chan map[string]uint64)
 
 type Event struct {
-	token     int
+	location  int
 	Client    string    `json:"client"`
 	Upstream  string    `json:"target"`
 	Time      time.Time `json:"timestamp"`
@@ -29,12 +29,12 @@ type Event struct {
 }
 
 func (e Event) String() string {
-	return fmt.Sprintf("Event {token: %d, proxy: %s}", e.token, e.ProxyName)
+	return fmt.Sprintf("Event {location: %d, proxy: %s}", e.location, e.ProxyName)
 }
 
-type EventsAndToken struct {
-	Data  []Event `json:"data"`
-	Token int     `json:"token,string"`
+type EventsAndLocation struct {
+	Data     []Event `json:"data"`
+	Location int     `json:"location,string"`
 }
 
 var messages map[string]uint64
@@ -73,8 +73,8 @@ func metricsRoutine() {
 			registerEvent(event)
 		case <-metricsRequests:
 			metricsResponse <- getMetrics()
-		case token := <-eventsRequests:
-			eventsResponse <- getMetricEventsStartingFrom(token)
+		case location := <-eventsRequests:
+			eventsResponse <- getMetricEventsStartingFrom(location)
 		}
 	}
 }
@@ -89,7 +89,7 @@ func RegisterEvent(event Event) {
 
 func registerEvent(event Event) {
 	messages[event.ProxyName] += 1
-	event.token = lastId
+	event.location = lastId
 	lastId++
 
 	eventList.PushBack(event)
@@ -117,25 +117,25 @@ func getMetrics() map[string]uint64 {
 	return messages
 }
 
-// Get all available events in history. The result includes a token tha can be used
+// Get all available events in history. The result includes a location tha can be used
 // to call GetMetricEventsStartingFrom in order get only unread events.
-func GetMetricEvents() EventsAndToken {
+func GetMetricEvents() EventsAndLocation {
 	return GetMetricEventsStartingFrom(-1)
 }
 
-// Get all unread events in history. The token parameter should be a result of a previous call.
-// The result includes a token tha can be used in the following call in order get only unread events.
-func GetMetricEventsStartingFrom(token int) EventsAndToken {
-	eventsRequests <- token
+// Get all unread events in history. The location parameter should be a result of a previous call.
+// The result includes a location tha can be used in the following call in order get only unread events.
+func GetMetricEventsStartingFrom(location int) EventsAndLocation {
+	eventsRequests <- location
 	return <-eventsResponse
 }
 
-func getMetricEventsStartingFrom(token int) EventsAndToken {
+func getMetricEventsStartingFrom(location int) EventsAndLocation {
 	var e *list.Element
 	var skippedCount = 0
 
 	// skip seen elements
-	for e = eventList.Front(); e != nil && e.Value.(Event).token <= token; e = e.Next() {
+	for e = eventList.Front(); e != nil && e.Value.(Event).location <= location; e = e.Next() {
 		skippedCount++
 	}
 	var result []Event
@@ -146,12 +146,12 @@ func getMetricEventsStartingFrom(token int) EventsAndToken {
 	if result == nil {
 		result = []Event{}
 	}
-	var returnedToken int
+	var returnedLocation int
 	if eventList.Len() > 0 {
-		returnedToken = eventList.Back().Value.(Event).token
+		returnedLocation = eventList.Back().Value.(Event).location
 	} else { // no events exist
-		returnedToken = -1
+		returnedLocation = -1
 	}
 
-	return EventsAndToken{result, returnedToken}
+	return EventsAndLocation{result, returnedLocation}
 }

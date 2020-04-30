@@ -86,7 +86,7 @@ func TestGetMetricEvents_ReturnsAllEvents(t *testing.T) {
 	}
 }
 
-func TestGetMetricEventsStartingFrom_ReturnsAllEventsAfterToken(t *testing.T) {
+func TestGetMetricEventsStartingFrom_ReturnsAllEventsAfterLocation(t *testing.T) {
 	// Arrange
 	resetData()
 	InitSettings("2m", 10)
@@ -105,7 +105,7 @@ func TestGetMetricEventsStartingFrom_ReturnsAllEventsAfterToken(t *testing.T) {
 	registerEvent(event4)
 
 	// Act
-	events = GetMetricEventsStartingFrom(events.Token)
+	events = GetMetricEventsStartingFrom(events.Location)
 
 	// Assert
 	if len(events.Data) != 2 ||
@@ -129,7 +129,7 @@ func TestGetMetricEventsStartingFrom_NoNewEvents_EmptyList(t *testing.T) {
 	events := GetMetricEvents()
 
 	// Act
-	events = GetMetricEventsStartingFrom(events.Token)
+	events = GetMetricEventsStartingFrom(events.Location)
 
 	// Assert
 	if len(events.Data) != 0 {

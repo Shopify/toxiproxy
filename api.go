@@ -113,15 +113,15 @@ func (server *ApiServer) ProxyIndex(response http.ResponseWriter, request *http.
 }
 
 func (server *ApiServer) GetMetricEvents(response http.ResponseWriter, request *http.Request) {
-	token := request.URL.Query().Get("token")
-	var result metrics.EventsAndToken
-	if len(token) >= 1 {
-		tokenNum, err := strconv.Atoi(token)
+	afterLocation := request.URL.Query().Get("afterLocation")
+	var result metrics.EventsAndLocation
+	if len(afterLocation) >= 1 {
+		locationNum, err := strconv.Atoi(afterLocation)
 		if err != nil {
-			apiError(response, newError("token must be a one returned from this api", http.StatusBadRequest))
+			apiError(response, newError("afterLocation must be a one returned from this api", http.StatusBadRequest))
 			return
 		}
-		result = metrics.GetMetricEventsStartingFrom(tokenNum)
+		result = metrics.GetMetricEventsStartingFrom(locationNum)
 	} else {
 		result = metrics.GetMetricEvents()
 	}
