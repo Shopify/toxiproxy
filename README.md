@@ -502,6 +502,8 @@ The **events** endpoint gives you recent events that happened, such as client co
 packets transferred and failures. The event history is limited in time and number (to prevent excessive memory consumption), 
 both can be configured when running the server and default to 10 seconds, 100,000 events.
 
+The available event types can be seen [here](metrics/event_types.go).
+
 For example, a call to the `events` endpoint will yield a response that looks like this:
 ```json
 {

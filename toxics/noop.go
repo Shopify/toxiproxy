@@ -21,7 +21,7 @@ func (t *NoopToxic) Pipe(stub *ToxicStub) {
 				stub.Close()
 				return
 			}
-			metrics.RegisterEvent(metrics.Event{ProxyName: t.ProxyName, Upstream: t.Upstream, Time: time.Now(), EventType: "Message"})
+			metrics.RegisterEvent(metrics.Event{ProxyName: t.ProxyName, Upstream: t.Upstream, Time: time.Now(), EventType: metrics.Message})
 			stub.Output <- c
 		}
 	}
