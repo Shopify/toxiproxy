@@ -117,6 +117,12 @@ func main() {
 			Action:  withToxi(deleteProxy),
 		},
 		{
+			Name:    "reset",
+			Usage:   "\treset a proxy\n\t\tusage: 'toxiproxy-cli reset <proxyName>'\n",
+			Aliases: []string{"R"},
+			Action:  withToxi(resetProxy),
+		},
+		{
 			Name:        "toxic",
 			Aliases:     []string{"t"},
 			Usage:       "\tadd, remove or update a toxic\n\t\tusage: see 'toxiproxy-cli toxic'\n",
@@ -367,6 +373,25 @@ func deleteProxy(c *cli.Context, t *toxiproxy.Client) error {
 		return errorf("Failed to delete proxy: %s\n", err.Error())
 	}
 	fmt.Printf("Deleted proxy %s\n", proxyName)
+	return nil
+}
+
+func resetProxy(c *cli.Context, t *toxiproxy.Client) error {
+	proxyName := c.Args().First()
+	if proxyName == "" {
+		cli.ShowSubcommandHelp(c)
+		return errorf("Proxy name is required as the first argument.\n")
+	}
+	p, err := t.Proxy(proxyName)
+	if err != nil {
+		return errorf("Failed to retrieve proxy %s: %s\n", proxyName, err.Error())
+	}
+
+	err = p.Rst()
+	if err != nil {
+		return errorf("Failed to reset the proxy: %s\n", err.Error())
+	}
+	fmt.Printf("Reset proxy %s\n", proxyName)
 	return nil
 }
 

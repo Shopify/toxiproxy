@@ -33,7 +33,7 @@ type Proxy struct {
 }
 
 type ConnectionList struct {
-	list map[string]net.Conn
+	list map[string]*net.TCPConn
 	lock sync.Mutex
 }
 
@@ -50,7 +50,7 @@ var ErrProxyAlreadyStarted = errors.New("Proxy already started")
 func NewProxy() *Proxy {
 	proxy := &Proxy{
 		started:     make(chan error),
-		connections: ConnectionList{list: make(map[string]net.Conn)},
+		connections: ConnectionList{list: make(map[string]*net.TCPConn)},
 	}
 	proxy.Toxics = NewToxicCollection(proxy)
 	return proxy
@@ -89,16 +89,29 @@ func (proxy *Proxy) Stop() {
 	stop(proxy)
 }
 
+func (proxy *Proxy) Rst() {
+	proxy.Lock()
+	defer proxy.Unlock()
+
+	rst(proxy)
+}
+
 // server runs the Proxy server, accepting new clients and creating Links to
 // connect them to upstreams.
 func (proxy *Proxy) server() {
-	ln, err := net.Listen("tcp", proxy.Listen)
+	addr, err := net.ResolveTCPAddr("tcp", proxy.Listen)
 	if err != nil {
 		proxy.started <- err
 		return
 	}
 
-	proxy.Listen = ln.Addr().String()
+	ln, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		proxy.started <- err
+		return
+	}
+
+	proxy.Listen = addr.String()
 	proxy.started <- nil
 
 	logrus.WithFields(logrus.Fields{
@@ -133,7 +146,7 @@ func (proxy *Proxy) server() {
 	}()
 
 	for {
-		client, err := ln.Accept()
+		client, err := ln.AcceptTCP()
 		if err != nil {
 			// This is to confirm we're being shut down in a legit way. Unfortunately,
 			// Go doesn't export the error when it's closed from Close() so we have to
@@ -159,7 +172,19 @@ func (proxy *Proxy) server() {
 			"upstream": proxy.Upstream,
 		}).Info("Accepted client")
 
-		upstream, err := net.Dial("tcp", proxy.Upstream)
+		upAddr, err := net.ResolveTCPAddr("tcp", proxy.Upstream)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"name":     proxy.Name,
+				"client":   client.RemoteAddr(),
+				"proxy":    proxy.Listen,
+				"upstream": proxy.Upstream,
+			}).Error("Unable to resolve connection to upstream")
+			client.Close()
+			continue
+		}
+
+		upstream, err := net.DialTCP("tcp", nil, upAddr)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"name":     proxy.Name,
@@ -222,4 +247,27 @@ func stop(proxy *Proxy) {
 		"proxy":    proxy.Listen,
 		"upstream": proxy.Upstream,
 	}).Info("Terminated proxy")
+}
+
+// Send a RST over the proxy connection, assumes the lock has already been taken
+func rst(proxy *Proxy) {
+	if !proxy.Enabled {
+		return
+	}
+
+	proxy.connections.Lock()
+	defer proxy.connections.Unlock()
+	for _, conn := range proxy.connections.list {
+		// close the connection, without providing space to read from the socket
+		// so the expected RST is send
+		conn.SetReadBuffer(0)
+		conn.SetLinger(0)
+		conn.CloseRead()
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"name":     proxy.Name,
+		"proxy":    proxy.Listen,
+		"upstream": proxy.Upstream,
+	}).Info("RST proxy")
 }

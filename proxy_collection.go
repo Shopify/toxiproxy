@@ -142,6 +142,19 @@ func (collection *ProxyCollection) Remove(name string) error {
 	return nil
 }
 
+func (collection *ProxyCollection) Rst(name string) error {
+	collection.Lock()
+	defer collection.Unlock()
+
+	proxy, err := collection.getByName(name)
+	if err != nil {
+		return err
+	}
+	proxy.Rst()
+
+	return nil
+}
+
 func (collection *ProxyCollection) Clear() error {
 	collection.Lock()
 	defer collection.Unlock()

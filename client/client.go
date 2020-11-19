@@ -228,6 +228,24 @@ func (proxy *Proxy) Delete() error {
 	return checkError(resp, http.StatusNoContent, "Delete")
 }
 
+// sends a RST on all existing connections through it.
+func (proxy *Proxy) Rst() error {
+	httpClient := &http.Client{}
+	req, err := http.NewRequest("RST", proxy.client.endpoint+"/proxies/"+proxy.Name, nil)
+
+	if err != nil {
+		return err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	return checkError(resp, http.StatusNoContent, "Rst")
+
+}
+
 // Toxics returns a map of all the active toxics and their attributes.
 func (proxy *Proxy) Toxics() (Toxics, error) {
 	resp, err := http.Get(proxy.client.endpoint + "/proxies/" + proxy.Name + "/toxics")

@@ -66,6 +66,7 @@ func (server *ApiServer) Listen(host string, port string) {
 	r.HandleFunc("/proxies/{proxy}", server.ProxyShow).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyUpdate).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE")
+	r.HandleFunc("/proxies/{proxy}", server.ProxyRst).Methods("RST")
 	r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicIndex).Methods("GET")
 	r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicCreate).Methods("POST")
 	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicShow).Methods("GET")
@@ -261,6 +262,21 @@ func (server *ApiServer) ProxyDelete(response http.ResponseWriter, request *http
 	_, err = response.Write(nil)
 	if err != nil {
 		logrus.Warn("ProxyDelete: Failed to write headers to client", err)
+	}
+}
+
+func (server *ApiServer) ProxyRst(response http.ResponseWriter, request *http.Request) {
+	vars := mux.Vars(request)
+
+	err := server.Collection.Rst(vars["proxy"])
+	if apiError(response, err) {
+		return
+	}
+
+	response.WriteHeader(http.StatusNoContent)
+	_, err = response.Write(nil)
+	if err != nil {
+		logrus.Warn("ProxyRst: Failed to write headers to client", err)
 	}
 }
 
