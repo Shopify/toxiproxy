@@ -24,7 +24,7 @@ func echoRequestHeaders(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(mapAsJson))
 }
 
-func TestToxicAddsHttpHeaders(t *testing.T) {
+func TestToxicAddsHTTPHeaders(t *testing.T) {
 	http.HandleFunc("/", echoRequestHeaders)
 
 	ln, err := net.Listen("tcp", "localhost:0")
