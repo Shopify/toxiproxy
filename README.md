@@ -207,9 +207,17 @@ $ sudo service toxiproxy start
 
 **OS X**
 
+With [Homebrew](https://brew.sh/):
+
 ```bash
 $ brew tap shopify/shopify
 $ brew install toxiproxy
+```
+
+Or with [MacPorts](https://www.macports.org/):
+
+```bash
+$ port install toxiproxy
 ```
 
 **Windows**
