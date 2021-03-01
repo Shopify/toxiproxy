@@ -159,6 +159,13 @@ func (client *Client) Populate(config []Proxy) ([]*Proxy, error) {
 
 	resp.Body = ioutil.NopCloser(&body)
 	err = checkError(resp, http.StatusCreated, "Populate")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, proxy := range proxies.Proxies {
+		proxy.client = client
+	}
 	return proxies.Proxies, err
 }
 
