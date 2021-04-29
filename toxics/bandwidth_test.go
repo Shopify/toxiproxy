@@ -57,7 +57,7 @@ func TestBandwidthToxic(t *testing.T) {
 	_, err = io.ReadAtLeast(serverConn, buf2, len(buf2))
 	if err != nil {
 		t.Errorf("Proxy read failed: %v", err)
-	} else if bytes.Compare(buf, buf2) != 0 {
+	} else if !bytes.Equal(buf, buf2) {
 		t.Errorf("Server did not read correct buffer from client!")
 	}
 

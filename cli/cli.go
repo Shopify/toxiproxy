@@ -602,7 +602,7 @@ func hint(m string) {
 }
 
 func errorf(m string, args ...interface{}) error {
-	return cli.NewExitError(fmt.Sprintf(m, args...), 1)
+	return cli.Exit(fmt.Sprintf(m, args...), 1)
 }
 
 func printWidth(col string, m string, numTabs int) {
