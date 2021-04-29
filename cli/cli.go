@@ -67,8 +67,10 @@ var toxicDescription = `
 		example: toxiproxy-cli toxic delete myProxy -n myToxic
 `
 
-var hostname string
-var isTTY bool
+var (
+	hostname string
+	isTTY    bool
+)
 
 func main() {
 	app := cli.NewApp()
@@ -384,7 +386,7 @@ func deleteProxy(c *cli.Context, t *toxiproxy.Client) error {
 }
 
 func parseToxicity(c *cli.Context, defaultToxicity float32) (float32, error) {
-	var toxicity = defaultToxicity
+	toxicity := defaultToxicity
 	toxicityString := c.String("toxicity")
 	if toxicityString != "" {
 		tox, err := strconv.ParseFloat(toxicityString, 32)

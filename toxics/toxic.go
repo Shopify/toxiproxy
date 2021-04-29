@@ -113,8 +113,10 @@ func (s *ToxicStub) Close() {
 	}
 }
 
-var ToxicRegistry map[string]Toxic
-var registryMutex sync.RWMutex
+var (
+	ToxicRegistry map[string]Toxic
+	registryMutex sync.RWMutex
+)
 
 func Register(typeName string, toxic Toxic) {
 	registryMutex.Lock()

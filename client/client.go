@@ -215,7 +215,6 @@ func (proxy *Proxy) Disable() error {
 func (proxy *Proxy) Delete() error {
 	httpClient := &http.Client{}
 	req, err := http.NewRequest("DELETE", proxy.client.endpoint+"/proxies/"+proxy.Name, nil)
-
 	if err != nil {
 		return err
 	}
