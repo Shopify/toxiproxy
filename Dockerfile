@@ -1,7 +1,8 @@
-FROM alpine
+FROM alpine:3.11.11
+ARG TARGETARCH
 
-COPY tmp/build/toxiproxy-server-linux-amd64 /go/bin/toxiproxy
-COPY tmp/build/toxiproxy-cli-linux-amd64 /go/bin/toxiproxy-cli
+COPY tmp/build/toxiproxy-server-linux-$TARGETARCH /go/bin/toxiproxy
+COPY tmp/build/toxiproxy-cli-linux-$TARGETARCH /go/bin/toxiproxy-cli
 
 EXPOSE 8474
 ENTRYPOINT ["/go/bin/toxiproxy"]
