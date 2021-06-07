@@ -1,0 +1,14 @@
+[Unit]
+Description=TCP proxy to simulate network and system conditions
+After=network-online.target firewalld.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=HOST=localhost
+Environment=PORT=8474
+ExecStart=/usr/bin/toxiproxy-server -port $PORT -host $HOST
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

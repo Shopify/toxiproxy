@@ -63,7 +63,8 @@ $(DEB): tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
 		--url "https://github.com/Shopify/toxiproxy" \
 		$(word 1,$^)=/usr/bin/$(SERVER_NAME) \
 		$(word 2,$^)=/usr/bin/$(CLI_NAME) \
-		./share/toxiproxy.conf=/etc/init/toxiproxy.conf
+		./share/toxiproxy.conf=/etc/init/toxiproxy.conf \
+		./share/toxiproxy.service=/lib/systemd/system/toxiproxy.service
 
 docker:
 	docker build --tag="shopify/toxiproxy:git" .
