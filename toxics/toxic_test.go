@@ -48,7 +48,8 @@ func WithEchoServer(t *testing.T, f func(string, chan []byte)) {
 			select {
 			case <-tomb.Dying():
 			default:
-				t.Fatal("Failed to accept client")
+				t.Error("Failed to accept client")
+				return
 			}
 			return
 		}

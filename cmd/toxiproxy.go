@@ -11,9 +11,11 @@ import (
 	"github.com/Shopify/toxiproxy"
 )
 
-var host string
-var port string
-var config string
+var (
+	host   string
+	port   string
+	config string
+)
 
 func init() {
 	flag.StringVar(&host, "host", "localhost", "Host for toxiproxy's API to listen on")

@@ -46,7 +46,7 @@ type Proxy struct {
 
 // NewClient creates a new client which provides the base of all communication
 // with Toxiproxy. Endpoint is the address to the proxy (e.g. localhost:8474 if
-// not overriden)
+// not overridden)
 func NewClient(endpoint string) *Client {
 	if strings.HasPrefix(endpoint, "https://") {
 		log.Fatal("the toxiproxy client does not support https")
@@ -215,7 +215,6 @@ func (proxy *Proxy) Disable() error {
 func (proxy *Proxy) Delete() error {
 	httpClient := &http.Client{}
 	req, err := http.NewRequest("DELETE", proxy.client.endpoint+"/proxies/"+proxy.Name, nil)
-
 	if err != nil {
 		return err
 	}

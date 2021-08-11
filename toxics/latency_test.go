@@ -156,7 +156,7 @@ func TestLatencyToxicCloseRace(t *testing.T) {
 
 func TestTwoLatencyToxics(t *testing.T) {
 	WithEchoProxy(t, func(conn net.Conn, response chan []byte, proxy *toxiproxy.Proxy) {
-		toxics := []*toxics.LatencyToxic{&toxics.LatencyToxic{Latency: 500}, &toxics.LatencyToxic{Latency: 500}}
+		toxics := []*toxics.LatencyToxic{{Latency: 500}, {Latency: 500}}
 		for i, toxic := range toxics {
 			_, err := proxy.Toxics.AddToxicJson(ToxicToJson(t, "latency_"+strconv.Itoa(i), "latency", "upstream", toxic))
 			if err != nil {

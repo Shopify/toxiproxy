@@ -78,6 +78,7 @@ func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.Stream
 func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 	s.running = make(chan struct{})
 	defer close(s.running)
+	//#nosec
 	if rand.Float32() < toxic.Toxicity {
 		toxic.Pipe(s)
 	} else {
@@ -113,8 +114,10 @@ func (s *ToxicStub) Close() {
 	}
 }
 
-var ToxicRegistry map[string]Toxic
-var registryMutex sync.RWMutex
+var (
+	ToxicRegistry map[string]Toxic
+	registryMutex sync.RWMutex
+)
 
 func Register(typeName string, toxic Toxic) {
 	registryMutex.Lock()

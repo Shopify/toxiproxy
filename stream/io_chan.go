@@ -14,7 +14,7 @@ const (
 	NumDirections
 )
 
-// Stores a slice of bytes with its receive timestmap
+// Stores a slice of bytes with its receive timestamp
 type StreamChunk struct {
 	Data      []byte
 	Timestamp time.Time

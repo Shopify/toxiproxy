@@ -46,7 +46,8 @@ func WithTCPServer(t *testing.T, f func(string, chan []byte)) {
 			select {
 			case <-tomb.Dying():
 			default:
-				t.Fatal("Failed to accept client")
+				t.Error("Failed to accept client")
+				return
 			}
 			return
 		}
@@ -55,7 +56,8 @@ func WithTCPServer(t *testing.T, f func(string, chan []byte)) {
 
 		val, err := ioutil.ReadAll(src)
 		if err != nil {
-			t.Fatal("Failed to read from client")
+			t.Error("Failed to read from client")
+			return
 		}
 
 		response <- val

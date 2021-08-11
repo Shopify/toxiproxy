@@ -6,9 +6,11 @@ import (
 	"net/http"
 )
 
-var stuff []byte
-var out []byte
-var out2 []byte
+var (
+	stuff []byte
+	out   []byte
+	out2  []byte
+)
 
 func handler1(w http.ResponseWriter, r *http.Request) {
 	n, err := w.Write(out)

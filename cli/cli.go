@@ -9,8 +9,8 @@ import (
 
 	toxiproxyServer "github.com/Shopify/toxiproxy"
 	"github.com/Shopify/toxiproxy/client"
-	"github.com/urfave/cli"
-	"golang.org/x/crypto/ssh/terminal"
+	"github.com/urfave/cli/v2"
+	terminal "golang.org/x/term"
 )
 
 const (
@@ -67,15 +67,17 @@ var toxicDescription = `
 		example: toxiproxy-cli toxic delete myProxy -n myToxic
 `
 
-var hostname string
-var isTTY bool
+var (
+	hostname string
+	isTTY    bool
+)
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "toxiproxy-cli"
 	app.Version = toxiproxyServer.Version
 	app.Usage = "Simulate network and system conditions"
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 		{
 			Name:    "list",
 			Usage:   "list all proxies\n\tusage: 'toxiproxy-cli list'\n",
@@ -93,13 +95,15 @@ func main() {
 			Usage:   "create a new proxy\n\tusage: 'toxiproxy-cli create <proxyName> --listen <addr> --upstream <addr>'\n",
 			Aliases: []string{"c", "new"},
 			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "listen, l",
-					Usage: "proxy will listen on this address",
+				&cli.StringFlag{
+					Name:    "listen",
+					Aliases: []string{"l"},
+					Usage:   "proxy will listen on this address",
 				},
-				cli.StringFlag{
-					Name:  "upstream, u",
-					Usage: "proxy will forward to this address",
+				&cli.StringFlag{
+					Name:    "upstream",
+					Aliases: []string{"u"},
+					Usage:   "proxy will forward to this address",
 				},
 			},
 			Action: withToxi(createProxy),
@@ -121,36 +125,42 @@ func main() {
 			Aliases:     []string{"t"},
 			Usage:       "\tadd, remove or update a toxic\n\t\tusage: see 'toxiproxy-cli toxic'\n",
 			Description: toxicDescription,
-			Subcommands: []cli.Command{
+			Subcommands: []*cli.Command{
 				{
 					Name:      "add",
 					Aliases:   []string{"a"},
 					Usage:     "add a new toxic",
 					ArgsUsage: "<proxyName>",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "toxicName, n",
-							Usage: "name of the toxic",
+						&cli.StringFlag{
+							Name:    "toxicName",
+							Aliases: []string{"n"},
+							Usage:   "name of the toxic",
 						},
-						cli.StringFlag{
-							Name:  "type, t",
-							Usage: "type of toxic",
+						&cli.StringFlag{
+							Name:    "type",
+							Aliases: []string{"t"},
+							Usage:   "type of toxic",
 						},
-						cli.StringFlag{
-							Name:  "toxicity, tox",
-							Usage: "toxicity of toxic",
+						&cli.StringFlag{
+							Name:    "toxicity",
+							Aliases: []string{"tox"},
+							Usage:   "toxicity of toxic",
 						},
-						cli.StringSliceFlag{
-							Name:  "attribute, a",
-							Usage: "toxic attribute in key=value format",
+						&cli.StringSliceFlag{
+							Name:    "attribute",
+							Aliases: []string{"a"},
+							Usage:   "toxic attribute in key=value format",
 						},
-						cli.BoolFlag{
-							Name:  "upstream, u",
-							Usage: "add toxic to upstream",
+						&cli.BoolFlag{
+							Name:    "upstream",
+							Aliases: []string{"u"},
+							Usage:   "add toxic to upstream",
 						},
-						cli.BoolFlag{
-							Name:  "downstream, d",
-							Usage: "add toxic to downstream",
+						&cli.BoolFlag{
+							Name:    "downstream",
+							Aliases: []string{"d"},
+							Usage:   "add toxic to downstream",
 						},
 					},
 					Action: withToxi(addToxic),
@@ -161,17 +171,20 @@ func main() {
 					Usage:     "update an enabled toxic",
 					ArgsUsage: "<proxyName>",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "toxicName, n",
-							Usage: "name of the toxic",
+						&cli.StringFlag{
+							Name:    "toxicName",
+							Aliases: []string{"n"},
+							Usage:   "name of the toxic",
 						},
-						cli.StringFlag{
-							Name:  "toxicity, tox",
-							Usage: "toxicity of toxic",
+						&cli.StringFlag{
+							Name:    "toxicity",
+							Aliases: []string{"tox"},
+							Usage:   "toxicity of toxic",
 						},
-						cli.StringSliceFlag{
-							Name:  "attribute, a",
-							Usage: "toxic attribute in key=value format",
+						&cli.StringSliceFlag{
+							Name:    "attribute",
+							Aliases: []string{"a"},
+							Usage:   "toxic attribute in key=value format",
 						},
 					},
 					Action: withToxi(updateToxic),
@@ -182,9 +195,10 @@ func main() {
 					Usage:     "remove an enabled toxic",
 					ArgsUsage: "<proxyName>",
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:  "toxicName, n",
-							Usage: "name of the toxic",
+						&cli.StringFlag{
+							Name:    "toxicName",
+							Aliases: []string{"n"},
+							Usage:   "name of the toxic",
 						},
 					},
 					Action: withToxi(removeToxic),
@@ -192,13 +206,14 @@ func main() {
 			},
 		},
 	}
-	cli.HelpFlag = cli.BoolFlag{
+	cli.HelpFlag = &cli.BoolFlag{
 		Name:  "help",
 		Usage: "show help",
 	}
 	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:        "host, h",
+		&cli.StringFlag{
+			Name:        "host",
+			Aliases:     []string{"h"},
 			Value:       "http://localhost:8474",
 			Usage:       "toxiproxy host to connect to",
 			Destination: &hostname,
@@ -371,7 +386,7 @@ func deleteProxy(c *cli.Context, t *toxiproxy.Client) error {
 }
 
 func parseToxicity(c *cli.Context, defaultToxicity float32) (float32, error) {
-	var toxicity = defaultToxicity
+	toxicity := defaultToxicity
 	toxicityString := c.String("toxicity")
 	if toxicityString != "" {
 		tox, err := strconv.ParseFloat(toxicityString, 32)
@@ -587,7 +602,7 @@ func hint(m string) {
 }
 
 func errorf(m string, args ...interface{}) error {
-	return cli.NewExitError(fmt.Sprintf(m, args...), 1)
+	return cli.Exit(fmt.Sprintf(m, args...), 1)
 }
 
 func printWidth(col string, m string, numTabs int) {
