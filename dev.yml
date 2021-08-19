@@ -4,7 +4,6 @@ type: go
 
 up:
   - homebrew:
-    - openssl
     - gnu-tar
   - go:
       version: 1.12
