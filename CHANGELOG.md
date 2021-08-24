@@ -1,3 +1,8 @@
+# [Unreleased]
+
+* Introduce a build script. Support `arm64` arch for `linux` and `darwin` OSes. #300
+* go 1.16, ruby 3.0.2. #299
+
 # 2.1.4
 
 * Bug fix: Fix OOM in toxic. #232

@@ -1,4 +1,4 @@
-*.deb
+_output/
 ./cli/cli
 .bundle/
 cover*.out
@@ -11,3 +11,4 @@ toxiproxy
 toxiproxy-cli
 toxiproxy-server
 toxiproxy.test
+vendor/

@@ -1,58 +1,48 @@
-SERVER_NAME=toxiproxy-server
-CLI_NAME=toxiproxy-cli
+NAME=toxiproxy
+SERVER_NAME=$(NAME)-server
+CLI_NAME=$(NAME)-cli
 VERSION=$(shell cat VERSION)
-DEB=pkg/toxiproxy_$(VERSION)_amd64.deb
+DEB=_output/$(NAME)_$(VERSION)_amd64.deb
 
-export GO111MODULE=on
-
-.PHONY: packages deb test linux darwin windows setup
-
+.PHONY: build
 build:
-	go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(SERVER_NAME) ./cmd
-	go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(CLI_NAME) ./cli
+	BUILD_PLATFORMS=" " ./build/release
 
-all: setup deb linux darwin windows
+all: setup deb release
+
+.PHONY: deb
 deb: $(DEB)
 
-darwin: tmp/build/$(SERVER_NAME)-darwin-amd64 tmp/build/$(CLI_NAME)-darwin-amd64
-linux: tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
-windows: tmp/build/$(SERVER_NAME)-windows-amd64.exe tmp/build/$(CLI_NAME)-windows-amd64.exe
+.PHONY: darwin
+darwin:
+	BUILD_PLATFORMS="darwin/amd64" ./build/release
 
-release: all docker-release
+.PHONY: linux
+linux:
+	BUILD_PLATFORMS="linux/amd64" ./build/release
 
+.PHONY: windows
+windows:
+	BUILD_PLATFORMS="windows/amd64" ./build/release
+
+.PHONY: release
+release: docker-release
+	./build/release
+
+.PHONY: clean
 clean:
-	rm -f tmp/build/*
-	rm -f $(SERVER_NAME)
-	rm -f $(CLI_NAME)
-	rm -f *.deb
+	rm -f _output/*
 
+.PHONY: test
 test:
 	echo "Testing with" `go version`
 	GOMAXPROCS=4 go test -v -race ./...
 
-tmp/build/$(SERVER_NAME)-linux-amd64:
-	GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
-
-tmp/build/$(SERVER_NAME)-darwin-amd64:
-	GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
-
-tmp/build/$(SERVER_NAME)-windows-amd64.exe:
-	GOOS=windows GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
-
-tmp/build/$(CLI_NAME)-linux-amd64:
-	GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
-
-tmp/build/$(CLI_NAME)-darwin-amd64:
-	GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
-
-tmp/build/$(CLI_NAME)-windows-amd64.exe:
-	GOOS=windows GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
-
-$(DEB): tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
+$(DEB): linux
 	fpm -t deb \
 		-s dir \
-		-p tmp/build/ \
-		--name "toxiproxy" \
+		-p _output/ \
+		--name "$(NAME)" \
 		--version $(VERSION) \
 		--license MIT \
 		--no-depends \
@@ -61,19 +51,22 @@ $(DEB): tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
 		--maintainer "Simon Eskildsen <simon.eskildsen@shopify.com>" \
 		--description "TCP proxy to simulate network and system conditions" \
 		--url "https://github.com/Shopify/toxiproxy" \
-		$(word 1,$^)=/usr/bin/$(SERVER_NAME) \
-		$(word 2,$^)=/usr/bin/$(CLI_NAME) \
+		_output/$(SERVER_NAME)-linux-amd64=/usr/bin/$(SERVER_NAME) \
+		_output/$(CLI_NAME)-linux-amd64=/usr/bin/$(CLI_NAME) \
 		./share/toxiproxy.conf=/etc/init/toxiproxy.conf
 
-docker:
-	docker build --tag="shopify/toxiproxy:git" .
+.PHONY: docker
+docker: build
+	docker build -f Dockerfile --tag="shopify/toxiproxy:git" _output/
 
+.PHONY: docker-release
 docker-release: linux
-	docker build --rm=true --tag="shopify/toxiproxy:$(VERSION)" .
+	docker build -f Dockerfile --rm=true --tag="shopify/toxiproxy:$(VERSION)" _output/
 	docker tag shopify/toxiproxy:$(VERSION) shopify/toxiproxy:latest
 	docker push shopify/toxiproxy:$(VERSION)
 	docker push shopify/toxiproxy:latest
 
+.PHONY: setup
 setup:
 	go mod download
 	go mod tidy

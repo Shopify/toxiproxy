@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+set -x
+
+readonly output_path="./_output"
+
+function golang::host_platform() {
+  echo "$(go env GOHOSTOS)/$(go env GOHOSTARCH)"
+}
+
+function release::build() {
+  local -r path="$1"
+  local -r outfile="$2"
+  local -r platform="$3"
+  local -r version="$4"
+  local -r platform_tag=${platform/\//-}
+  local -r os=${platform%/*}
+  local -r arch=$(basename "${platform}")
+
+  resultfile="${outfile}-${platform_tag}"
+  if [[ "${os}" = 'windows' ]]; then
+    resultfile="${resultfile}.exe"
+  fi
+
+  GOOS="${os}" GOARCH="${arch}" \
+    go build -ldflags="-s -w -X github.com/Shopify/toxiproxy.Version=${version}" \
+             -o "${resultfile}" \
+             "${path}"
+}
+
+function release::generate_checksum() {
+  cd ${output_path}
+  sha256sum * > checksums.txt
+  cd -
+}
+
+# Specify build platform
+if [[ -n "${BUILD_PLATFORMS:-}" ]]; then
+  IFS=" " read -ra platforms <<< "${BUILD_PLATFORMS:-}"
+  if [[ ${#platforms[@]} -eq 0 ]]; then
+    platforms=("$(golang::host_platform)")
+  fi
+  readonly BUILD_PLATFORMS="${platforms[@]}"
+else
+  readonly BUILD_PLATFORMS=(
+    darwin/amd64
+    darwin/arm64
+    freebsd/amd64
+    freebsd/arm64
+    linux/amd64
+    linux/arm64
+    netbsd/386
+    netbsd/amd64
+    netbsd/arm64
+    openbsd/amd64
+    openbsd/arm64
+    windows/amd64
+  )
+fi
+
+# Specify build version
+VERSION=${VERSION:-""}
+if [[ -z "${VERSION}" ]]; then
+  VERSION="git-$(git rev-parse --short HEAD)"
+fi
+readonly VERSION
+
+mkdir -p "${output_path}"
+
+# Set module download mode to readonly to not implicitly update go.mod
+export GOFLAGS="-mod=readonly"
+
+# Instruct to build statically linked binaries
+export CGO_ENABLED="0"
+export GO111MODULE="on"
+
+# Ensure all remote modules are downloaded and cached before build so that
+# the concurrent builds launched by gox won't race to redundantly download them.
+go mod download
+
+for platform in ${BUILD_PLATFORMS[@]}
+do
+  release::build "./cli" "${output_path}/toxiproxy-cli" "${platform}" "${VERSION}"
+  release::build "./cmd" "${output_path}/toxiproxy-server" "${platform}" "${VERSION}"
+done
+release::generate_checksum
