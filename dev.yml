@@ -6,9 +6,9 @@ up:
   - homebrew:
     - gnu-tar
   - go:
-      version: 1.12
+      version: 1.16
       modules: true
-  - ruby: 2.6.3
+  - ruby: 3.0.2
   - bundler
 
 commands:
