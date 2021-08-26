@@ -1,13 +1,5 @@
-*.deb
-./cli/cli
-.bundle/
-cover*.out
-coverage.html
-cpu.out
-testing
-testing.test
-tmp/
-toxiproxy
-toxiproxy-cli
-toxiproxy-server
-toxiproxy.test
+# goreleaser output directory
+dist/
+
+# go mod dependencies
+vendor/
