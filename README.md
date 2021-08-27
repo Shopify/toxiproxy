@@ -84,6 +84,7 @@ development and CI environments.
 * [toxiproxy-java](https://github.com/trekawek/toxiproxy-java)
 * [toxiproxy-haskell](https://github.com/jpittis/toxiproxy-haskell)
 * [toxiproxy-rust](https://github.com/itarato/toxiproxy_rust)
+* [toxiproxy-elixir](https://github.com/Jcambass/toxiproxy_ex)
 
 ## Example
 
