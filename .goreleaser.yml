@@ -1,0 +1,137 @@
+# This is an example .goreleaser.yml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+env:
+  - GO111MODULE=on
+
+before:
+  hooks:
+    - go mod download
+    - go mod tidy
+
+builds:
+  - &build_default
+    id: server
+    main: ./cmd
+    binary: toxiproxy-server-{{.Os}}-{{.Arch}}
+    no_unique_dist_dir: true
+    env:
+      - CGO_ENABLED=0
+
+    goos:
+      - darwin
+      - freebsd
+      - linux
+      - netbsd
+      - openbsd
+      - windows
+
+    goarch:
+      - amd64
+      - arm64
+
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+    ldflags:
+      - -s -w -X github.com/Shopify/toxiproxy.Version={{.Version}}
+
+  - <<: *build_default
+    id: client
+    main: ./cli
+    binary: toxiproxy-client-{{.Os}}-{{.Arch}}
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+nfpms:
+  -
+    id: packages
+    package_name: toxiproxy
+    homepage: https://github.com/Shopify/toxiproxy
+    maintainer: Shopify Opensource <opensource@shopify.com>
+    description: TCP proxy to simulate network and system conditions.
+    license: MIT
+    formats:
+      - apk
+      - deb
+      - rpm
+    # NOTE: Starting with Ubuntu 15.04, Upstart will be deprecated in favor of Systemd.
+    # contents:
+    #   - src: share/toxiproxy.conf
+    #     dst: /etc/init/toxiproxy.conf
+
+dockers:
+  - &docker
+    use: buildx
+    skip_push: true
+    dockerfile: Dockerfile
+    ids:
+      - server
+      - client
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - shopify/toxiproxy:{{ .Version }}-amd64
+      - shopify/toxiproxy:v{{ .Major }}-amd64
+      - shopify/toxiproxy:v{{ .Major }}.{{ .Minor }}-amd64
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --no-cache
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/Shopify/{{ .ProjectName }}
+      - --label=org.opencontainers.image.source=https://github.com/Shopify/{{ .ProjectName }}
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+  - <<: *docker
+    goarch: arm64
+    image_templates:
+      - shopify/toxiproxy:{{ .Version }}-arm64
+      - shopify/toxiproxy:v{{ .Major }}-arm64
+      - shopify/toxiproxy:v{{ .Major }}.{{ .Minor }}-arm64
+    build_flag_templates:
+      - --platform=linux/arm64/v8
+      - --no-cache
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/Shopify/{{ .ProjectName }}
+      - --label=org.opencontainers.image.source=https://github.com/Shopify/{{ .ProjectName }}
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+
+docker_manifests:
+  -
+    skip_push: true
+    name_template: shopify/{{ .ProjectName }}:{{ .Version }}
+    image_templates:
+      - shopify/{{ .ProjectName }}:{{ .Version }}-amd64
+      - shopify/{{ .ProjectName }}:{{ .Version }}-arm64
+  -
+    skip_push: true
+    name_template: shopify/{{ .ProjectName }}:latest
+    image_templates:
+      - shopify/{{ .ProjectName }}:{{ .Version }}-amd64
+      - shopify/{{ .ProjectName }}:{{ .Version }}-arm64
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+archives:
+  -
+    id: archive_binaries
+    format: binary
+  -
+    id: archive_default
+    format: tar.gz
