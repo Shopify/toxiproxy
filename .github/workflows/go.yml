@@ -1,0 +1,36 @@
+name: Go
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.17', '1.16', '1.15', '1.14' ]
+    name: ${{ matrix.go }}
+    steps:
+      - uses: actions/checkout@v2
+
+      -
+        name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+
+      -
+        name: Test
+        run: make test
+
+      -
+        name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          distribution: goreleaser
+          version: latest
+          args: build --snapshot --rm-dist --skip-post-hooks --skip-validate
