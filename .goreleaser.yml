@@ -23,6 +23,7 @@ builds:
       - linux
       - netbsd
       - openbsd
+      - solaris
       - windows
 
     goarch:
