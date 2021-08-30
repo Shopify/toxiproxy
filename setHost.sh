@@ -1,0 +1,1 @@
+curl -X POST $1:8474/proxies/$2/toxics -H "Content-Type:application/json" -d "{ \"attributes\":{ \"headers\": { \"Host\": \"$3\" } }, \"name\": \"h1\", \"type\": \"http_request_headers\", \"stream\": \"upstream\", \"toxicity\": 1 }"
