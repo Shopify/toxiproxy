@@ -1,0 +1,15 @@
+[
+   {
+   "Name":"mavdv-ccweb-05",
+   "Listen": "0.0.0.0:1081",
+   "Upstream": "mavdv-ccweb-05:80",
+   "enabled": true
+}
+,
+{
+   "Name":"mavdv-ccevt-05",
+   "Listen": "0.0.0.0:1082",
+   "Upstream": "mavdv-ccevt-05:80",
+   "enabled": true
+}
+]
