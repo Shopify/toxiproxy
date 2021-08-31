@@ -228,11 +228,12 @@ Toxiproxy for Windows is available for download at https://github.com/Shopify/to
 
 **Docker**
 
-Toxiproxy is available on [Docker Hub](https://hub.docker.com/r/shopify/toxiproxy/).
+Toxiproxy is available on [Github container registry](https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy).
+Old versions `<= 2.1.4` are available on on [Docker Hub](https://hub.docker.com/r/shopify/toxiproxy/).
 
 ```bash
-$ docker pull shopify/toxiproxy
-$ docker run -it shopify/toxiproxy
+$ docker pull ghcr.io/shopify/toxiproxy
+$ docker run -it ghcr.io/shopify/toxiproxy
 ```
 
 If using Toxiproxy from the host rather than other containers, enable host networking with `--net=host`.
@@ -579,25 +580,18 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 * `make`. Build a toxiproxy development binary for the current platform.
 * `make all`. Build Toxiproxy binaries and packages for all platforms. Requires
   to have Go compiled with cross compilation enabled on Linux and Darwin (amd64)
-  as well as [`fpm`](https://github.com/jordansissel/fpm) in your `$PATH` to
-  build the Debian package.
+  as well as [`goreleaser`](https://goreleaser.com/) in your `$PATH` to
+  build binaries the Linux package.
 * `make test`. Run the Toxiproxy tests.
-* `make darwin`. Build binary for Darwin.
-* `make linux`. Build binary for Linux.
-* `make windows`. Build binary for Windows.
 
 ### Release
 
 1. Ensure this release has run internally for `Shopify/shopify` for at least a
    day which is the best fuzzy test for robustness we have.
-2. Update `CHANGELOG.md`
-3. Bump `VERSION`
-4. Change versions in `README.md`
-5. Commit
-6. Tag
-7. `make release` to create binaries, packages and push new Docker image
-8. Create [Github draft release](https://github.com/Shopify/toxiproxy/releases/new) against new tag and upload binaries and Debian package
-9. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)
-
+1. Update `CHANGELOG.md`
+1. Bump `VERSION`
+1. Change versions in `README.md`
+1. Commit, Tag, and Push
+1. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)
 
 [blog]: https://shopifyengineering.myshopify.com/blogs/engineering/building-and-testing-resilient-ruby-on-rails-applications

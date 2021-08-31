@@ -1,3 +1,5 @@
+project_name: toxiproxy
+
 # This is an example .goreleaser.yml file with some sane defaults.
 # Make sure to check the documentation at http://goreleaser.com
 env:
@@ -68,7 +70,6 @@ nfpms:
 dockers:
   - &docker
     use: buildx
-    skip_push: true
     dockerfile: Dockerfile
     ids:
       - server
@@ -76,9 +77,9 @@ dockers:
     goos: linux
     goarch: amd64
     image_templates:
-      - shopify/toxiproxy:{{ .Version }}-amd64
-      - shopify/toxiproxy:v{{ .Major }}-amd64
-      - shopify/toxiproxy:v{{ .Major }}.{{ .Minor }}-amd64
+      - ghcr.io/shopify/toxiproxy:{{ .Version }}-amd64
+      - ghcr.io/shopify/toxiproxy:v{{ .Major }}-amd64
+      - ghcr.io/shopify/toxiproxy:v{{ .Major }}.{{ .Minor }}-amd64
     build_flag_templates:
       - --platform=linux/amd64
       - --no-cache
@@ -93,9 +94,9 @@ dockers:
   - <<: *docker
     goarch: arm64
     image_templates:
-      - shopify/toxiproxy:{{ .Version }}-arm64
-      - shopify/toxiproxy:v{{ .Major }}-arm64
-      - shopify/toxiproxy:v{{ .Major }}.{{ .Minor }}-arm64
+      - ghcr.io/shopify/toxiproxy:{{ .Version }}-arm64
+      - ghcr.io/shopify/toxiproxy:v{{ .Major }}-arm64
+      - ghcr.io/shopify/toxiproxy:v{{ .Major }}.{{ .Minor }}-arm64
     build_flag_templates:
       - --platform=linux/arm64/v8
       - --no-cache
@@ -110,17 +111,15 @@ dockers:
 
 docker_manifests:
   -
-    skip_push: true
-    name_template: shopify/{{ .ProjectName }}:{{ .Version }}
+    name_template: ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}
     image_templates:
-      - shopify/{{ .ProjectName }}:{{ .Version }}-amd64
-      - shopify/{{ .ProjectName }}:{{ .Version }}-arm64
+      - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-amd64
+      - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-arm64
   -
-    skip_push: true
-    name_template: shopify/{{ .ProjectName }}:latest
+    name_template: ghcr.io/shopify/{{ .ProjectName }}:latest
     image_templates:
-      - shopify/{{ .ProjectName }}:{{ .Version }}-amd64
-      - shopify/{{ .ProjectName }}:{{ .Version }}-arm64
+      - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-amd64
+      - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-arm64
 
 changelog:
   sort: asc
