@@ -589,7 +589,6 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 1. Ensure this release has run internally for `Shopify/shopify` for at least a
    day which is the best fuzzy test for robustness we have.
 1. Update `CHANGELOG.md`
-1. Bump `VERSION`
 1. Change versions in `README.md`
 1. Commit, Tag, and Push
 1. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)

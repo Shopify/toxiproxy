@@ -1,7 +1,5 @@
 project_name: toxiproxy
 
-# This is an example .goreleaser.yml file with some sane defaults.
-# Make sure to check the documentation at http://goreleaser.com
 env:
   - GO111MODULE=on
 
@@ -132,6 +130,7 @@ archives:
   -
     id: archive_binaries
     format: binary
+    name_template: "{{ .Binary }}"
   -
     id: archive_default
     format: tar.gz
