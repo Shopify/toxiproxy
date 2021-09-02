@@ -3,3 +3,5 @@ dist/
 
 # go mod dependencies
 vendor/
+
+tmp/

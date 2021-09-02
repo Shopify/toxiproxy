@@ -37,11 +37,18 @@ jobs:
           go-version: 1.17
 
       -
+        name: Build release changelog
+        run: |
+          version=${GITHUB_REF#refs/tags/v*}
+          mkdir -p tmp
+          sed '/^# \['$version'\]/,/^# \[/!d;//d;/^\s*$/d' CHANGELOG.md > tmp/release_changelog.md
+
+      -
         name: Release
         uses: goreleaser/goreleaser-action@5a54d7e660bda43b405e8463261b3d25631ffe86
         with:
           distribution: goreleaser
           version: v0.176.0
-          args: release --rm-dist
+          args: release --rm-dist --release-notes=tmp/release_changelog.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

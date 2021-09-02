@@ -1,5 +1,6 @@
 # [Unreleased]
 
+* Use CHANGELOG.md for release description (#306, @miry)
 
 # [2.1.5]
 

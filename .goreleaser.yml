@@ -40,7 +40,7 @@ builds:
   - <<: *build_default
     id: client
     main: ./cli
-    binary: toxiproxy-client-{{.Os}}-{{.Arch}}
+    binary: toxiproxy-cli-{{.Os}}-{{.Arch}}
 
 checksum:
   name_template: checksums.txt
@@ -125,6 +125,7 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+      - '^Merge'
 
 archives:
   -
