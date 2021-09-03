@@ -1,7 +1,6 @@
 # Toxiproxy
 [![GitHub release](https://img.shields.io/github/release/Shopify/toxiproxy.svg)](https://github.com/Shopify/toxiproxy/releases/latest)
 ![Build Status](https://github.com/Shopify/toxiproxy/actions/workflows/test.yml/badge.svg)
-[![IRC Channel](https://img.shields.io/badge/chat-on%20freenode-brightgreen.svg)](https://kiwiirc.com/client/irc.freenode.net/#toxiproxy)
 
 ![](http://i.imgur.com/sOaNw0o.png)
 
