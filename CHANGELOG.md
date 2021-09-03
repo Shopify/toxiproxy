@@ -1,9 +1,8 @@
 # [Unreleased]
 
 * Use CHANGELOG.md for release description (#306, @miry)
-* In #294 introduced a breaking change in client argument parsing. It requires
-  to write [flags before arguments](https://github.com/urfave/cli/blob/master/docs/migrate-v1-to-v2.md#flags-before-args).
-  Update help texts and documentation. (@miry)
+* Dependency updates in #294 introduced a breaking change in CLI argument parsing. Now [flags must be specified before arguments](https://github.com/urfave/cli/blob/master/docs/migrate-v1-to-v2.md#flags-before-args). Previously, arguments could be specified prior to flags.
+  Update usage help text and documentation. (@miry)
 
 # [2.1.5]
 
