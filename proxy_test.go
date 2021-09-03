@@ -138,7 +138,7 @@ func TestProxyToDownUpstream(t *testing.T) {
 
 	conn := AssertProxyUp(t, proxy.Listen, true)
 	// Check to make sure the connection is closed
-	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 	_, err := conn.Read(make([]byte, 1))
 	if err != io.EOF {
 		t.Error("Proxy did not close connection when upstream down", err)

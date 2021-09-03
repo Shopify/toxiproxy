@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	toxiproxyServer "github.com/Shopify/toxiproxy"
-	"github.com/Shopify/toxiproxy/client"
+	toxiproxy "github.com/Shopify/toxiproxy/client"
 	"github.com/urfave/cli/v2"
 	terminal "golang.org/x/term"
 )
@@ -33,38 +33,38 @@ func color(color string) string {
 }
 
 var toxicDescription = `
-	Default Toxics:
-	latency:	delay all data +/- jitter
-		latency=<ms>,jitter=<ms>
+  Default Toxics:
+  latency:    delay all data +/- jitter
+              latency=<ms>,jitter=<ms>
 
-	bandwidth:	limit to max kb/s
-		rate=<KB/s>
+  bandwidth:  limit to max kb/s
+              rate=<KB/s>
 
-	slow_close:	delay from closing
-		delay=<ms>
+  slow_close: delay from closing
+              delay=<ms>
 
-	timeout: 	stop all data and close after timeout
-	         	timeout=<ms>
+  timeout:    stop all data and close after timeout
+              timeout=<ms>
 
-	slicer: 	slice data into bits with optional delay
-	        	average_size=<bytes>,size_variation=<bytes>,delay=<microseconds>
+  slicer:     slice data into bits with optional delay
+              average_size=<bytes>,size_variation=<bytes>,delay=<microseconds>
 
-	toxic add:
-		usage: toxiproxy-cli toxic add <proxyName> --type <toxicType> --toxicName <toxicName> \
-		--attribute <key=value> --upstream --downstream
+  toxic add:
+    usage: toxiproxy-cli toxic add --type <toxicType> --toxicName <toxicName> \
+            --attribute <key=value> --upstream --downstream <proxyName>
 
-		example: toxiproxy-cli toxic add myProxy -t latency -n myToxic -a latency=100 -a jitter=50
+    example: toxiproxy-cli toxic add -t latency -n myToxic -a latency=100 -a jitter=50 myProxy
 
-	toxic update:
-		usage: toxiproxy-cli toxic update <proxyName> --toxicName <toxicName> \
-		--attribute <key1=value1> --attribute <key2=value2>
+  toxic update:
+    usage: toxiproxy-cli toxic update --toxicName <toxicName> \
+             --attribute <key1=value1> --attribute <key2=value2> <proxyName>
 
-		example: toxiproxy-cli toxic update myProxy -n myToxic -a jitter=25
+    example: toxiproxy-cli toxic update -n myToxic -a jitter=25 myProxy
 
-	toxic delete:
-		usage: toxiproxy-cli toxic delete <proxyName> --toxicName <toxicName>
+  toxic delete:
+    usage: toxiproxy-cli toxic delete --toxicName <toxicName> <proxyName>
 
-		example: toxiproxy-cli toxic delete myProxy -n myToxic
+    example: toxiproxy-cli toxic delete -n myToxic myProxy
 `
 
 var (
@@ -92,7 +92,7 @@ func main() {
 		},
 		{
 			Name:    "create",
-			Usage:   "create a new proxy\n\tusage: 'toxiproxy-cli create <proxyName> --listen <addr> --upstream <addr>'\n",
+			Usage:   "create a new proxy\n\tusage: 'toxiproxy-cli create --listen <addr> --upstream <addr> <proxyName>'\n",
 			Aliases: []string{"c", "new"},
 			Flags: []cli.Flag{
 				&cli.StringFlag{

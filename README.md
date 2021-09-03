@@ -288,7 +288,7 @@ documentation on the population helpers.
 Alternatively use the CLI to create proxies, e.g.:
 
 ```bash
-toxiproxy-cli create shopify_test_redis_master -l localhost:26379 -u localhost:6379
+toxiproxy-cli create -l localhost:26379 -u localhost:6379 shopify_test_redis_master
 ```
 
 We recommend a naming such as the above: `<app>_<env>_<data store>_<shard>`.
@@ -350,7 +350,7 @@ end
 Or via the CLI:
 
 ```bash
-toxiproxy-cli toxic add shopify_test_redis_master -t latency -a latency=1000
+toxiproxy-cli toxic add -t latency -a latency=1000 shopify_test_redis_master
 ```
 
 Please consult your respective client library on usage.
@@ -491,7 +491,7 @@ fields are consistent with the new data.
 ### CLI Example
 
 ```bash
-$ toxiproxy-cli create redis -l localhost:26379 -u localhost:6379
+$ toxiproxy-cli create -l localhost:26379 -u localhost:6379 redis
 Created new proxy redis
 $ toxiproxy-cli list
 Listen          Upstream        Name  Enabled Toxics
@@ -510,7 +510,7 @@ OK
 ```
 
 ```bash
-$ toxiproxy-cli toxic add redis -t latency -a latency=1000
+$ toxiproxy-cli toxic add -t latency -a latency=1000 redis
 Added downstream latency toxic 'latency_downstream' on proxy 'redis'
 ```
 
@@ -525,7 +525,7 @@ $ redis-cli -p 26379
 ```
 
 ```bash
-$ toxiproxy-cli toxic remove redis -n latency_downstream
+$ toxiproxy-cli toxic remove -n latency_downstream redis
 Removed toxic 'latency_downstream' on proxy 'redis'
 ```
 
