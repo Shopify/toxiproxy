@@ -45,6 +45,10 @@ jobs:
           go-version: 1.17
 
       -
+        name: E2E tests
+        run: make e2e
+
+      -
         name: Build
         uses: goreleaser/goreleaser-action@5a54d7e660bda43b405e8463261b3d25631ffe86
         with:
