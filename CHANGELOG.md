@@ -2,7 +2,8 @@
 
 * Use CHANGELOG.md for release description (#306, @miry)
 * Dependency updates in #294 introduced a breaking change in CLI argument parsing. Now [flags must be specified before arguments](https://github.com/urfave/cli/blob/master/docs/migrate-v1-to-v2.md#flags-before-args). Previously, arguments could be specified prior to flags.
-  Update usage help text and documentation. (@miry)
+  Update usage help text and documentation. (#308, @miry)
+* Run e2e tests to validate the command line and basic features of server, client and application (#309, @miry).
 
 # [2.1.5]
 

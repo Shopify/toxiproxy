@@ -44,6 +44,7 @@ func BenchmarkDirect(b *testing.B) {
 		}
 		resp.Body.Close()
 	}
+	client.CloseIdleConnections()
 }
 
 // Test the backend through toxiproxy, use 64k random endpoint
@@ -60,6 +61,7 @@ func BenchmarkProxy(b *testing.B) {
 		}
 		resp.Body.Close()
 	}
+	client.CloseIdleConnections()
 }
 
 // Test the backend server directly, use "hello world" endpoint
@@ -76,6 +78,7 @@ func BenchmarkDirectSmall(b *testing.B) {
 		}
 		resp.Body.Close()
 	}
+	client.CloseIdleConnections()
 }
 
 // Test the backend through toxiproxy, use "hello world" endpoint
@@ -92,4 +95,5 @@ func BenchmarkProxySmall(b *testing.B) {
 		}
 		resp.Body.Close()
 	}
+	client.CloseIdleConnections()
 }

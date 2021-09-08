@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+
+set -ueo pipefail
+
+wait_for_url() {
+  echo "--- Waiting for HTTP connection available"
+  timeout -s TERM 30s bash -c \
+  'while [[ "$(curl -s -o /dev/null -L -w ''%{http_code}'' ${0})" != "200" ]];\
+  do echo "Waiting for ${0}" && sleep 2;\
+  done' ${1}
+  curl -s -I -X GET $1
+}
+
+echo "== Setup"
+
+# Stop all background jobs on exit
+trap 'pkill -15 -f "dist/toxiproxy-server$"; pkill -15 -f "exe/endpoint$"' EXIT SIGINT SIGTERM
+
+echo "=== Starting Web service"
+go run testing/endpoint.go 2>&1 | sed -e 's/^/[web] /' &
+
+echo "=== Starting Toxiproxy"
+./dist/toxiproxy-server  2>&1 | sed -e 's/^/[toxiproxy] /' &
+
+echo "=== Wait when service are available"
+wait_for_url http://localhost:20002/test2
+wait_for_url http://localhost:8474/version
+
+echo "=== Test client to manipulate proxy"
+./dist/toxiproxy-cli create -l localhost:20000 -u localhost:20002 shopify_http
+./dist/toxiproxy-cli list
+./dist/toxiproxy-cli toggle shopify_http
+./dist/toxiproxy-cli inspect shopify_http
+./dist/toxiproxy-cli toggle shopify_http
+echo -e "-----------------\n"
+
+echo "== Benchmarking"
+
+echo
+echo "=== Without toxics"
+go test -bench=. ./testing -v
+echo -e "-----------------\n"
+
+echo "=== Latency toxic"
+./dist/toxiproxy-cli toxic add --type latency --toxicName "latency_downstream" --attribute "latency=1000" --attribute="jitter=50" shopify_http
+go test -bench=. ./testing -v
+
+./dist/toxiproxy-cli inspect shopify_http
+./dist/toxiproxy-cli toxic update --toxicName "latency_downstream" --attribute="jitter=20" shopify_http
+./dist/toxiproxy-cli inspect shopify_http
+
+./dist/toxiproxy-cli toxic delete --toxicName "latency_downstream" shopify_http
+echo -e "-----------------\n"
+
+echo "=== Bandwidth toxic"
+
+./dist/toxiproxy-cli toxic add --type bandwidth --toxicName "bandwidth_kb_per_second" --attribute "rate=1" shopify_http
+./dist/toxiproxy-cli toxic update --toxicName "bandwidth_kb_per_second" --attribute="rate=10" shopify_http
+
+go test -bench=. ./testing -v
+
+./dist/toxiproxy-cli toxic delete --toxicName "bandwidth_kb_per_second" shopify_http
+echo -e "-----------------\n"
+
+echo "=== Timeout toxic"
+
+./dist/toxiproxy-cli toxic add --type timeout --toxicName "timeout_ms" --attribute "timeout=10" shopify_http
+./dist/toxiproxy-cli toxic delete --toxicName "timeout_ms" shopify_http
+echo -e "-----------------\n"
+
+echo "=== Slicer toxic"
+
+./dist/toxiproxy-cli toxic add --type slicer --toxicName "slicer_us" --attribute "average_size=64" --attribute "size_variation=32" --attribute="delay=10" shopify_http
+go test -bench=. ./testing -v
+./dist/toxiproxy-cli toxic delete --toxicName "slicer_us" shopify_http
+echo -e "-----------------\n"
+
+echo "== Teardown"
+
+./dist/toxiproxy-cli delete shopify_http

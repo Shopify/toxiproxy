@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -42,5 +43,7 @@ func main() {
 	hex.Encode(out, stuff)
 	http.HandleFunc("/test1", handler1)
 	http.HandleFunc("/test2", handler2)
-	http.ListenAndServe(":20002", nil)
+
+	log.Println("Listening :20002")
+	log.Fatal(http.ListenAndServe(":20002", nil))
 }
