@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Shopify/toxiproxy/toxics"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
 func TestBandwidthToxic(t *testing.T) {

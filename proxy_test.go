@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Shopify/toxiproxy"
+	"github.com/Shopify/toxiproxy/v2"
 	"github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v1"
 )

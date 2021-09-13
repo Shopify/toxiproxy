@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Shopify/toxiproxy/stream"
+	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
 // The SlicerToxic slices data into multiple smaller packets

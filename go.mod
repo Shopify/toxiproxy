@@ -1,4 +1,4 @@
-module github.com/Shopify/toxiproxy
+module github.com/Shopify/toxiproxy/v2
 
 go 1.17
 
