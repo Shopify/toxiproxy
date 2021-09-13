@@ -5,7 +5,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/Shopify/toxiproxy/stream"
+	"github.com/Shopify/toxiproxy/v2/stream"
 	"github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v1"
 )

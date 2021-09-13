@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Shopify/toxiproxy"
+	"github.com/Shopify/toxiproxy/v2"
 )
 
 var (

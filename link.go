@@ -3,8 +3,8 @@ package toxiproxy
 import (
 	"io"
 
-	"github.com/Shopify/toxiproxy/stream"
-	"github.com/Shopify/toxiproxy/toxics"
+	"github.com/Shopify/toxiproxy/v2/stream"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 	"github.com/sirupsen/logrus"
 )
 
