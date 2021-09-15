@@ -5,6 +5,7 @@
   Update usage help text and documentation. (#308, @miry)
 * Run e2e tests to validate the command line and basic features of server, client and application (#309, @miry)
 * Add /v2 suffix to module import path (#311, @dnwe)
+* Setup code linter (#314, @miry)
 
 # [2.1.5]
 

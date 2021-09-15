@@ -6,6 +6,7 @@ up:
   - homebrew:
       - gnu-tar
       - goreleaser
+      - golangci-lint
   - go:
       version: 1.17
       modules: true

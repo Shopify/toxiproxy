@@ -5,6 +5,10 @@ all: setup build
 test:
 	go test -v -race ./...
 
+.PHONY: lint
+lint:
+	golangci-lint run
+
 .PHONY: e2e
 e2e: build
 	bin/e2e
