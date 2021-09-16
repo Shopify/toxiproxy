@@ -218,6 +218,7 @@ func main() {
 			Value:       "http://localhost:8474",
 			Usage:       "toxiproxy host to connect to",
 			Destination: &hostname,
+			EnvVars:     []string{"TOXIPROXY_URL"},
 		},
 	}
 
