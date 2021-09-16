@@ -9,6 +9,7 @@ test:
 fmt:
 	go fmt ./...
 	goimports -w **/*.go
+	golangci-lint run --fix
 
 .PHONY: lint
 lint:

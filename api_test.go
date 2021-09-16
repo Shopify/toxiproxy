@@ -47,7 +47,11 @@ func TestBrowserGets403(t *testing.T) {
 				"(KHTML, like Gecko) Chrome/33.0.1750.117 Mobile Safari/537.36 OPR/20.0.1396.72047",
 		)
 
-		resp, _ := client.Do(req)
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Does not expect errors from client: %v", err)
+		}
+		defer resp.Body.Close()
 
 		if resp.StatusCode != 403 {
 			t.Fatal("Browser-like UserAgent was not denied access to Toxiproxy")
@@ -62,7 +66,11 @@ func TestNonBrowserGets200(t *testing.T) {
 		req, _ := http.NewRequest("GET", "http://localhost:8475/proxies", nil)
 		req.Header.Add("User-Agent", "Wget/2.1")
 
-		resp, _ := client.Do(req)
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Does not expect errors from client: %v", err)
+		}
+		defer resp.Body.Close()
 
 		if resp.StatusCode == 403 {
 			t.Fatal("Non-Browser-like UserAgent was denied access to Toxiproxy")
@@ -147,6 +155,7 @@ func TestPopulateDefaultEnabled(t *testing.T) {
 		if err != nil {
 			t.Fatal("Failed to send POST to /populate:", err)
 		}
+		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusCreated {
 			message, _ := ioutil.ReadAll(resp.Body)
@@ -992,6 +1001,7 @@ func TestVersionEndpointReturnsVersion(t *testing.T) {
 		if err != nil {
 			t.Fatal("Failed to get index", err)
 		}
+		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
