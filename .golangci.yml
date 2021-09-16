@@ -1,0 +1,9 @@
+linters:
+  disable-all: true
+  enable:
+    - lll
+    - misspell
+
+linters-settings:
+  lll:
+    line-length: 200
