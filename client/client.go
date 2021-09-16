@@ -174,23 +174,18 @@ func (proxy *Proxy) Save() error {
 		return err
 	}
 
-	var resp *http.Response
+	path := proxy.client.endpoint + "/proxies"
+	contenttype := "application/json"
 	if proxy.created {
-		resp, err = http.Post(
-			proxy.client.endpoint+"/proxies/"+proxy.Name,
-			"text/plain",
-			bytes.NewReader(request),
-		)
-	} else {
-		resp, err = http.Post(
-			proxy.client.endpoint+"/proxies",
-			"application/json",
-			bytes.NewReader(request),
-		)
+		path += "/" + proxy.Name
+		contenttype = "text/plain"
 	}
+
+	resp, err := http.Post(path, contenttype, bytes.NewReader(request))
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if proxy.created {
 		err = checkError(resp, http.StatusOK, "Save")

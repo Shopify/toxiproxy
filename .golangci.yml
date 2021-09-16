@@ -1,6 +1,7 @@
 linters:
   disable-all: true
   enable:
+    - bodyclose
     - lll
     - misspell
 

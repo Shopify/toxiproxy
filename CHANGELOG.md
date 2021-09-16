@@ -7,6 +7,7 @@
 * Add /v2 suffix to module import path (#311, @dnwe)
 * Setup code linter (#314, @miry)
   * Max line length is 100 characters (#316, @miry)
+  * Linter to check whether HTTP response body is closed successfully (#317, @miry)
 
 # [2.1.5]
 
