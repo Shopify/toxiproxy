@@ -132,7 +132,10 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 	return wrapper, nil
 }
 
-func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (*toxics.ToxicWrapper, error) {
+func (c *ToxicCollection) UpdateToxicJson(
+	name string,
+	data io.Reader,
+) (*toxics.ToxicWrapper, error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -169,7 +172,12 @@ func (c *ToxicCollection) RemoveToxic(name string) error {
 	return ErrToxicNotFound
 }
 
-func (c *ToxicCollection) StartLink(name string, input io.Reader, output io.WriteCloser, direction stream.Direction) {
+func (c *ToxicCollection) StartLink(
+	name string,
+	input io.Reader,
+	output io.WriteCloser,
+	direction stream.Direction,
+) {
 	c.Lock()
 	defer c.Unlock()
 

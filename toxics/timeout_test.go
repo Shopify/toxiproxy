@@ -69,8 +69,12 @@ func WithEstablishedProxy(t *testing.T, f func(net.Conn, net.Conn, *toxiproxy.Pr
 
 func TestTimeoutToxicDoesNotCauseHang(t *testing.T) {
 	WithEstablishedProxy(t, func(conn, _ net.Conn, proxy *toxiproxy.Proxy) {
-		proxy.Toxics.AddToxicJson(ToxicToJson(t, "might_block", "latency", "upstream", &toxics.LatencyToxic{Latency: 10}))
-		proxy.Toxics.AddToxicJson(ToxicToJson(t, "timeout", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 0}))
+		proxy.Toxics.AddToxicJson(
+			ToxicToJson(t, "might_block", "latency", "upstream", &toxics.LatencyToxic{Latency: 10}),
+		)
+		proxy.Toxics.AddToxicJson(
+			ToxicToJson(t, "timeout", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 0}),
+		)
 
 		for i := 0; i < 5; i++ {
 			_, err := conn.Write([]byte("hello"))
@@ -91,7 +95,9 @@ func TestTimeoutToxicDoesNotCauseHang(t *testing.T) {
 
 func TestTimeoutToxicClosesConnectionOnRemove(t *testing.T) {
 	WithEstablishedProxy(t, func(conn, serverConn net.Conn, proxy *toxiproxy.Proxy) {
-		proxy.Toxics.AddToxicJson(ToxicToJson(t, "to_delete", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 0}))
+		proxy.Toxics.AddToxicJson(
+			ToxicToJson(t, "to_delete", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 0}),
+		)
 
 		proxy.Toxics.RemoveToxic("to_delete")
 

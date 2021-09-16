@@ -26,9 +26,17 @@ type ToxicLink struct {
 	direction stream.Direction
 }
 
-func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Direction) *ToxicLink {
+func NewToxicLink(
+	proxy *Proxy,
+	collection *ToxicCollection,
+	direction stream.Direction,
+) *ToxicLink {
 	link := &ToxicLink{
-		stubs:     make([]*toxics.ToxicStub, len(collection.chain[direction]), cap(collection.chain[direction])),
+		stubs: make(
+			[]*toxics.ToxicStub,
+			len(collection.chain[direction]),
+			cap(collection.chain[direction]),
+		),
 		proxy:     proxy,
 		toxics:    collection,
 		direction: direction,

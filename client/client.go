@@ -132,8 +132,9 @@ func (client *Client) Proxy(name string) (*Proxy, error) {
 	return proxy, nil
 }
 
-// Create a list of proxies using a configuration list. If a proxy already exists, it will be replaced
-// with the specified configuration. For large amounts of proxies, `config` can be loaded from a file.
+// Create a list of proxies using a configuration list. If a proxy already exists,
+// it will be replaced with the specified configuration.
+// For large amounts of proxies, `config` can be loaded from a file.
 // Returns a list of the successfully created proxies.
 func (client *Client) Populate(config []Proxy) ([]*Proxy, error) {
 	proxies := struct {
@@ -144,7 +145,11 @@ func (client *Client) Populate(config []Proxy) ([]*Proxy, error) {
 		return nil, err
 	}
 
-	resp, err := http.Post(client.endpoint+"/populate", "application/json", bytes.NewReader(request))
+	resp, err := http.Post(
+		client.endpoint+"/populate",
+		"application/json",
+		bytes.NewReader(request),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -171,9 +176,17 @@ func (proxy *Proxy) Save() error {
 
 	var resp *http.Response
 	if proxy.created {
-		resp, err = http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name, "text/plain", bytes.NewReader(request))
+		resp, err = http.Post(
+			proxy.client.endpoint+"/proxies/"+proxy.Name,
+			"text/plain",
+			bytes.NewReader(request),
+		)
 	} else {
-		resp, err = http.Post(proxy.client.endpoint+"/proxies", "application/json", bytes.NewReader(request))
+		resp, err = http.Post(
+			proxy.client.endpoint+"/proxies",
+			"application/json",
+			bytes.NewReader(request),
+		)
 	}
 	if err != nil {
 		return err
@@ -252,7 +265,11 @@ func (proxy *Proxy) Toxics() (Toxics, error) {
 // If a name is not specified, it will default to <type>_<stream>.
 // If a stream is not specified, it will default to downstream.
 // See https://github.com/Shopify/toxiproxy#toxics for a list of all Toxic types.
-func (proxy *Proxy) AddToxic(name, typeName, stream string, toxicity float32, attrs Attributes) (*Toxic, error) {
+func (proxy *Proxy) AddToxic(
+	name, typeName, stream string,
+	toxicity float32,
+	attrs Attributes,
+) (*Toxic, error) {
 	toxic := Toxic{name, typeName, stream, toxicity, attrs}
 	if toxic.Toxicity == -1 {
 		toxic.Toxicity = 1 // Just to be consistent with a toxicity of -1 using the default
@@ -263,7 +280,11 @@ func (proxy *Proxy) AddToxic(name, typeName, stream string, toxicity float32, at
 		return nil, err
 	}
 
-	resp, err := http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics", "application/json", bytes.NewReader(request))
+	resp, err := http.Post(
+		proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics",
+		"application/json",
+		bytes.NewReader(request),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +317,11 @@ func (proxy *Proxy) UpdateToxic(name string, toxicity float32, attrs Attributes)
 		return nil, err
 	}
 
-	resp, err := http.Post(proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics/"+name, "application/json", bytes.NewReader(request))
+	resp, err := http.Post(
+		proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics/"+name,
+		"application/json",
+		bytes.NewReader(request),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +343,11 @@ func (proxy *Proxy) UpdateToxic(name string, toxicity float32, attrs Attributes)
 // RemoveToxic renives the toxic with the given name.
 func (proxy *Proxy) RemoveToxic(name string) error {
 	httpClient := &http.Client{}
-	req, err := http.NewRequest("DELETE", proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics/"+name, nil)
+	req, err := http.NewRequest(
+		"DELETE",
+		proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics/"+name,
+		nil,
+	)
 	if err != nil {
 		return err
 	}

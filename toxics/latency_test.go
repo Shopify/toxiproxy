@@ -20,7 +20,13 @@ func AssertDeltaTime(t *testing.T, message string, actual, expected, delta time.
 		diff *= -1
 	}
 	if diff > delta {
-		t.Errorf("[%s] Time was more than %v off: got %v expected %v", message, delta, actual, expected)
+		t.Errorf(
+			"[%s] Time was more than %v off: got %v expected %v",
+			message,
+			delta,
+			actual,
+			expected,
+		)
 	} else {
 		t.Logf("[%s] Time was correct: %v (expected %v)", message, actual, expected)
 	}
@@ -31,7 +37,9 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *toxics.LatencyToxic) {
 		if upLatency == nil {
 			upLatency = &toxics.LatencyToxic{}
 		} else {
-			_, err := proxy.Toxics.AddToxicJson(ToxicToJson(t, "latency_up", "latency", "upstream", upLatency))
+			_, err := proxy.Toxics.AddToxicJson(
+				ToxicToJson(t, "latency_up", "latency", "upstream", upLatency),
+			)
 			if err != nil {
 				t.Error("AddToxicJson returned error:", err)
 			}
@@ -39,12 +47,20 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *toxics.LatencyToxic) {
 		if downLatency == nil {
 			downLatency = &toxics.LatencyToxic{}
 		} else {
-			_, err := proxy.Toxics.AddToxicJson(ToxicToJson(t, "latency_down", "latency", "downstream", downLatency))
+			_, err := proxy.Toxics.AddToxicJson(
+				ToxicToJson(t, "latency_down", "latency", "downstream", downLatency),
+			)
 			if err != nil {
 				t.Error("AddToxicJson returned error:", err)
 			}
 		}
-		t.Logf("Using latency: Up: %dms +/- %dms, Down: %dms +/- %dms", upLatency.Latency, upLatency.Jitter, downLatency.Latency, downLatency.Jitter)
+		t.Logf(
+			"Using latency: Up: %dms +/- %dms, Down: %dms +/- %dms",
+			upLatency.Latency,
+			upLatency.Jitter,
+			downLatency.Latency,
+			downLatency.Jitter,
+		)
 
 		msg := []byte("hello world " + strings.Repeat("a", 32*1024) + "\n")
 
@@ -143,7 +159,9 @@ func TestLatencyToxicCloseRace(t *testing.T) {
 
 	// Check for potential race conditions when interrupting toxics
 	for i := 0; i < 1000; i++ {
-		proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "latency", "upstream", &toxics.LatencyToxic{Latency: 10}))
+		proxy.Toxics.AddToxicJson(
+			ToxicToJson(t, "", "latency", "upstream", &toxics.LatencyToxic{Latency: 10}),
+		)
 		conn, err := net.Dial("tcp", proxy.Listen)
 		if err != nil {
 			t.Error("Unable to dial TCP server", err)
@@ -158,7 +176,9 @@ func TestTwoLatencyToxics(t *testing.T) {
 	WithEchoProxy(t, func(conn net.Conn, response chan []byte, proxy *toxiproxy.Proxy) {
 		toxics := []*toxics.LatencyToxic{{Latency: 500}, {Latency: 500}}
 		for i, toxic := range toxics {
-			_, err := proxy.Toxics.AddToxicJson(ToxicToJson(t, "latency_"+strconv.Itoa(i), "latency", "upstream", toxic))
+			_, err := proxy.Toxics.AddToxicJson(
+				ToxicToJson(t, "latency_"+strconv.Itoa(i), "latency", "upstream", toxic),
+			)
 			if err != nil {
 				t.Error("AddToxicJson returned error:", err)
 			}
@@ -241,7 +261,13 @@ func TestLatencyToxicBandwidth(t *testing.T) {
 	}
 
 	// Assert the transfer was at least 100MB/s
-	AssertDeltaTime(t, "Latency toxic bandwidth", time.Since(start), 0, time.Duration(count/100000)*time.Millisecond)
+	AssertDeltaTime(
+		t,
+		"Latency toxic bandwidth",
+		time.Since(start),
+		0,
+		time.Duration(count/100000)*time.Millisecond,
+	)
 
 	err = conn.Close()
 	if err != nil {

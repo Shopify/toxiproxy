@@ -2,7 +2,8 @@ package toxics
 
 import "time"
 
-// The TimeoutToxic stops any data from flowing through, and will close the connection after a timeout.
+// The TimeoutToxic stops any data from flowing through,
+// and will close the connection after a timeout.
 // If the timeout is set to 0, then the connection will not be closed.
 type TimeoutToxic struct {
 	// Times in milliseconds

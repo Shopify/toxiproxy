@@ -41,7 +41,11 @@ func TestBrowserGets403(t *testing.T) {
 		client := http.Client{}
 
 		req, _ := http.NewRequest("GET", "http://localhost:8475/proxies", nil)
-		req.Header.Add("User-Agent", "Mozilla/5.0 (Linux; Android 4.4.2); Nexus 5 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Mobile Safari/537.36 OPR/20.0.1396.72047")
+		req.Header.Add(
+			"User-Agent",
+			"Mozilla/5.0 (Linux; Android 4.4.2); Nexus 5 Build/KOT49H) AppleWebKit/537.36"+
+				"(KHTML, like Gecko) Chrome/33.0.1750.117 Mobile Safari/537.36 OPR/20.0.1396.72047",
+		)
 
 		resp, _ := client.Do(req)
 
@@ -135,7 +139,9 @@ func TestPopulateProxy(t *testing.T) {
 
 func TestPopulateDefaultEnabled(t *testing.T) {
 	WithServer(t, func(addr string) {
-		request := []byte(`[{"name": "test", "listen": "localhost:7070", "upstream": "localhost:7171"}]`)
+		request := []byte(
+			`[{"name": "test", "listen": "localhost:7070", "upstream": "localhost:7171"}]`,
+		)
 
 		resp, err := http.Post(addr+"/populate", "application/json", bytes.NewReader(request))
 		if err != nil {
@@ -231,7 +237,9 @@ func TestPopulateExistingProxy(t *testing.T) {
 		} else if testProxies[0].Name != "one" || testProxies[1].Name != "two" {
 			t.Fatalf("Wrong proxy names returned: %s, %s", testProxies[0].Name, testProxies[1].Name)
 		} else if testProxies[0].Listen != "127.0.0.1:7070" || testProxies[1].Listen != "127.0.0.1:7575" {
-			t.Fatalf("Wrong proxy listen addresses returned: %s, %s", testProxies[0].Listen, testProxies[1].Listen)
+			t.Fatalf("Wrong proxy listen addresses returned: %s, %s",
+				testProxies[0].Listen, testProxies[1].Listen,
+			)
 		}
 
 		toxics, err := testProxy.Toxics()
@@ -348,8 +356,14 @@ func TestListingProxies(t *testing.T) {
 		if !ok {
 			t.Fatal("Expected to see mysql_master proxy in list")
 		}
-		if proxy.Name != "mysql_master" || proxy.Listen != "127.0.0.1:3310" || proxy.Upstream != "localhost:20001" {
-			t.Fatalf("Unexpected proxy metadata: %s, %s, %s", proxy.Name, proxy.Listen, proxy.Upstream)
+		if proxy.Name != "mysql_master" || proxy.Listen != "127.0.0.1:3310" ||
+			proxy.Upstream != "localhost:20001" {
+			t.Fatalf(
+				"Unexpected proxy metadata: %s, %s, %s",
+				proxy.Name,
+				proxy.Listen,
+				proxy.Upstream,
+			)
 		}
 		AssertToxicExists(t, proxy.ActiveToxics, "latency", "", "", false)
 	})
@@ -367,8 +381,16 @@ func TestCreateAndGetProxy(t *testing.T) {
 			t.Fatal("Unable to retriecve proxy:", err)
 		}
 
-		if proxy.Name != "mysql_master" || proxy.Listen != "127.0.0.1:3310" || proxy.Upstream != "localhost:20001" || !proxy.Enabled {
-			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
+		if proxy.Name != "mysql_master" || proxy.Listen != "127.0.0.1:3310" ||
+			proxy.Upstream != "localhost:20001" ||
+			!proxy.Enabled {
+			t.Fatalf(
+				"Unexpected proxy metadata: %s, %s, %s, %v",
+				proxy.Name,
+				proxy.Listen,
+				proxy.Upstream,
+				proxy.Enabled,
+			)
 		}
 
 		AssertToxicExists(t, proxy.ActiveToxics, "latency", "", "", false)
@@ -393,8 +415,16 @@ func TestCreateProxyWithSave(t *testing.T) {
 			t.Fatal("Unable to retriecve proxy:", err)
 		}
 
-		if proxy.Name != "mysql_master" || proxy.Listen != "127.0.0.1:3310" || proxy.Upstream != "localhost:20001" || !proxy.Enabled {
-			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
+		if proxy.Name != "mysql_master" || proxy.Listen != "127.0.0.1:3310" ||
+			proxy.Upstream != "localhost:20001" ||
+			!proxy.Enabled {
+			t.Fatalf(
+				"Unexpected proxy metadata: %s, %s, %s, %v",
+				proxy.Name,
+				proxy.Listen,
+				proxy.Upstream,
+				proxy.Enabled,
+			)
 		}
 
 		AssertProxyUp(t, proxy.Listen, true)
@@ -418,8 +448,16 @@ func TestCreateDisabledProxy(t *testing.T) {
 			t.Fatal("Unable to retriecve proxy:", err)
 		}
 
-		if proxy.Name != "mysql_master" || proxy.Listen != "localhost:3310" || proxy.Upstream != "localhost:20001" || proxy.Enabled {
-			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
+		if proxy.Name != "mysql_master" || proxy.Listen != "localhost:3310" ||
+			proxy.Upstream != "localhost:20001" ||
+			proxy.Enabled {
+			t.Fatalf(
+				"Unexpected proxy metadata: %s, %s, %s, %v",
+				proxy.Name,
+				proxy.Listen,
+				proxy.Upstream,
+				proxy.Enabled,
+			)
 		}
 
 		AssertProxyUp(t, proxy.Listen, false)
@@ -443,8 +481,16 @@ func TestCreateDisabledProxyAndEnable(t *testing.T) {
 			t.Fatal("Unable to retriecve proxy:", err)
 		}
 
-		if proxy.Name != "mysql_master" || proxy.Listen != "localhost:3310" || proxy.Upstream != "localhost:20001" || proxy.Enabled {
-			t.Fatalf("Unexpected proxy metadata: %s, %s, %s, %v", proxy.Name, proxy.Listen, proxy.Upstream, proxy.Enabled)
+		if proxy.Name != "mysql_master" || proxy.Listen != "localhost:3310" ||
+			proxy.Upstream != "localhost:20001" ||
+			proxy.Enabled {
+			t.Fatalf(
+				"Unexpected proxy metadata: %s, %s, %s, %v",
+				proxy.Name,
+				proxy.Listen,
+				proxy.Upstream,
+				proxy.Enabled,
+			)
 		}
 
 		proxy.Enabled = true
@@ -520,7 +566,8 @@ func TestCreateProxyPortConflict(t *testing.T) {
 		_, err = client.CreateProxy("test", "localhost:3310", "localhost:20001")
 		if err == nil {
 			t.Fatal("Proxy did not result in conflict.")
-		} else if err.Error() != "Create: HTTP 500: listen tcp 127.0.0.1:3310: bind: address already in use" {
+		} else if err.Error() !=
+			"Create: HTTP 500: listen tcp 127.0.0.1:3310: bind: address already in use" {
 			t.Fatal("Incorrect error adding proxy:", err)
 		}
 
@@ -648,7 +695,8 @@ func TestAddToxic(t *testing.T) {
 			t.Fatal("Error returning toxics:", err)
 		}
 		toxic := AssertToxicExists(t, toxics, "foobar", "latency", "downstream", true)
-		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 100.0 || toxic.Attributes["jitter"] != 10.0 {
+		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 100.0 ||
+			toxic.Attributes["jitter"] != 10.0 {
 			t.Fatal("Toxic was not read back correctly:", toxic)
 		}
 	})
@@ -677,7 +725,8 @@ func TestAddMultipleToxics(t *testing.T) {
 		}
 		AssertToxicExists(t, toxics, "latency1", "latency", "downstream", true)
 		toxic := AssertToxicExists(t, toxics, "latency2", "latency", "downstream", true)
-		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 || toxic.Attributes["jitter"] != 0.0 {
+		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 ||
+			toxic.Attributes["jitter"] != 0.0 {
 			t.Fatal("Toxic was not read back correctly:", toxic)
 		}
 		AssertToxicExists(t, toxics, "latency1", "", "upstream", false)
@@ -709,7 +758,8 @@ func TestAddConflictingToxic(t *testing.T) {
 			t.Fatal("Error returning toxics:", err)
 		}
 		toxic := AssertToxicExists(t, toxics, "foobar", "latency", "downstream", true)
-		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 || toxic.Attributes["jitter"] != 0.0 {
+		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 ||
+			toxic.Attributes["jitter"] != 0.0 {
 			t.Fatal("Toxic was not read back correctly:", toxic)
 		}
 		AssertToxicExists(t, toxics, "foobar", "", "upstream", false)
@@ -741,7 +791,8 @@ func TestAddConflictingToxicsMultistream(t *testing.T) {
 		}
 
 		toxic := AssertToxicExists(t, toxics, "foobar", "latency", "upstream", true)
-		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 || toxic.Attributes["jitter"] != 0.0 {
+		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 ||
+			toxic.Attributes["jitter"] != 0.0 {
 			t.Fatal("Toxic was not read back correctly:", toxic)
 		}
 		AssertToxicExists(t, toxics, "foobar", "", "downstream", false)
@@ -770,11 +821,13 @@ func TestAddConflictingToxicsMultistreamDefaults(t *testing.T) {
 			t.Fatal("Error returning toxics:", err)
 		}
 		toxic := AssertToxicExists(t, toxics, "latency_upstream", "latency", "upstream", true)
-		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 || toxic.Attributes["jitter"] != 0.0 {
+		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 ||
+			toxic.Attributes["jitter"] != 0.0 {
 			t.Fatal("Toxic was not read back correctly:", toxic)
 		}
 		toxic = AssertToxicExists(t, toxics, "latency_downstream", "latency", "downstream", true)
-		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 || toxic.Attributes["jitter"] != 0.0 {
+		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 ||
+			toxic.Attributes["jitter"] != 0.0 {
 			t.Fatal("Toxic was not read back correctly:", toxic)
 		}
 	})
@@ -795,7 +848,8 @@ func TestAddToxicWithToxicity(t *testing.T) {
 			t.Fatal("Error setting toxic:", err)
 		}
 
-		if latency.Toxicity != 0.2 || latency.Attributes["latency"] != 100.0 || latency.Attributes["jitter"] != 10.0 {
+		if latency.Toxicity != 0.2 || latency.Attributes["latency"] != 100.0 ||
+			latency.Attributes["jitter"] != 10.0 {
 			t.Fatal("Latency toxic did not start up with correct settings:", latency)
 		}
 
@@ -804,7 +858,8 @@ func TestAddToxicWithToxicity(t *testing.T) {
 			t.Fatal("Error returning toxics:", err)
 		}
 		toxic := AssertToxicExists(t, toxics, "latency_downstream", "latency", "downstream", true)
-		if toxic.Toxicity != 0.2 || toxic.Attributes["latency"] != 100.0 || toxic.Attributes["jitter"] != 10.0 {
+		if toxic.Toxicity != 0.2 || toxic.Attributes["latency"] != 100.0 ||
+			toxic.Attributes["jitter"] != 10.0 {
 			t.Fatal("Toxic was not read back correctly:", toxic)
 		}
 	})
@@ -822,7 +877,8 @@ func TestAddNoop(t *testing.T) {
 			t.Fatal("Error setting toxic:", err)
 		}
 
-		if noop.Toxicity != 1.0 || noop.Name != "foobar" || noop.Type != "noop" || noop.Stream != "downstream" {
+		if noop.Toxicity != 1.0 || noop.Name != "foobar" || noop.Type != "noop" ||
+			noop.Stream != "downstream" {
 			t.Fatal("Noop toxic did not start up with correct settings:", noop)
 		}
 
@@ -852,7 +908,8 @@ func TestUpdateToxics(t *testing.T) {
 			t.Fatal("Error setting toxic:", err)
 		}
 
-		if latency.Toxicity != 1.0 || latency.Attributes["latency"] != 100.0 || latency.Attributes["jitter"] != 10.0 {
+		if latency.Toxicity != 1.0 || latency.Attributes["latency"] != 100.0 ||
+			latency.Attributes["jitter"] != 10.0 {
 			t.Fatal("Latency toxic did not start up with correct settings:", latency)
 		}
 
@@ -863,7 +920,8 @@ func TestUpdateToxics(t *testing.T) {
 			t.Fatal("Error setting toxic:", err)
 		}
 
-		if latency.Toxicity != 0.5 || latency.Attributes["latency"] != 1000.0 || latency.Attributes["jitter"] != 10.0 {
+		if latency.Toxicity != 0.5 || latency.Attributes["latency"] != 1000.0 ||
+			latency.Attributes["jitter"] != 10.0 {
 			t.Fatal("Latency toxic did not get updated with the correct settings:", latency)
 		}
 
@@ -874,7 +932,8 @@ func TestUpdateToxics(t *testing.T) {
 			t.Fatal("Error setting toxic:", err)
 		}
 
-		if latency.Toxicity != 0.5 || latency.Attributes["latency"] != 500.0 || latency.Attributes["jitter"] != 10.0 {
+		if latency.Toxicity != 0.5 || latency.Attributes["latency"] != 500.0 ||
+			latency.Attributes["jitter"] != 10.0 {
 			t.Fatal("Latency toxic did not get updated with the correct settings:", latency)
 		}
 
@@ -884,7 +943,8 @@ func TestUpdateToxics(t *testing.T) {
 		}
 
 		toxic := AssertToxicExists(t, toxics, "latency_downstream", "latency", "downstream", true)
-		if toxic.Toxicity != 0.5 || toxic.Attributes["latency"] != 500.0 || toxic.Attributes["jitter"] != 10.0 {
+		if toxic.Toxicity != 0.5 || toxic.Attributes["latency"] != 500.0 ||
+			toxic.Attributes["jitter"] != 10.0 {
 			t.Fatal("Toxic was not read back correctly:", toxic)
 		}
 	})
@@ -908,7 +968,8 @@ func TestRemoveToxic(t *testing.T) {
 		}
 
 		toxic := AssertToxicExists(t, toxics, "latency_downstream", "latency", "downstream", true)
-		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 || toxic.Attributes["jitter"] != 0.0 {
+		if toxic.Toxicity != 1.0 || toxic.Attributes["latency"] != 0.0 ||
+			toxic.Attributes["jitter"] != 0.0 {
 			t.Fatal("Toxic was not read back correctly:", toxic)
 		}
 
@@ -957,7 +1018,12 @@ func TestInvalidStream(t *testing.T) {
 	})
 }
 
-func AssertToxicExists(t *testing.T, toxics tclient.Toxics, name, typeName, stream string, exists bool) *tclient.Toxic {
+func AssertToxicExists(
+	t *testing.T,
+	toxics tclient.Toxics,
+	name, typeName, stream string,
+	exists bool,
+) *tclient.Toxic {
 	var toxic *tclient.Toxic
 	var actualType, actualStream string
 

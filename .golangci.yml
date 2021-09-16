@@ -6,4 +6,5 @@ linters:
 
 linters-settings:
   lll:
-    line-length: 200
+    line-length: 100
+    tab-width: 1
