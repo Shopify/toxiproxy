@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/testhelper"
 	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
@@ -216,48 +217,41 @@ func TestTwoLatencyToxics(t *testing.T) {
 }
 
 func TestLatencyToxicBandwidth(t *testing.T) {
-	ln, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatal("Failed to create TCP server", err)
-	}
+	upstream := testhelper.NewUpstream(t, false)
+	defer upstream.Close()
 
-	defer ln.Close()
-
-	proxy := NewTestProxy("test", ln.Addr().String())
+	proxy := NewTestProxy("test", upstream.Addr())
 	proxy.Start()
 	defer proxy.Stop()
 
-	buf := []byte(strings.Repeat("hello world ", 1000))
-
-	go func() {
-		conn, err := ln.Accept()
-		if err != nil {
-			t.Error("Unable to accept TCP connection", err)
-		}
-		for err == nil {
-			_, err = conn.Write(buf)
-		}
-	}()
-
-	conn, err := net.Dial("tcp", proxy.Listen)
+	client, err := net.Dial("tcp", proxy.Listen)
 	if err != nil {
-		t.Error("Unable to dial TCP server", err)
+		t.Fatalf("Unable to dial TCP server: %v", err)
 	}
+
+	writtenPayload := []byte(strings.Repeat("hello world ", 1000))
+	upstreamConn := <-upstream.Connections
+	go func(conn net.Conn, payload []byte) {
+		var err error
+		for err == nil {
+			_, err = conn.Write(payload)
+		}
+	}(upstreamConn, writtenPayload)
 
 	proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "latency", "", &toxics.LatencyToxic{Latency: 100}))
 
 	time.Sleep(150 * time.Millisecond) // Wait for latency toxic
-	buf2 := make([]byte, len(buf))
+	response := make([]byte, len(writtenPayload))
 
 	start := time.Now()
 	count := 0
 	for i := 0; i < 100; i++ {
-		n, err := io.ReadFull(conn, buf2)
-		count += n
+		n, err := io.ReadFull(client, response)
 		if err != nil {
-			t.Error(err)
+			t.Fatalf("Could not read from socket: %v", err)
 			break
 		}
+		count += n
 	}
 
 	// Assert the transfer was at least 100MB/s
@@ -269,7 +263,7 @@ func TestLatencyToxicBandwidth(t *testing.T) {
 		time.Duration(count/100000)*time.Millisecond,
 	)
 
-	err = conn.Close()
+	err = client.Close()
 	if err != nil {
 		t.Error("Failed to close TCP connection", err)
 	}
