@@ -1,9 +1,14 @@
 .PHONY: all
-all: setup build
+all: setup build test fmt lint
 
 .PHONY: test
 test:
 	go test -v -race ./...
+
+.PHONY: fmt
+fmt:
+	go fmt ./...
+	goimports -w **/*.go
 
 .PHONY: lint
 lint:

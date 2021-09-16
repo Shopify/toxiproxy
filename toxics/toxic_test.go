@@ -74,7 +74,10 @@ func WithEchoServer(t *testing.T, f func(string, chan []byte)) {
 	close(response)
 }
 
-func WithEchoProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy)) {
+func WithEchoProxy(
+	t *testing.T,
+	f func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy),
+) {
 	WithEchoServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
 		proxy.Start()
@@ -169,7 +172,9 @@ func TestPersistentConnections(t *testing.T) {
 	serverConn := <-serverConnRecv
 
 	proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_up", "noop", "upstream", &toxics.NoopToxic{}))
-	proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}))
+	proxy.Toxics.AddToxicJson(
+		ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}),
+	)
 
 	AssertEchoResponse(t, conn, serverConn)
 
@@ -225,11 +230,15 @@ func TestToxicAddRemove(t *testing.T) {
 				return
 			default:
 				if enabled {
-					proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_up", "noop", "upstream", &toxics.NoopToxic{}))
+					proxy.Toxics.AddToxicJson(
+						ToxicToJson(t, "noop_up", "noop", "upstream", &toxics.NoopToxic{}),
+					)
 					proxy.Toxics.RemoveToxic("noop_down")
 				} else {
 					proxy.Toxics.RemoveToxic("noop_up")
-					proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}))
+					proxy.Toxics.AddToxicJson(
+						ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}),
+					)
 				}
 				enabled = !enabled
 			}

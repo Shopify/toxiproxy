@@ -98,7 +98,10 @@ func TestSimpleServer(t *testing.T) {
 	})
 }
 
-func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy)) {
+func WithTCPProxy(
+	t *testing.T,
+	f func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy),
+) {
 	WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
 		proxy.Start()

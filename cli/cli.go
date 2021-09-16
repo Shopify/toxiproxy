@@ -91,8 +91,9 @@ func main() {
 			Action:  withToxi(inspectProxy),
 		},
 		{
-			Name:    "create",
-			Usage:   "create a new proxy\n\tusage: 'toxiproxy-cli create --listen <addr> --upstream <addr> <proxyName>'\n",
+			Name: "create",
+			Usage: "create a new proxy\n\t" +
+				"usage: 'toxiproxy-cli create --listen <addr> --upstream <addr> <proxyName>'\n",
 			Aliases: []string{"c", "new"},
 			Flags: []cli.Flag{
 				&cli.StringFlag{
@@ -247,9 +248,19 @@ func list(c *cli.Context, t *toxiproxy.Client) error {
 	sort.Strings(proxyNames)
 
 	if isTTY {
-		fmt.Printf("%sName\t\t\t%sListen\t\t%sUpstream\t\t%sEnabled\t\t%sToxics\n%s", color(GREEN), color(BLUE),
-			color(YELLOW), color(PURPLE), color(RED), color(NONE))
-		fmt.Printf("%s======================================================================================\n", color(NONE))
+		fmt.Printf(
+			"%sName\t\t\t%sListen\t\t%sUpstream\t\t%sEnabled\t\t%sToxics\n%s",
+			color(GREEN),
+			color(BLUE),
+			color(YELLOW),
+			color(PURPLE),
+			color(RED),
+			color(NONE),
+		)
+		fmt.Printf(
+			"%s======================================================================================\n",
+			color(NONE),
+		)
 
 		if len(proxyNames) == 0 {
 			fmt.Printf("%sno proxies\n%s", color(RED), color(NONE))
@@ -290,7 +301,10 @@ func inspectProxy(c *cli.Context, t *toxiproxy.Client) error {
 		fmt.Printf("%sName: %s%s\t", color(PURPLE), color(NONE), proxy.Name)
 		fmt.Printf("%sListen: %s%s\t", color(BLUE), color(NONE), proxy.Listen)
 		fmt.Printf("%sUpstream: %s%s\n", color(YELLOW), color(NONE), proxy.Upstream)
-		fmt.Printf("%s======================================================================\n", color(NONE))
+		fmt.Printf(
+			"%s======================================================================\n",
+			color(NONE),
+		)
 
 		splitToxics := func(toxics toxiproxy.Toxics) (toxiproxy.Toxics, toxiproxy.Toxics) {
 			upstream := make(toxiproxy.Toxics, 0)
@@ -340,7 +354,15 @@ func toggleProxy(c *cli.Context, t *toxiproxy.Client) error {
 		return errorf("Failed to toggle proxy %s: %s\n", proxyName, err.Error())
 	}
 
-	fmt.Printf("Proxy %s%s%s is now %s%s%s\n", colorEnabled(proxy.Enabled), proxyName, color(NONE), colorEnabled(proxy.Enabled), enabledText(proxy.Enabled), color(NONE))
+	fmt.Printf(
+		"Proxy %s%s%s is now %s%s%s\n",
+		colorEnabled(proxy.Enabled),
+		proxyName,
+		color(NONE),
+		colorEnabled(proxy.Enabled),
+		enabledText(proxy.Enabled),
+		color(NONE),
+	)
 	return nil
 }
 
@@ -431,7 +453,13 @@ func addToxic(c *cli.Context, t *toxiproxy.Client) error {
 			return errorf("Failed to add toxic: %s\n", err.Error())
 		}
 		toxicName = t.Name
-		fmt.Printf("Added %s %s toxic '%s' on proxy '%s'\n", stream, toxicType, toxicName, proxyName)
+		fmt.Printf(
+			"Added %s %s toxic '%s' on proxy '%s'\n",
+			stream,
+			toxicType,
+			toxicName,
+			proxyName,
+		)
 		return nil
 	}
 

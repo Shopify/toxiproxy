@@ -22,7 +22,8 @@ import (
 // for multiple connections.
 
 type Toxic interface {
-	// Defines how packets flow through a ToxicStub. Pipe() blocks until the link is closed or interrupted.
+	// Defines how packets flow through a ToxicStub.
+	// Pipe() blocks until the link is closed or interrupted.
 	Pipe(*ToxicStub)
 }
 
