@@ -10,7 +10,7 @@ import (
 	tomb "gopkg.in/tomb.v1"
 )
 
-// Proxy represents the proxy in its entirity with all its links. The main
+// Proxy represents the proxy in its entirety with all its links. The main
 // responsibility of Proxy is to accept new client and create Links between the
 // client and upstream.
 //
