@@ -89,32 +89,32 @@ func (proxy *Proxy) Stop() {
 	stop(proxy)
 }
 
-func (p *Proxy) listen() (net.Listener, error) {
-	listener, err := net.Listen("tcp", p.Listen)
+func (proxy *Proxy) listen() error {
+	listener, err := net.Listen("tcp", proxy.Listen)
 	if err != nil {
-		p.started <- err
-		return nil, err
+		proxy.started <- err
+		return err
 	}
-	p.listener = listener
-	p.Listen = listener.Addr().String()
-	p.started <- nil
+	proxy.listener = listener
+	proxy.Listen = listener.Addr().String()
+	proxy.started <- nil
 
 	logrus.WithFields(logrus.Fields{
-		"name":     p.Name,
-		"proxy":    p.Listen,
-		"upstream": p.Upstream,
+		"name":     proxy.Name,
+		"proxy":    proxy.Listen,
+		"upstream": proxy.Upstream,
 	}).Info("Started proxy")
 
-	return p.listener, nil
+	return nil
 }
 
-func (p *Proxy) close() {
-	// Unblock ln.Accept()
-	err := p.listener.Close()
+func (proxy *Proxy) close() {
+	// Unblock proxy.listener.Accept()
+	err := proxy.listener.Close()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
-			"proxy":  p.Name,
-			"listen": p.Listen,
+			"proxy":  proxy.Name,
+			"listen": proxy.Listen,
 			"err":    err,
 		}).Warn("Attempted to close an already closed proxy server")
 	}
@@ -122,23 +122,71 @@ func (p *Proxy) close() {
 
 // This channel is to kill the blocking Accept() call below by closing the
 // net.Listener.
-func (p *Proxy) freeBlocker(acceptTomb *tomb.Tomb) {
-	<-p.tomb.Dying()
+func (proxy *Proxy) freeBlocker(acceptTomb *tomb.Tomb) {
+	<-proxy.tomb.Dying()
 
 	// Notify ln.Accept() that the shutdown was safe
 	acceptTomb.Killf("Shutting down from stop()")
 
-	p.close()
+	proxy.close()
 
 	// Wait for the accept loop to finish processing
 	acceptTomb.Wait()
-	p.tomb.Done()
+	proxy.tomb.Done()
+}
+
+func (proxy *Proxy) accept(acceptTomb *tomb.Tomb) {
+	client, err := proxy.listener.Accept()
+	if err != nil {
+		// This is to confirm we're being shut down in a legit way. Unfortunately,
+		// Go doesn't export the error when it's closed from Close() so we have to
+		// sync up with a channel here.
+		//
+		// See http://zhen.org/blog/graceful-shutdown-of-go-net-dot-listeners/
+		select {
+		case <-acceptTomb.Dying():
+		default:
+			logrus.WithFields(logrus.Fields{
+				"proxy":  proxy.Name,
+				"listen": proxy.Listen,
+				"err":    err,
+			}).Warn("Error while accepting client")
+		}
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"name":     proxy.Name,
+		"client":   client.RemoteAddr(),
+		"proxy":    proxy.Listen,
+		"upstream": proxy.Upstream,
+	}).Info("Accepted client")
+
+	upstream, err := net.Dial("tcp", proxy.Upstream)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"name":     proxy.Name,
+			"client":   client.RemoteAddr(),
+			"proxy":    proxy.Listen,
+			"upstream": proxy.Upstream,
+		}).Error("Unable to open connection to upstream")
+		client.Close()
+		return
+	}
+
+	name := client.RemoteAddr().String()
+	proxy.connections.Lock()
+	proxy.connections.list[name+"upstream"] = upstream
+	proxy.connections.list[name+"downstream"] = client
+	proxy.connections.Unlock()
+	proxy.Toxics.StartLink(name+"upstream", client, upstream, stream.Upstream)
+	proxy.Toxics.StartLink(name+"downstream", upstream, client, stream.Downstream)
 }
 
 // server runs the Proxy server, accepting new clients and creating Links to
 // connect them to upstreams.
 func (proxy *Proxy) server() {
-	ln, err := proxy.listen()
+	err := proxy.listen()
 	if err != nil {
 		return
 	}
@@ -149,51 +197,7 @@ func (proxy *Proxy) server() {
 	go proxy.freeBlocker(acceptTomb)
 
 	for {
-		client, err := ln.Accept()
-		if err != nil {
-			// This is to confirm we're being shut down in a legit way. Unfortunately,
-			// Go doesn't export the error when it's closed from Close() so we have to
-			// sync up with a channel here.
-			//
-			// See http://zhen.org/blog/graceful-shutdown-of-go-net-dot-listeners/
-			select {
-			case <-acceptTomb.Dying():
-			default:
-				logrus.WithFields(logrus.Fields{
-					"proxy":  proxy.Name,
-					"listen": proxy.Listen,
-					"err":    err,
-				}).Warn("Error while accepting client")
-			}
-			return
-		}
-
-		logrus.WithFields(logrus.Fields{
-			"name":     proxy.Name,
-			"client":   client.RemoteAddr(),
-			"proxy":    proxy.Listen,
-			"upstream": proxy.Upstream,
-		}).Info("Accepted client")
-
-		upstream, err := net.Dial("tcp", proxy.Upstream)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"name":     proxy.Name,
-				"client":   client.RemoteAddr(),
-				"proxy":    proxy.Listen,
-				"upstream": proxy.Upstream,
-			}).Error("Unable to open connection to upstream")
-			client.Close()
-			continue
-		}
-
-		name := client.RemoteAddr().String()
-		proxy.connections.Lock()
-		proxy.connections.list[name+"upstream"] = upstream
-		proxy.connections.list[name+"downstream"] = client
-		proxy.connections.Unlock()
-		proxy.Toxics.StartLink(name+"upstream", client, upstream, stream.Upstream)
-		proxy.Toxics.StartLink(name+"downstream", upstream, client, stream.Downstream)
+		proxy.accept(acceptTomb)
 	}
 }
 
