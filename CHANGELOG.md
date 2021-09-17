@@ -1,14 +1,24 @@
 # [Unreleased]
 
 * Use CHANGELOG.md for release description (#306, @miry)
-* Dependency updates in #294 introduced a breaking change in CLI argument parsing. Now [flags must be specified before arguments](https://github.com/urfave/cli/blob/master/docs/migrate-v1-to-v2.md#flags-before-args). Previously, arguments could be specified prior to flags.
+* Dependency updates in #294 introduced a breaking change in CLI argument parsing.
+  Now [flags must be specified before arguments](https://github.com/urfave/cli/blob/master/docs/migrate-v1-to-v2.md#flags-before-args).
+  Previously, arguments could be specified prior to flags.
   Update usage help text and documentation. (#308, @miry)
-* Run e2e tests to validate the command line and basic features of server, client and application (#309, @miry)
+* Run e2e tests to validate the command line and basic features of server,
+  client and application (#309, @miry)
 * Add /v2 suffix to module import path (#311, @dnwe)
+* Setup automated checking source code for security vulnerabilities (#312, @miry)
 * Setup code linter (#314, @miry)
   * Max line length is 100 characters (#316, @miry)
   * Linter to check whether HTTP response body is closed successfully (#317, @miry)
+  * Make sure the function are not big (#318, @miry)
+    * Extract client flags specs to seprate methods.
+      Introduce a new way to manage toxics with `ToxicOptions` sturcture (#321, @miry)
+    * Split `Proxy.server` to multiple small (#322, @miry)
+    * Extract initializetion of fake upstream server to test helper (#323, @miry)
 * `--host` flag uses `TOXIPROXY_URL` if it is set (#319, @maaslalani)
+* Run benchmarks in CI/CD (#320, @miry)
 
 # [2.1.5]
 
