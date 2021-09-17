@@ -75,7 +75,7 @@ func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.Stream
 }
 
 // Begin running a toxic on this stub, can be interrupted.
-// Runs a noop toxic randomly depending on toxicity
+// Runs a noop toxic randomly depending on toxicity.
 func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 	s.running = make(chan struct{})
 	defer close(s.running)

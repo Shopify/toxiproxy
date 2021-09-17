@@ -46,7 +46,7 @@ type Proxy struct {
 
 // NewClient creates a new client which provides the base of all communication
 // with Toxiproxy. Endpoint is the address to the proxy (e.g. localhost:8474 if
-// not overridden)
+// not overridden).
 func NewClient(endpoint string) *Client {
 	if strings.HasPrefix(endpoint, "https://") {
 		log.Fatal("the toxiproxy client does not support https")
@@ -90,7 +90,7 @@ func (client *Client) NewProxy() *Proxy {
 }
 
 // CreateProxy instantiates a new proxy and starts listening on the specified address.
-// This is an alias for `NewProxy()` + `proxy.Save()`
+// This is an alias for `NewProxy()` + `proxy.Save()`.
 func (client *Client) CreateProxy(name, listen, upstream string) (*Proxy, error) {
 	proxy := &Proxy{
 		Name:     name,
@@ -167,7 +167,7 @@ func (client *Client) Populate(config []Proxy) ([]*Proxy, error) {
 	return proxies.Proxies, err
 }
 
-// AddToxic creates a toxic to proxy
+// AddToxic creates a toxic to proxy.
 func (client *Client) AddToxic(options *ToxicOptions) (*Toxic, error) {
 	proxy, err := client.Proxy(options.ProxyName)
 	if err != nil {
@@ -189,7 +189,7 @@ func (client *Client) AddToxic(options *ToxicOptions) (*Toxic, error) {
 	return toxic, nil
 }
 
-// UpdateToxic update a toxic in proxy
+// UpdateToxic update a toxic in proxy.
 func (client *Client) UpdateToxic(options *ToxicOptions) (*Toxic, error) {
 	proxy, err := client.Proxy(options.ProxyName)
 	if err != nil {
@@ -213,7 +213,7 @@ func (client *Client) UpdateToxic(options *ToxicOptions) (*Toxic, error) {
 	return toxic, nil
 }
 
-// RemoveToxic removes toxic from proxy
+// RemoveToxic removes toxic from proxy.
 func (client *Client) RemoveToxic(options *ToxicOptions) error {
 	proxy, err := client.Proxy(options.ProxyName)
 	if err != nil {

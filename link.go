@@ -15,7 +15,7 @@ import (
 //
 //         NoopToxic  LatencyToxic
 //             v           v
-// Input > ToxicStub > ToxicStub > Output
+// Input > ToxicStub > ToxicStub > Output.
 //
 type ToxicLink struct {
 	stubs     []*toxics.ToxicStub
@@ -60,7 +60,7 @@ func NewToxicLink(
 	return link
 }
 
-// Start the link with the specified toxics
+// Start the link with the specified toxics.
 func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser) {
 	go func() {
 		bytes, err := io.Copy(link.input, source)

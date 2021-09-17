@@ -17,6 +17,7 @@
       Introduce a new way to manage toxics with `ToxicOptions` sturcture (#321, @miry)
     * Split `Proxy.server` to multiple small (#322, @miry)
     * Extract initializetion of fake upstream server to test helper (#323, @miry)
+    * Support a list of well knonwn linters (#326, @miry)
 * `--host` flag uses `TOXIPROXY_URL` if it is set (#319, @maaslalani)
 * Run benchmarks in CI/CD (#320, @miry)
 * Use scratch docker base image instead of alpine (#325, @miry)

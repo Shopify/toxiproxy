@@ -2,7 +2,7 @@ package toxics
 
 import "github.com/Shopify/toxiproxy/v2/stream"
 
-// LimitDataToxic has limit in bytes
+// LimitDataToxic has limit in bytes.
 type LimitDataToxic struct {
 	Bytes int64 `json:"bytes"`
 }

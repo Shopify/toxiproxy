@@ -14,7 +14,7 @@ import (
 // responsibility of Proxy is to accept new client and create Links between the
 // client and upstream.
 //
-// Client <-> toxiproxy <-> Upstream
+// Client <-> toxiproxy <-> Upstream.
 //
 type Proxy struct {
 	sync.Mutex
@@ -205,7 +205,7 @@ func (proxy *Proxy) RemoveConnection(name string) {
 	delete(proxy.connections.list, name)
 }
 
-// Starts a proxy, assumes the lock has already been taken
+// Starts a proxy, assumes the lock has already been taken.
 func start(proxy *Proxy) error {
 	if proxy.Enabled {
 		return ErrProxyAlreadyStarted
@@ -219,7 +219,7 @@ func start(proxy *Proxy) error {
 	return err
 }
 
-// Stops a proxy, assumes the lock has already been taken
+// Stops a proxy, assumes the lock has already been taken.
 func stop(proxy *Proxy) {
 	if !proxy.Enabled {
 		return
