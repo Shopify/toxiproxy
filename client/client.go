@@ -167,6 +167,70 @@ func (client *Client) Populate(config []Proxy) ([]*Proxy, error) {
 	return proxies.Proxies, err
 }
 
+// AddToxic creates a toxic to proxy
+func (client *Client) AddToxic(options *ToxicOptions) (*Toxic, error) {
+	proxy, err := client.Proxy(options.ProxyName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve proxy with name `%s`: %v", options.ProxyName, err)
+	}
+
+	toxic, err := proxy.AddToxic(
+		options.ToxicName,
+		options.ToxicType,
+		options.Stream,
+		options.Toxicity,
+		options.Attributes,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to add toxic to proxy %s: %v", options.ProxyName, err)
+	}
+
+	return toxic, nil
+}
+
+// UpdateToxic update a toxic in proxy
+func (client *Client) UpdateToxic(options *ToxicOptions) (*Toxic, error) {
+	proxy, err := client.Proxy(options.ProxyName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve proxy with name `%s`: %v", options.ProxyName, err)
+	}
+
+	toxic, err := proxy.UpdateToxic(
+		options.ToxicName,
+		options.Toxicity,
+		options.Attributes,
+	)
+
+	if err != nil {
+		return nil,
+			fmt.Errorf(
+				"failed to update toxic '%s' of proxy '%s': %v",
+				options.ToxicName, options.ProxyName, err,
+			)
+	}
+
+	return toxic, nil
+}
+
+// RemoveToxic removes toxic from proxy
+func (client *Client) RemoveToxic(options *ToxicOptions) error {
+	proxy, err := client.Proxy(options.ProxyName)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve proxy with name `%s`: %v", options.ProxyName, err)
+	}
+
+	err = proxy.RemoveToxic(options.ToxicName)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to remove toxic '%s' from proxy '%s': %v",
+			options.ToxicName, options.ProxyName, err,
+		)
+	}
+
+	return nil
+}
+
 // Save saves changes to a proxy such as its enabled status or upstream port.
 func (proxy *Proxy) Save() error {
 	request, err := json.Marshal(proxy)
