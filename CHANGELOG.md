@@ -8,6 +8,7 @@
 * Setup code linter (#314, @miry)
   * Max line length is 100 characters (#316, @miry)
   * Linter to check whether HTTP response body is closed successfully (#317, @miry)
+* `--host` flag uses `TOXIPROXY_URL` if it is set (#319, @maaslalani)
 
 # [2.1.5]
 
