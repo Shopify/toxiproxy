@@ -5,4 +5,4 @@ ENTRYPOINT ["/toxiproxy"]
 CMD ["-host=0.0.0.0"]
 
 COPY toxiproxy-server-linux-* /toxiproxy
-COPY toxiproxy-client-linux-* /toxiproxy-cli
+COPY toxiproxy-cli-linux-* /toxiproxy-cli

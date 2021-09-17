@@ -13,13 +13,6 @@ wait_for_url() {
 
 echo "== Setup"
 
-server="./dist/toxiproxy-server"
-client="./dist/toxiproxy-client"
-server_ip="localhost"
-
-server="docker run --rm -it --net=host ghcr.io/shopify/toxiproxy:v2-amd64"
-server_ip=$(docker-machine ip)
-
 # Stop all background jobs on exit
 trap 'pkill -15 -f "dist/toxiproxy-server$"; pkill -15 -f "exe/endpoint$"' EXIT SIGINT SIGTERM
 
@@ -29,7 +22,7 @@ go run testing/endpoint.go 2>&1 | sed -e 's/^/[web] /' &
 
 echo "=== Starting Toxiproxy"
 
-$(server) 2>&1 | sed -e 's/^/[toxiproxy] /' &
+./dist/toxiproxy-server  2>&1 | sed -e 's/^/[toxiproxy] /' &
 
 echo "=== Wait when service are available"
 
