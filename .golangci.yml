@@ -2,10 +2,15 @@ linters:
   disable-all: true
   enable:
     - bodyclose
+    - funlen
     - lll
     - misspell
 
 linters-settings:
+  funlen:
+    lines: 80
+    statements: 30
+
   lll:
     line-length: 100
     tab-width: 1
