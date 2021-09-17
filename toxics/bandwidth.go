@@ -6,7 +6,7 @@ import (
 	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
-// The BandwidthToxic passes data through at a limited rate
+// The BandwidthToxic passes data through at a limited rate.
 type BandwidthToxic struct {
 	// Rate in KB/s
 	Rate int64 `json:"rate"`

@@ -133,9 +133,13 @@ func TestPopulateProxy(t *testing.T) {
 
 		if err != nil {
 			t.Fatal("Unable to populate:", err)
-		} else if len(testProxies) != 2 {
+		}
+
+		if len(testProxies) != 2 {
 			t.Fatalf("Wrong number of proxies returned: %d != 2", len(testProxies))
-		} else if testProxies[0].Name != "one" || testProxies[1].Name != "two" {
+		}
+
+		if testProxies[0].Name != "one" || testProxies[1].Name != "two" {
 			t.Fatalf("Wrong proxy names returned: %s, %s", testProxies[0].Name, testProxies[1].Name)
 		}
 
@@ -196,9 +200,13 @@ func TestPopulateDisabledProxy(t *testing.T) {
 
 		if err != nil {
 			t.Fatal("Unable to populate:", err)
-		} else if len(testProxies) != 2 {
+		}
+
+		if len(testProxies) != 2 {
 			t.Fatalf("Wrong number of proxies returned: %d != 2", len(testProxies))
-		} else if testProxies[0].Name != "one" || testProxies[1].Name != "two" {
+		}
+
+		if testProxies[0].Name != "one" || testProxies[1].Name != "two" {
 			t.Fatalf("Wrong proxy names returned: %s, %s", testProxies[0].Name, testProxies[1].Name)
 		}
 
@@ -227,7 +235,7 @@ func TestPopulateExistingProxy(t *testing.T) {
 		testProxies, err := client.Populate([]tclient.Proxy{
 			{
 				Name:     "one",
-				Listen:   "127.0.0.1:7070", // TODO(xthexder): Will replace existing proxy if not resolved ip...
+				Listen:   "127.0.0.1:7070",
 				Upstream: "localhost:7171",
 				Enabled:  true,
 			},
@@ -241,11 +249,18 @@ func TestPopulateExistingProxy(t *testing.T) {
 
 		if err != nil {
 			t.Fatal("Unable to populate:", err)
-		} else if len(testProxies) != 2 {
+		}
+
+		if len(testProxies) != 2 {
 			t.Fatalf("Wrong number of proxies returned: %d != 2", len(testProxies))
-		} else if testProxies[0].Name != "one" || testProxies[1].Name != "two" {
+		}
+
+		if testProxies[0].Name != "one" || testProxies[1].Name != "two" {
 			t.Fatalf("Wrong proxy names returned: %s, %s", testProxies[0].Name, testProxies[1].Name)
-		} else if testProxies[0].Listen != "127.0.0.1:7070" || testProxies[1].Listen != "127.0.0.1:7575" {
+		}
+
+		if testProxies[0].Listen != "127.0.0.1:7070" ||
+			testProxies[1].Listen != "127.0.0.1:7575" {
 			t.Fatalf("Wrong proxy listen addresses returned: %s, %s",
 				testProxies[0].Listen, testProxies[1].Listen,
 			)
@@ -283,9 +298,13 @@ func TestPopulateWithBadName(t *testing.T) {
 
 		if err == nil {
 			t.Fatal("Expected Populate to fail.")
-		} else if err.Error() != "Populate: HTTP 400: missing required field: name at proxy 2" {
+		}
+
+		if err.Error() != "Populate: HTTP 400: missing required field: name at proxy 2" {
 			t.Fatal("Expected different error during populate:", err)
-		} else if len(testProxies) != 0 {
+		}
+
+		if len(testProxies) != 0 {
 			t.Fatalf("Wrong number of proxies returned: %d != 0", len(testProxies))
 		}
 
@@ -323,9 +342,13 @@ func TestPopulateProxyWithBadDataShouldReturnError(t *testing.T) {
 
 		if err == nil {
 			t.Fatal("Expected Populate to fail.")
-		} else if len(testProxies) != 1 {
+		}
+
+		if len(testProxies) != 1 {
 			t.Fatalf("Wrong number of proxies returned: %d != %d", len(testProxies), 1)
-		} else if testProxies[0].Name != "one" {
+		}
+
+		if testProxies[0].Name != "one" {
 			t.Fatalf("Wrong proxy name returned: %s != one", testProxies[0].Name)
 		}
 
@@ -1037,9 +1060,9 @@ func AssertToxicExists(
 	var toxic *tclient.Toxic
 	var actualType, actualStream string
 
-	for _, tox := range toxics {
+	for i, tox := range toxics {
 		if name == tox.Name {
-			toxic = &tox
+			toxic = &toxics[i]
 			actualType = tox.Type
 			actualStream = tox.Stream
 		}
@@ -1047,9 +1070,13 @@ func AssertToxicExists(
 	if exists {
 		if toxic == nil {
 			t.Fatalf("Expected to see %s toxic in list", name)
-		} else if actualType != typeName {
+		}
+
+		if actualType != typeName {
 			t.Fatalf("Expected %s to be of type %s, found %s", name, typeName, actualType)
-		} else if actualStream != stream {
+		}
+
+		if actualStream != stream {
 			t.Fatalf("Expected %s to be in stream %s, found %s", name, stream, actualStream)
 		}
 	} else if toxic != nil && actualStream == stream {

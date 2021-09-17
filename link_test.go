@@ -22,11 +22,17 @@ func TestStubInitializaation(t *testing.T) {
 	link := NewToxicLink(nil, collection, stream.Downstream)
 	if len(link.stubs) != 1 {
 		t.Fatalf("Link created with wrong number of stubs: %d != 1", len(link.stubs))
-	} else if cap(link.stubs) != toxics.Count()+1 {
+	}
+
+	if cap(link.stubs) != toxics.Count()+1 {
 		t.Fatalf("Link created with wrong capacity: %d != %d", cap(link.stubs), toxics.Count()+1)
-	} else if cap(link.stubs[0].Input) != 0 {
+	}
+
+	if cap(link.stubs[0].Input) != 0 {
 		t.Fatalf("Noop buffer was not initialized as 0: %d", cap(link.stubs[0].Input))
-	} else if cap(link.stubs[0].Output) != 0 {
+	}
+
+	if cap(link.stubs[0].Output) != 0 {
 		t.Fatalf("Link output buffer was not initialized as 0: %d", cap(link.stubs[0].Output))
 	}
 }
@@ -47,13 +53,19 @@ func TestStubInitializaationWithToxics(t *testing.T) {
 		Toxicity:  1,
 	})
 	link := NewToxicLink(nil, collection, stream.Downstream)
+
 	if len(link.stubs) != 3 {
 		t.Fatalf("Link created with wrong number of stubs: %d != 3", len(link.stubs))
-	} else if cap(link.stubs) != toxics.Count()+1 {
+	}
+
+	if cap(link.stubs) != toxics.Count()+1 {
 		t.Fatalf("Link created with wrong capacity: %d != %d", cap(link.stubs), toxics.Count()+1)
-	} else if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
+	}
+
+	if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
 		t.Fatalf("Link output buffer was not initialized as 0: %d", cap(link.stubs[0].Output))
 	}
+
 	for i, toxic := range collection.chain[stream.Downstream] {
 		if cap(link.stubs[i].Input) != toxic.BufferSize {
 			t.Fatalf(

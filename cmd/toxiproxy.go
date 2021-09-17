@@ -33,7 +33,7 @@ func main() {
 	}
 
 	// Handle SIGTERM to exit cleanly
-	signals := make(chan os.Signal)
+	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM)
 	go func() {
 		<-signals

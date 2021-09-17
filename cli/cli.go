@@ -18,9 +18,7 @@ const (
 	GREEN  = "\x1b[32m"
 	YELLOW = "\x1b[33m"
 	BLUE   = "\x1b[34m"
-	CYAN   = "\x1b[36m"
 	PURPLE = "\x1b[35m"
-	GRAY   = "\x1b[37m"
 	NONE   = "\x1b[0m"
 )
 
@@ -134,8 +132,9 @@ func cliCommands() []*cli.Command {
 			Action: withToxi(createProxy),
 		},
 		{
-			Name:    "toggle",
-			Usage:   "\ttoggle enabled status on a proxy\n\t\tusage: 'toxiproxy-cli toggle <proxyName>'\n",
+			Name: "toggle",
+			Usage: "\ttoggle enabled status on a proxy\n" +
+				"\t\tusage: 'toxiproxy-cli toggle <proxyName>'\n",
 			Aliases: []string{"tog"},
 			Action:  withToxi(toggleProxy),
 		},

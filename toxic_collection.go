@@ -192,7 +192,7 @@ func (c *ToxicCollection) RemoveLink(name string) {
 	delete(c.links, name)
 }
 
-// All following functions assume the lock is already grabbed
+// All following functions assume the lock is already grabbed.
 func (c *ToxicCollection) findToxicByName(name string) *toxics.ToxicWrapper {
 	for dir := range c.chain {
 		for i, toxic := range c.chain[dir] {
