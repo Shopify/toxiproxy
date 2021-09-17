@@ -1,9 +1,14 @@
 .PHONY: all
-all: setup build test fmt lint
+all: setup build test bench fmt lint
 
 .PHONY: test
 test:
 	go test -v -race ./...
+
+.PHONY: bench
+bench:
+	go test -bench=. -v *.go
+	go test -bench=. -v toxics/*.go
 
 .PHONY: fmt
 fmt:
