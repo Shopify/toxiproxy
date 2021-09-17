@@ -24,7 +24,8 @@ type Proxy struct {
 	Upstream string `json:"upstream"`
 	Enabled  bool   `json:"enabled"`
 
-	started chan error
+	listener net.Listener
+	started  chan error
 
 	tomb        tomb.Tomb
 	connections ConnectionList
@@ -88,48 +89,64 @@ func (proxy *Proxy) Stop() {
 	stop(proxy)
 }
 
+func (p *Proxy) listen() (net.Listener, error) {
+	listener, err := net.Listen("tcp", p.Listen)
+	if err != nil {
+		p.started <- err
+		return nil, err
+	}
+	p.listener = listener
+	p.Listen = listener.Addr().String()
+	p.started <- nil
+
+	logrus.WithFields(logrus.Fields{
+		"name":     p.Name,
+		"proxy":    p.Listen,
+		"upstream": p.Upstream,
+	}).Info("Started proxy")
+
+	return p.listener, nil
+}
+
+func (p *Proxy) close() {
+	// Unblock ln.Accept()
+	err := p.listener.Close()
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"proxy":  p.Name,
+			"listen": p.Listen,
+			"err":    err,
+		}).Warn("Attempted to close an already closed proxy server")
+	}
+}
+
+// This channel is to kill the blocking Accept() call below by closing the
+// net.Listener.
+func (p *Proxy) freeBlocker(acceptTomb *tomb.Tomb) {
+	<-p.tomb.Dying()
+
+	// Notify ln.Accept() that the shutdown was safe
+	acceptTomb.Killf("Shutting down from stop()")
+
+	p.close()
+
+	// Wait for the accept loop to finish processing
+	acceptTomb.Wait()
+	p.tomb.Done()
+}
+
 // server runs the Proxy server, accepting new clients and creating Links to
 // connect them to upstreams.
 func (proxy *Proxy) server() {
-	ln, err := net.Listen("tcp", proxy.Listen)
+	ln, err := proxy.listen()
 	if err != nil {
-		proxy.started <- err
 		return
 	}
 
-	proxy.Listen = ln.Addr().String()
-	proxy.started <- nil
-
-	logrus.WithFields(logrus.Fields{
-		"name":     proxy.Name,
-		"proxy":    proxy.Listen,
-		"upstream": proxy.Upstream,
-	}).Info("Started proxy")
-
-	acceptTomb := tomb.Tomb{}
+	acceptTomb := &tomb.Tomb{}
 	defer acceptTomb.Done()
 
-	// This channel is to kill the blocking Accept() call below by closing the
-	// net.Listener.
-	go func() {
-		<-proxy.tomb.Dying()
-
-		// Notify ln.Accept() that the shutdown was safe
-		acceptTomb.Killf("Shutting down from stop()")
-		// Unblock ln.Accept()
-		err := ln.Close()
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"proxy":  proxy.Name,
-				"listen": proxy.Listen,
-				"err":    err,
-			}).Warn("Attempted to close an already closed proxy server")
-		}
-
-		// Wait for the accept loop to finish processing
-		acceptTomb.Wait()
-		proxy.tomb.Done()
-	}()
+	go proxy.freeBlocker(acceptTomb)
 
 	for {
 		client, err := ln.Accept()
