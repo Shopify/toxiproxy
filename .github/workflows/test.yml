@@ -29,6 +29,10 @@ jobs:
         name: Tests
         run: make test
 
+      -
+        name: benchmarks
+        run: make bench
+
   build:
     runs-on: ubuntu-latest
     steps:
