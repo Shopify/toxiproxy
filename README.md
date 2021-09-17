@@ -232,10 +232,14 @@ Old versions `<= 2.1.4` are available on on [Docker Hub](https://hub.docker.com/
 
 ```bash
 $ docker pull ghcr.io/shopify/toxiproxy
-$ docker run -it ghcr.io/shopify/toxiproxy
+$ docker run --rm -it ghcr.io/shopify/toxiproxy
 ```
 
 If using Toxiproxy from the host rather than other containers, enable host networking with `--net=host`.
+
+```shell
+$ docker run --rm --entrypoint="/toxiproxy-cli" -it ghcr.io/shopify/toxiproxy list
+```
 
 **Source**
 

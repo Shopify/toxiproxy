@@ -19,6 +19,7 @@
     * Extract initializetion of fake upstream server to test helper (#323, @miry)
 * `--host` flag uses `TOXIPROXY_URL` if it is set (#319, @maaslalani)
 * Run benchmarks in CI/CD (#320, @miry)
+* Use scratch docker base image instead of alpine (#325, @miry)
 
 # [2.1.5]
 
