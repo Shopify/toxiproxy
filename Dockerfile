@@ -1,4 +1,4 @@
-FROM alpine
+FROM scratch
 
 EXPOSE 8474
 ENTRYPOINT ["/toxiproxy"]
