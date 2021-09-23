@@ -35,7 +35,10 @@ release:
 
 .PHONY: release-dry
 release-dry:
-	goreleaser release --rm-dist --skip-publish --skip-validate --snapshot
+	version="$(shell git describe --abbrev=0 --tags)"
+	goreleaser build --rm-dist --single-target --skip-validate
+	./dist/toxiproxy-cli-* --version | grep "toxiproxy-cli version $(version)"
+	goreleaser release --rm-dist --skip-publish --skip-validate
 
 .PHONY: setup
 setup:
