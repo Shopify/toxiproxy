@@ -33,6 +33,10 @@ build: dist clean
 release:
 	goreleaser release --rm-dist
 
+.PHONY: release-dry
+release-dry:
+	goreleaser release --rm-dist --skip-publish --skip-validate --snapshot
+
 .PHONY: setup
 setup:
 	go mod download
