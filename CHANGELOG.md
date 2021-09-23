@@ -1,5 +1,10 @@
 # [Unreleased]
 
+# [2.1.7]
+
+* Set the valid version during the build process.
+  Verify the correct verion of the built binaries with `make release-dry` (#328, @miry)
+
 # [2.1.6]
 
 * Use CHANGELOG.md for release description (#306, @miry)

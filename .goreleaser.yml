@@ -35,7 +35,7 @@ builds:
         goarch: arm64
 
     ldflags:
-      - -s -w -X github.com/Shopify/toxiproxy.Version={{.Version}}
+      - -s -w -X github.com/Shopify/toxiproxy/v2.Version={{.Version}}
 
   - <<: *build_default
     id: client
