@@ -1,5 +1,7 @@
 # [Unreleased]
 
+# [2.1.6]
+
 * Use CHANGELOG.md for release description (#306, @miry)
 * Dependency updates in #294 introduced a breaking change in CLI argument parsing.
   Now [flags must be specified before arguments](https://github.com/urfave/cli/blob/master/docs/migrate-v1-to-v2.md#flags-before-args).
