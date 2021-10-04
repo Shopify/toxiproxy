@@ -35,10 +35,25 @@ release:
 
 .PHONY: release-dry
 release-dry:
-	version="$(shell git describe --abbrev=0 --tags)"
-	goreleaser build --rm-dist --single-target --skip-validate
-	./dist/toxiproxy-cli-* --version | grep "toxiproxy-cli version $(version)"
 	goreleaser release --rm-dist --skip-publish --skip-validate
+
+.PHONY: release-test
+release-test: test bench e2e release-dry
+	version="$(shell git describe --abbrev=0 --tags)"
+
+	docker run -v $(PWD)/dist:/dist --pull always --rm -it ubuntu bash -c "dpkg -i /dist/toxiproxy_*_linux_amd64.deb; ls -1 /usr/bin/toxiproxy-*; /usr/bin/toxiproxy-cli --version | grep \"toxiproxy-cli version $(version)\""
+	docker run -v $(PWD)/dist:/dist --pull always --rm -it centos bash -c "yum install -y /dist/toxiproxy_*_linux_amd64.rpm; ls -1 /usr/bin/toxiproxy-*; /usr/bin/toxiproxy-cli --version | grep \"toxiproxy-cli version $(version)\""
+	docker run -v $(PWD)/dist:/dist --pull always --rm -it alpine sh -c "apk add --allow-untrusted --no-cache /dist/toxiproxy_*_linux_amd64.apk; ls -1 /usr/bin/toxiproxy-*; /usr/bin/toxiproxy-cli --version | grep \"toxiproxy-cli version $(version)\""
+
+	tar -ztvf dist/toxiproxy_*_linux_amd64.tar.gz | grep toxiproxy-server
+	tar -ztvf dist/toxiproxy_*_linux_amd64.tar.gz | grep toxiproxy-cli
+
+	goreleaser build --rm-dist --single-target --skip-validate --id server
+	./dist/toxiproxy-server-* --help 2>&1 | grep "Usage of ./dist/toxiproxy-server"
+
+	goreleaser build --rm-dist --single-target --skip-validate --id client
+	./dist/toxiproxy-cli-* --version | grep "toxiproxy-cli version $(version)"
+
 
 .PHONY: setup
 setup:
