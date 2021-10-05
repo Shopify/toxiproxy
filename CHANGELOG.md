@@ -1,5 +1,13 @@
 # [Unreleased]
 
+* Update linux packages to use `/usr/bin` folder as binary destination and change the executable names to
+  exclude ARCH and OS names. New pathes:
+  ```
+  /usr/bin/toxiproxy-cli
+  /usr/bin/toxiproxy-server
+  ```
+  (#331, @miry)
+
 # [2.1.7]
 
 * Set the valid version during the build process.

@@ -42,6 +42,18 @@ builds:
     main: ./cli
     binary: toxiproxy-cli-{{.Os}}-{{.Arch}}
 
+
+  - <<: *build_default
+    id: pkg-server
+    no_unique_dist_dir: false
+    binary: toxiproxy-server
+
+  - <<: *build_default
+    id: pkg-client
+    no_unique_dist_dir: false
+    main: ./cli
+    binary: toxiproxy-cli
+
 checksum:
   name_template: checksums.txt
 
@@ -56,6 +68,10 @@ nfpms:
     maintainer: Shopify Opensource <opensource@shopify.com>
     description: TCP proxy to simulate network and system conditions.
     license: MIT
+    bindir: /usr/bin
+    builds:
+      - pkg-server
+      - pkg-client
     formats:
       - apk
       - deb
@@ -132,6 +148,12 @@ archives:
     id: archive_binaries
     format: binary
     name_template: "{{ .Binary }}"
+    builds:
+      - server
+      - client
   -
     id: archive_default
     format: tar.gz
+    builds:
+      - pkg-server
+      - pkg-client
