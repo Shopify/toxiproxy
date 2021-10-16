@@ -7,6 +7,8 @@
   /usr/bin/toxiproxy-server
   ```
   (#331, @miry)
+* A new toxic to simulate TCP RESET (Connection reset by peer) on the connections by closing
+  the stub Input immediately or after a timeout. (#247 and #333, @chaosbox)
 
 # [2.1.7]
 

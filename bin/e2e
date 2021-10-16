@@ -113,6 +113,16 @@ go test -bench=. ./testing -v
 
 echo -e "-----------------\n"
 
+echo "=== Reset peer toxic"
+
+./dist/toxiproxy-cli toxic add --type reset_peer --toxicName "reset_peer" \
+                       --attribute "timeout=2000" \
+                       --toxicity 1.0 shopify_http
+./dist/toxiproxy-cli inspect shopify_http
+./dist/toxiproxy-cli toxic delete --toxicName "reset_peer" shopify_http
+
+echo -e "-----------------\n"
+
 echo "== Teardown"
 
 ./dist/toxiproxy-cli delete shopify_http

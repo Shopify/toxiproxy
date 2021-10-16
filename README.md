@@ -55,7 +55,8 @@ stopping you from creating a client in any other language (see
    3. [Bandwidth](#bandwidth)
    4. [Slow close](#slow_close)
    5. [Timeout](#timeout)
-   6. [Slicer](#slicer)
+   6. [Reset peer](#reset_peer)
+   7. [Slicer](#slicer)
 6. [HTTP API](#http-api)
    1. [Proxy fields](#proxy-fields)
    2. [Toxic fields](#toxic-fields)
@@ -403,6 +404,15 @@ Attributes:
 Stops all data from getting through, and closes the connection after `timeout`. If
 `timeout` is 0, the connection won't close, and data will be delayed until the
 toxic is removed.
+
+Attributes:
+
+ - `timeout`: time in milliseconds
+
+#### reset_peer
+
+Simulate TCP RESET (Connection reset by peer) on the connections by closing the stub Input
+immediately or after a `timeout`.
 
 Attributes:
 

@@ -2,13 +2,14 @@ package toxics_test
 
 import (
 	"bufio"
-	"github.com/Shopify/toxiproxy/toxics"
 	"io"
 	"net"
 	"os"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
 const msg = "reset toxic payload\n"
@@ -21,15 +22,24 @@ func TestResetToxicWithTimeout(t *testing.T) {
 	start := time.Now()
 	resetToxic := toxics.ResetToxic{Timeout: 100}
 	resetTCPHelper(t, ToxicToJson(t, "resettcp", "reset_peer", "upstream", &resetToxic))
-	AssertDeltaTime(t, "Reset after timeout", time.Since(start), time.Duration(resetToxic.Timeout)*time.Millisecond, time.Duration(resetToxic.Timeout+10)*time.Millisecond)
+	AssertDeltaTime(t,
+		"Reset after timeout",
+		time.Since(start),
+		time.Duration(resetToxic.Timeout)*time.Millisecond,
+		time.Duration(resetToxic.Timeout+10)*time.Millisecond,
+	)
 }
 
 func TestResetToxicWithTimeoutDownstream(t *testing.T) {
 	start := time.Now()
 	resetToxic := toxics.ResetToxic{Timeout: 100}
 	resetTCPHelper(t, ToxicToJson(t, "resettcp", "reset_peer", "downstream", &resetToxic))
-	AssertDeltaTime(t, "Reset after timeout", time.Since(start), time.Duration(resetToxic.Timeout)*time.Millisecond, time.Duration(resetToxic.Timeout+10)*time.Millisecond)
-
+	AssertDeltaTime(t,
+		"Reset after timeout",
+		time.Since(start),
+		time.Duration(resetToxic.Timeout)*time.Millisecond,
+		time.Duration(resetToxic.Timeout+10)*time.Millisecond,
+	)
 }
 
 func checkConnectionState(t *testing.T, listenAddress string) {
@@ -49,7 +59,10 @@ func checkConnectionState(t *testing.T, listenAddress string) {
 			t.Error("Expected: connection reset by peer. Got:", err)
 		}
 	} else {
-		t.Error("Expected: connection reset by peer. Got:", err, "conn:", conn.RemoteAddr(), conn.LocalAddr())
+		t.Error(
+			"Expected: connection reset by peer. Got:",
+			err, "conn:", conn.RemoteAddr(), conn.LocalAddr(),
+		)
 	}
 	_, err = conn.Read(tmp)
 	if err != io.EOF {
