@@ -44,6 +44,10 @@ var toxicDescription = `
   timeout:    stop all data and close after timeout
               timeout=<ms>
 
+  reset_peer: simulate TCP RESET (Connection reset by peer) on the connections by closing
+              the stub Input immediately or after a timeout
+              timeout=<ms>
+
   slicer:     slice data into bits with optional delay
               average_size=<bytes>,size_variation=<bytes>,delay=<microseconds>
 

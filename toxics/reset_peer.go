@@ -5,7 +5,8 @@ import (
 )
 
 /*
-The ResetToxic sends closes the connection abruptly after a timeout (in ms). The behaviour of Close is set to discard any unsent/unacknowledged data by setting SetLinger to 0,
+The ResetToxic sends closes the connection abruptly after a timeout (in ms).
+The behavior of Close is set to discard any unsent/unacknowledged data by setting SetLinger to 0,
 ~= sets TCP RST flag and resets the connection.
 If the timeout is set to 0, then the connection will be reset immediately.
 
