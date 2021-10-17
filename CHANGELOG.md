@@ -1,5 +1,7 @@
 # [Unreleased]
 
+# [2.2.0]
+
 * Update linux packages to use `/usr/bin` folder as binary destination and change the executable names to
   exclude ARCH and OS names. New pathes:
   ```
