@@ -29,7 +29,7 @@ func init() {
 
 In order to use your own toxics, you will need to compile your own binary.
 This can be done by copying [server
-](https://github.com/Shopify/toxiproxy/blob/master/cmd/server/main.go)
+](https://github.com/Shopify/toxiproxy/blob/master/cmd/server/server.go)
 into a new project and registering your toxic with the server.
 This will allow you to add toxics without having to make a full fork of the project.
 If you think your toxics will be useful to others,
