@@ -11,7 +11,7 @@ before:
 builds:
   - &build_default
     id: server
-    main: ./cmd
+    main: ./cmd/server
     binary: toxiproxy-server-{{.Os}}-{{.Arch}}
     no_unique_dist_dir: true
     env:
@@ -39,7 +39,7 @@ builds:
 
   - <<: *build_default
     id: client
-    main: ./cli
+    main: ./cmd/cli
     binary: toxiproxy-cli-{{.Os}}-{{.Arch}}
 
 
@@ -51,7 +51,7 @@ builds:
   - <<: *build_default
     id: pkg-client
     no_unique_dist_dir: false
-    main: ./cli
+    main: ./cmd/cli
     binary: toxiproxy-cli
 
 checksum:
