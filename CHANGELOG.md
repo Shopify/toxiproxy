@@ -1,5 +1,7 @@
 # [Unreleased]
 
+* Store all the executable `main` packages in `cmd` folder. (#335, @miry)
+
 # [2.2.0]
 
 * Update linux packages to use `/usr/bin` folder as binary destination and change the executable names to
