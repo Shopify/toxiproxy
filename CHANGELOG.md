@@ -1,6 +1,7 @@
 # [Unreleased]
 
 * Store all the executable `main` packages in `cmd` folder. (#335, @miry)
+* Extract common test helpers to own files. (#336, @miry)
 
 # [2.2.0]
 
