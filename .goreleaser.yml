@@ -11,7 +11,7 @@ before:
 builds:
   - &build_default
     id: server
-    main: ./cmd
+    main: ./cmd/server
     binary: toxiproxy-server-{{.Os}}-{{.Arch}}
     no_unique_dist_dir: true
     env:

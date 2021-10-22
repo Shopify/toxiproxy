@@ -26,7 +26,7 @@ e2e: build
 
 .PHONY: build
 build: dist clean
-	go build -ldflags="-s -w" -o ./dist/toxiproxy-server ./cmd
+	go build -ldflags="-s -w" -o ./dist/toxiproxy-server ./cmd/server
 	go build -ldflags="-s -w" -o ./dist/toxiproxy-cli ./cli
 
 .PHONY: release
