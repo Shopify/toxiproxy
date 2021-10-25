@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -48,9 +47,7 @@ type Proxy struct {
 // with Toxiproxy. Endpoint is the address to the proxy (e.g. localhost:8474 if
 // not overridden).
 func NewClient(endpoint string) *Client {
-	if strings.HasPrefix(endpoint, "https://") {
-		log.Fatal("the toxiproxy client does not support https")
-	} else if !strings.HasPrefix(endpoint, "http://") {
+	if !strings.HasPrefix(endpoint, "https://") && !strings.HasPrefix(endpoint, "http://") {
 		endpoint = "http://" + endpoint
 	}
 	return &Client{endpoint: endpoint}
