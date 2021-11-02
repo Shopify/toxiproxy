@@ -396,7 +396,6 @@ func TestPopulateAddToxic(t *testing.T) {
 		if err != nil {
 			t.Fatal("Failed to AddToxic.")
 		}
-
 	})
 }
 
