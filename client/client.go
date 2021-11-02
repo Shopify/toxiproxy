@@ -162,7 +162,7 @@ func (client *Client) Populate(config []Proxy) ([]*Proxy, error) {
 	resp.Body = ioutil.NopCloser(&body)
 	err = checkError(resp, http.StatusCreated, "Populate")
 	if err != nil {
-		return nil, err
+		return proxies.Proxies, err
 	}
 
 	for _, proxy := range proxies.Proxies {

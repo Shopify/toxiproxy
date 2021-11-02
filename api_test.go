@@ -369,6 +369,37 @@ func TestPopulateProxyWithBadDataShouldReturnError(t *testing.T) {
 	})
 }
 
+func TestPopulateAddToxic(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxies, err := client.Populate([]tclient.Proxy{
+			{
+				Name:     "one",
+				Listen:   "localhost:7070",
+				Upstream: "localhost:7171",
+				Enabled:  true,
+			},
+		})
+
+		if err != nil {
+			t.Fatal("Unable to populate:", err)
+		}
+
+		if len(testProxies) != 1 {
+			t.Fatalf("Wrong number of proxies returned: %d != %d", len(testProxies), 1)
+		}
+
+		if testProxies[0].Name != "one" {
+			t.Fatalf("Wrong proxy name returned: %s != one", testProxies[0].Name)
+		}
+
+		_, err = testProxies[0].AddToxic("", "latency", "downstream", 1, nil)
+		if err != nil {
+			t.Fatal("Failed to AddToxic.")
+		}
+
+	})
+}
+
 func TestListingProxies(t *testing.T) {
 	WithServer(t, func(addr string) {
 		_, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
