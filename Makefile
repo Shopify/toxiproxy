@@ -1,79 +1,68 @@
-SERVER_NAME=toxiproxy-server
-CLI_NAME=toxiproxy-cli
-VERSION=$(shell cat VERSION)
-DEB=pkg/toxiproxy_$(VERSION)_amd64.deb
+.PHONY: all
+all: setup build test bench fmt lint
 
-export GO111MODULE=on
-
-.PHONY: packages deb test linux darwin windows setup
-
-build:
-	go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(SERVER_NAME) ./cmd
-	go build -ldflags="-X github.com/Shopify/toxiproxy.Version=git-$(shell git rev-parse --short HEAD)" -o $(CLI_NAME) ./cli
-
-all: setup deb linux darwin windows
-deb: $(DEB)
-
-darwin: tmp/build/$(SERVER_NAME)-darwin-amd64 tmp/build/$(CLI_NAME)-darwin-amd64
-linux: tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
-windows: tmp/build/$(SERVER_NAME)-windows-amd64.exe tmp/build/$(CLI_NAME)-windows-amd64.exe
-
-release: all docker-release
-
-clean:
-	rm -f tmp/build/*
-	rm -f $(SERVER_NAME)
-	rm -f $(CLI_NAME)
-	rm -f *.deb
-
+.PHONY: test
 test:
-	echo "Testing with" `go version`
-	GOMAXPROCS=4 go test -v -race ./...
+	go test -v -race -timeout 1m ./...
 
-tmp/build/$(SERVER_NAME)-linux-amd64:
-	GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
+.PHONY: bench
+bench:
+	go test -bench=. -v *.go
+	go test -bench=. -v toxics/*.go
 
-tmp/build/$(SERVER_NAME)-darwin-amd64:
-	GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
+.PHONY: fmt
+fmt:
+	go fmt ./...
+	goimports -w **/*.go
+	golangci-lint run --fix
 
-tmp/build/$(SERVER_NAME)-windows-amd64.exe:
-	GOOS=windows GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cmd
+.PHONY: lint
+lint:
+	golangci-lint run
 
-tmp/build/$(CLI_NAME)-linux-amd64:
-	GOOS=linux GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
+.PHONY: e2e
+e2e: build
+	bin/e2e
 
-tmp/build/$(CLI_NAME)-darwin-amd64:
-	GOOS=darwin GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
+.PHONY: build
+build: dist clean
+	go build -ldflags="-s -w" -o ./dist/toxiproxy-server ./cmd/server
+	go build -ldflags="-s -w" -o ./dist/toxiproxy-cli ./cmd/cli
 
-tmp/build/$(CLI_NAME)-windows-amd64.exe:
-	GOOS=windows GOARCH=amd64 go build -ldflags="-X github.com/Shopify/toxiproxy.Version=$(VERSION)" -o $(@) ./cli
+.PHONY: release
+release:
+	goreleaser release --rm-dist
 
-$(DEB): tmp/build/$(SERVER_NAME)-linux-amd64 tmp/build/$(CLI_NAME)-linux-amd64
-	fpm -t deb \
-		-s dir \
-		-p tmp/build/ \
-		--name "toxiproxy" \
-		--version $(VERSION) \
-		--license MIT \
-		--no-depends \
-		--no-auto-depends \
-		--architecture amd64 \
-		--maintainer "Simon Eskildsen <simon.eskildsen@shopify.com>" \
-		--description "TCP proxy to simulate network and system conditions" \
-		--url "https://github.com/Shopify/toxiproxy" \
-		$(word 1,$^)=/usr/bin/$(SERVER_NAME) \
-		$(word 2,$^)=/usr/bin/$(CLI_NAME) \
-		./share/toxiproxy.conf=/etc/init/toxiproxy.conf
+.PHONY: release-dry
+release-dry:
+	goreleaser release --rm-dist --skip-publish --skip-validate
 
-docker:
-	docker build --tag="shopify/toxiproxy:git" .
+.PHONY: release-test
+release-test: test bench e2e release-dry
+	version="$(shell git describe --abbrev=0 --tags)"
 
-docker-release: linux
-	docker build --rm=true --tag="shopify/toxiproxy:$(VERSION)" .
-	docker tag shopify/toxiproxy:$(VERSION) shopify/toxiproxy:latest
-	docker push shopify/toxiproxy:$(VERSION)
-	docker push shopify/toxiproxy:latest
+	docker run -v $(PWD)/dist:/dist --pull always --rm -it ubuntu bash -c "dpkg -i /dist/toxiproxy_*_linux_amd64.deb; ls -1 /usr/bin/toxiproxy-*; /usr/bin/toxiproxy-cli --version | grep \"toxiproxy-cli version $(version)\""
+	docker run -v $(PWD)/dist:/dist --pull always --rm -it centos bash -c "yum install -y /dist/toxiproxy_*_linux_amd64.rpm; ls -1 /usr/bin/toxiproxy-*; /usr/bin/toxiproxy-cli --version | grep \"toxiproxy-cli version $(version)\""
+	docker run -v $(PWD)/dist:/dist --pull always --rm -it alpine sh -c "apk add --allow-untrusted --no-cache /dist/toxiproxy_*_linux_amd64.apk; ls -1 /usr/bin/toxiproxy-*; /usr/bin/toxiproxy-cli --version | grep \"toxiproxy-cli version $(version)\""
 
+	tar -ztvf dist/toxiproxy_*_linux_amd64.tar.gz | grep toxiproxy-server
+	tar -ztvf dist/toxiproxy_*_linux_amd64.tar.gz | grep toxiproxy-cli
+
+	goreleaser build --rm-dist --single-target --skip-validate --id server
+	./dist/toxiproxy-server-* --help 2>&1 | grep "Usage of ./dist/toxiproxy-server"
+
+	goreleaser build --rm-dist --single-target --skip-validate --id client
+	./dist/toxiproxy-cli-* --version | grep "toxiproxy-cli version $(version)"
+
+
+.PHONY: setup
 setup:
 	go mod download
 	go mod tidy
+
+dist:
+	mkdir -p dist
+
+.PHONY: clean
+clean:
+	rm -fr dist/*

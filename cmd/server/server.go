@@ -8,12 +8,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Shopify/toxiproxy"
+	"github.com/Shopify/toxiproxy/v2"
 )
 
-var host string
-var port string
-var config string
+var (
+	host   string
+	port   string
+	config string
+)
 
 func init() {
 	flag.StringVar(&host, "host", "localhost", "Host for toxiproxy's API to listen on")
@@ -31,7 +33,7 @@ func main() {
 	}
 
 	// Handle SIGTERM to exit cleanly
-	signals := make(chan os.Signal)
+	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM)
 	go func() {
 		<-signals

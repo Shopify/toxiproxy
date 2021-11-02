@@ -3,12 +3,15 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/http"
 )
 
-var stuff []byte
-var out []byte
-var out2 []byte
+var (
+	stuff []byte
+	out   []byte
+	out2  []byte
+)
 
 func handler1(w http.ResponseWriter, r *http.Request) {
 	n, err := w.Write(out)
@@ -40,5 +43,7 @@ func main() {
 	hex.Encode(out, stuff)
 	http.HandleFunc("/test1", handler1)
 	http.HandleFunc("/test2", handler2)
-	http.ListenAndServe(":20002", nil)
+
+	log.Println("Listening :20002")
+	log.Fatal(http.ListenAndServe(":20002", nil))
 }

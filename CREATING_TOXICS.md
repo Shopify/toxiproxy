@@ -20,19 +20,22 @@ This is used instead of just a plain `byte[]` so that toxics like latency can fi
 how long a chunk of data has been waiting in the proxy.
 
 Toxics are registered in an `init()` function so that they can be used by the server:
+
 ```go
 func init() {
     toxics.Register("toxic_name", new(ExampleToxic))
 }
 ```
 
-In order to use your own toxics, you will need to compile your own binary. This can be
-done by copying [toxiproxy.go](https://github.com/Shopify/toxiproxy/blob/master/cmd/toxiproxy.go)
-into a new project and registering your toxic with the server. This will allow you to add toxics
-without having to make a full fork of the project. If you think your toxics will be useful
-to others, contribute them back with a Pull Request.
+In order to use your own toxics, you will need to compile your own binary.
+This can be done by copying [server
+](https://github.com/Shopify/toxiproxy/blob/master/cmd/server/server.go)
+into a new project and registering your toxic with the server.
+This will allow you to add toxics without having to make a full fork of the project.
+If you think your toxics will be useful to others,
+contribute them back with a Pull Request.
 
-An example project for building a separate binary can be found here:  
+An example project for building a separate binary can be found here:
 https://github.com/xthexder/toxic-example
 
 ## A basic toxic

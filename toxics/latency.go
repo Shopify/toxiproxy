@@ -19,8 +19,9 @@ func (t *LatencyToxic) GetBufferSize() int {
 func (t *LatencyToxic) delay() time.Duration {
 	// Delay = t.Latency +/- t.Jitter
 	delay := t.Latency
-	jitter := int64(t.Jitter)
+	jitter := t.Jitter
 	if jitter > 0 {
+		//#nosec
 		delay += rand.Int63n(jitter*2) - jitter
 	}
 	return time.Duration(delay) * time.Millisecond

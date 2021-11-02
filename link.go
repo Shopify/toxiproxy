@@ -2,10 +2,12 @@ package toxiproxy
 
 import (
 	"io"
+	"net"
 
-	"github.com/Shopify/toxiproxy/stream"
-	"github.com/Shopify/toxiproxy/toxics"
 	"github.com/sirupsen/logrus"
+
+	"github.com/Shopify/toxiproxy/v2/stream"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
 // ToxicLinks are single direction pipelines that connects an input and output via
@@ -15,7 +17,7 @@ import (
 //
 //         NoopToxic  LatencyToxic
 //             v           v
-// Input > ToxicStub > ToxicStub > Output
+// Input > ToxicStub > ToxicStub > Output.
 //
 type ToxicLink struct {
 	stubs     []*toxics.ToxicStub
@@ -26,9 +28,17 @@ type ToxicLink struct {
 	direction stream.Direction
 }
 
-func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Direction) *ToxicLink {
+func NewToxicLink(
+	proxy *Proxy,
+	collection *ToxicCollection,
+	direction stream.Direction,
+) *ToxicLink {
 	link := &ToxicLink{
-		stubs:     make([]*toxics.ToxicStub, len(collection.chain[direction]), cap(collection.chain[direction])),
+		stubs: make(
+			[]*toxics.ToxicStub,
+			len(collection.chain[direction]),
+			cap(collection.chain[direction]),
+		),
 		proxy:     proxy,
 		toxics:    collection,
 		direction: direction,
@@ -52,7 +62,7 @@ func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Di
 	return link
 }
 
-// Start the link with the specified toxics
+// Start the link with the specified toxics.
 func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser) {
 	go func() {
 		bytes, err := io.Copy(link.input, source)
@@ -65,13 +75,33 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		}
 		link.input.Close()
 	}()
+
 	for i, toxic := range link.toxics.chain[link.direction] {
 		if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
 			link.stubs[i].State = stateful.NewState()
 		}
 
+		if _, ok := toxic.Toxic.(*toxics.ResetToxic); ok {
+			if err := source.(*net.TCPConn).SetLinger(0); err != nil {
+				logrus.WithFields(logrus.Fields{
+					"name":  link.proxy.Name,
+					"toxic": toxic.Type,
+					"err":   err,
+				}).Error("source: Unable to setLinger(ms)")
+			}
+
+			if err := dest.(*net.TCPConn).SetLinger(0); err != nil {
+				logrus.WithFields(logrus.Fields{
+					"name":  link.proxy.Name,
+					"toxic": toxic.Type,
+					"err":   err,
+				}).Error("dest: Unable to setLinger(ms)")
+			}
+		}
+
 		go link.stubs[i].Run(toxic)
 	}
+
 	go func() {
 		bytes, err := io.Copy(dest, link.output)
 		if err != nil {

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Shopify/toxiproxy"
-	"github.com/Shopify/toxiproxy/toxics"
+	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 	"github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v1"
 )
@@ -48,7 +48,8 @@ func WithEchoServer(t *testing.T, f func(string, chan []byte)) {
 			select {
 			case <-tomb.Dying():
 			default:
-				t.Fatal("Failed to accept client")
+				t.Error("Failed to accept client")
+				return
 			}
 			return
 		}
@@ -73,7 +74,10 @@ func WithEchoServer(t *testing.T, f func(string, chan []byte)) {
 	close(response)
 }
 
-func WithEchoProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy)) {
+func WithEchoProxy(
+	t *testing.T,
+	f func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy),
+) {
 	WithEchoServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
 		proxy.Start()
@@ -168,7 +172,9 @@ func TestPersistentConnections(t *testing.T) {
 	serverConn := <-serverConnRecv
 
 	proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_up", "noop", "upstream", &toxics.NoopToxic{}))
-	proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}))
+	proxy.Toxics.AddToxicJson(
+		ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}),
+	)
 
 	AssertEchoResponse(t, conn, serverConn)
 
@@ -224,11 +230,15 @@ func TestToxicAddRemove(t *testing.T) {
 				return
 			default:
 				if enabled {
-					proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_up", "noop", "upstream", &toxics.NoopToxic{}))
+					proxy.Toxics.AddToxicJson(
+						ToxicToJson(t, "noop_up", "noop", "upstream", &toxics.NoopToxic{}),
+					)
 					proxy.Toxics.RemoveToxic("noop_down")
 				} else {
 					proxy.Toxics.RemoveToxic("noop_up")
-					proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}))
+					proxy.Toxics.AddToxicJson(
+						ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}),
+					)
 				}
 				enabled = !enabled
 			}

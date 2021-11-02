@@ -4,18 +4,9 @@ type: go
 
 up:
   - homebrew:
-    - openssl
-    - gnu-tar
+      - gnu-tar
+      - goreleaser
+      - golangci-lint
   - go:
-      version: 1.12
+      version: 1.17
       modules: true
-  - ruby: 2.6.3
-  - bundler
-
-commands:
-  build:
-    run: go build ./...
-    desc: 'build the project'
-  test:
-    run: go test ./...
-    desc: 'run unit tests'

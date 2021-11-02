@@ -14,13 +14,13 @@ const (
 	NumDirections
 )
 
-// Stores a slice of bytes with its receive timestmap
+// Stores a slice of bytes with its receive timestamp.
 type StreamChunk struct {
 	Data      []byte
 	Timestamp time.Time
 }
 
-// Implements the io.WriteCloser interface for a chan []byte
+// Implements the io.WriteCloser interface for a chan []byte.
 type ChanWriter struct {
 	output chan<- *StreamChunk
 }
@@ -38,13 +38,13 @@ func (c *ChanWriter) Write(buf []byte) (int, error) {
 	return len(buf), nil
 }
 
-// Close the output channel
+// Close the output channel.
 func (c *ChanWriter) Close() error {
 	close(c.output)
 	return nil
 }
 
-// Implements the io.Reader interface for a chan []byte
+// Implements the io.Reader interface for a chan []byte.
 type ChanReader struct {
 	input     <-chan *StreamChunk
 	interrupt <-chan struct{}

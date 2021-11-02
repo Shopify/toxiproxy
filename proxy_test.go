@@ -4,109 +4,18 @@ import (
 	"bytes"
 	"encoding/hex"
 	"io"
-	"io/ioutil"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/Shopify/toxiproxy"
 	"github.com/sirupsen/logrus"
-	tomb "gopkg.in/tomb.v1"
+
+	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/testhelper"
 )
 
 func init() {
 	logrus.SetLevel(logrus.FatalLevel)
-}
-
-func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
-	proxy := toxiproxy.NewProxy()
-
-	proxy.Name = name
-	proxy.Listen = "localhost:0"
-	proxy.Upstream = upstream
-
-	return proxy
-}
-
-func WithTCPServer(t *testing.T, f func(string, chan []byte)) {
-	ln, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatal("Failed to create TCP server", err)
-	}
-
-	defer ln.Close()
-
-	response := make(chan []byte, 1)
-	tomb := tomb.Tomb{}
-
-	go func() {
-		defer tomb.Done()
-		src, err := ln.Accept()
-		if err != nil {
-			select {
-			case <-tomb.Dying():
-			default:
-				t.Fatal("Failed to accept client")
-			}
-			return
-		}
-
-		ln.Close()
-
-		val, err := ioutil.ReadAll(src)
-		if err != nil {
-			t.Fatal("Failed to read from client")
-		}
-
-		response <- val
-	}()
-
-	f(ln.Addr().String(), response)
-
-	tomb.Killf("Function body finished")
-	ln.Close()
-	tomb.Wait()
-
-	close(response)
-}
-
-func TestSimpleServer(t *testing.T) {
-	WithTCPServer(t, func(addr string, response chan []byte) {
-		conn, err := net.Dial("tcp", addr)
-		if err != nil {
-			t.Error("Unable to dial TCP server", err)
-		}
-
-		msg := []byte("hello world")
-
-		_, err = conn.Write(msg)
-		if err != nil {
-			t.Error("Failed writing to TCP server", err)
-		}
-
-		err = conn.Close()
-		if err != nil {
-			t.Error("Failed to close TCP connection", err)
-		}
-
-		resp := <-response
-		if !bytes.Equal(resp, msg) {
-			t.Error("Server didn't read bytes from client")
-		}
-	})
-}
-
-func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy)) {
-	WithTCPServer(t, func(upstream string, response chan []byte) {
-		proxy := NewTestProxy("test", upstream)
-		proxy.Start()
-
-		conn := AssertProxyUp(t, proxy.Listen, true)
-
-		f(conn, response, proxy)
-
-		proxy.Stop()
-	})
 }
 
 func TestProxySimpleMessage(t *testing.T) {
@@ -136,7 +45,7 @@ func TestProxyToDownUpstream(t *testing.T) {
 
 	conn := AssertProxyUp(t, proxy.Listen, true)
 	// Check to make sure the connection is closed
-	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 	_, err := conn.Read(make([]byte, 1))
 	if err != io.EOF {
 		t.Error("Proxy did not close connection when upstream down", err)
@@ -216,7 +125,7 @@ func TestStartTwoProxiesOnSameAddress(t *testing.T) {
 }
 
 func TestStopProxyBeforeStarting(t *testing.T) {
-	WithTCPServer(t, func(upstream string, response chan []byte) {
+	testhelper.WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
 		AssertProxyUp(t, proxy.Listen, false)
 
@@ -238,7 +147,7 @@ func TestStopProxyBeforeStarting(t *testing.T) {
 }
 
 func TestProxyUpdate(t *testing.T) {
-	WithTCPServer(t, func(upstream string, response chan []byte) {
+	testhelper.WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
 		err := proxy.Start()
 		if err != nil {
@@ -275,7 +184,7 @@ func TestProxyUpdate(t *testing.T) {
 }
 
 func TestRestartFailedToStartProxy(t *testing.T) {
-	WithTCPServer(t, func(upstream string, response chan []byte) {
+	testhelper.WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
 		conflict := NewTestProxy("test2", upstream)
 
@@ -303,14 +212,4 @@ func TestRestartFailedToStartProxy(t *testing.T) {
 		proxy.Stop()
 		AssertProxyUp(t, proxy.Listen, false)
 	})
-}
-
-func AssertProxyUp(t *testing.T, addr string, up bool) net.Conn {
-	conn, err := net.Dial("tcp", addr)
-	if err != nil && up {
-		t.Error("Expected proxy to be up:", err)
-	} else if err == nil && !up {
-		t.Error("Expected proxy to be down")
-	}
-	return conn
 }

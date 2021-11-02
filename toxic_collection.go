@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Shopify/toxiproxy/stream"
-	"github.com/Shopify/toxiproxy/toxics"
+	"github.com/Shopify/toxiproxy/v2/stream"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
 // ToxicCollection contains a list of toxics that are chained together. Each proxy
@@ -132,7 +132,10 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 	return wrapper, nil
 }
 
-func (c *ToxicCollection) UpdateToxicJson(name string, data io.Reader) (*toxics.ToxicWrapper, error) {
+func (c *ToxicCollection) UpdateToxicJson(
+	name string,
+	data io.Reader,
+) (*toxics.ToxicWrapper, error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -169,7 +172,12 @@ func (c *ToxicCollection) RemoveToxic(name string) error {
 	return ErrToxicNotFound
 }
 
-func (c *ToxicCollection) StartLink(name string, input io.Reader, output io.WriteCloser, direction stream.Direction) {
+func (c *ToxicCollection) StartLink(
+	name string,
+	input io.Reader,
+	output io.WriteCloser,
+	direction stream.Direction,
+) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -184,7 +192,7 @@ func (c *ToxicCollection) RemoveLink(name string) {
 	delete(c.links, name)
 }
 
-// All following functions assume the lock is already grabbed
+// All following functions assume the lock is already grabbed.
 func (c *ToxicCollection) findToxicByName(name string) *toxics.ToxicWrapper {
 	for dir := range c.chain {
 		for i, toxic := range c.chain[dir] {

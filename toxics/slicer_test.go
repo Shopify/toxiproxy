@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Shopify/toxiproxy/stream"
-	"github.com/Shopify/toxiproxy/toxics"
+	"github.com/Shopify/toxiproxy/v2/stream"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
 func TestSlicerToxic(t *testing.T) {
@@ -52,7 +52,7 @@ L:
 	if reads < 480/2 || reads > 480/2+480 {
 		t.Errorf("Expected to read about 480 times, but read %d times.", reads)
 	}
-	if bytes.Compare(buf, data) != 0 {
+	if !bytes.Equal(buf, data) {
 		t.Errorf("Server did not read correct buffer from client!")
 	}
 }
