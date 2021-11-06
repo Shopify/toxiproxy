@@ -4,6 +4,8 @@
 * Extract common test helpers to own files. (#336, @miry)
 * Client: Allow HTTPS endpoints. (#338, @chen-anders)
 * client.Populate assign client to proxy. (#291, @hellodudu)
+* fix: The release-test task is always success.
+  add: Allow to run release-test on arm machines. (#340, @miry)
 
 # [2.2.0]
 
