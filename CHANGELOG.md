@@ -6,6 +6,7 @@
 * client.Populate assign client to proxy. (#291, @hellodudu)
 * fix: The release-test task is always success.
   add: Allow to run release-test on arm machines. (#340, @miry)
+* Upgrade `goreleaser`. Support `armv7` and `armv6` oses. (#339, @mitchellrj)
 
 # [2.2.0]
 
