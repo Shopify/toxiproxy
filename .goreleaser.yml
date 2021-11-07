@@ -33,15 +33,40 @@ builds:
     ignore:
       - goos: windows
         goarch: arm64
+      - goarch: arm
 
     ldflags:
       - -s -w -X github.com/Shopify/toxiproxy/v2.Version={{.Version}}
 
   - <<: *build_default
+    id: server-arm
+    goarch:
+      - arm
+    goarm:
+      - 6
+      - 7
+    ignore:
+      - goos: windows
+        goarch: arm
+    binary: toxiproxy-server-{{.Os}}-{{.Arch}}v{{.Arm}}
+
+  - &build_client
+    <<: *build_default 
     id: client
     main: ./cmd/cli
     binary: toxiproxy-cli-{{.Os}}-{{.Arch}}
 
+  - <<: *build_client
+    id: client-arm
+    goarch:
+      - arm
+    goarm:
+      - 6
+      - 7
+    ignore:
+      - goos: windows
+        goarch: arm
+    binary: toxiproxy-cli-{{.Os}}-{{.Arch}}v{{.Arm}}
 
   - <<: *build_default
     id: pkg-server
@@ -122,6 +147,42 @@ dockers:
       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.licenses=MIT
+  - <<: *docker
+    goarch: arm
+    goarm: 7
+    image_templates:
+      - ghcr.io/shopify/toxiproxy:{{ .Version }}-armv7
+      - ghcr.io/shopify/toxiproxy:v{{ .Major }}-armv7
+      - ghcr.io/shopify/toxiproxy:v{{ .Major }}.{{ .Minor }}-armv7
+    build_flag_templates:
+      - --platform=linux/arm/v6
+      - --no-cache
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/Shopify/{{ .ProjectName }}
+      - --label=org.opencontainers.image.source=https://github.com/Shopify/{{ .ProjectName }}
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+  - <<: *docker
+    goarch: arm
+    goarm: 6
+    image_templates:
+      - ghcr.io/shopify/toxiproxy:{{ .Version }}-armv6
+      - ghcr.io/shopify/toxiproxy:v{{ .Major }}-armv6
+      - ghcr.io/shopify/toxiproxy:v{{ .Major }}.{{ .Minor }}-armv6
+    build_flag_templates:
+      - --platform=linux/arm/v6
+      - --no-cache
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/Shopify/{{ .ProjectName }}
+      - --label=org.opencontainers.image.source=https://github.com/Shopify/{{ .ProjectName }}
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
 
 docker_manifests:
   -
@@ -129,11 +190,15 @@ docker_manifests:
     image_templates:
       - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-amd64
       - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-arm64
+      - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-armv6
+      - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-armv7
   -
     name_template: ghcr.io/shopify/{{ .ProjectName }}:latest
     image_templates:
       - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-amd64
       - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-arm64
+      - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-armv6
+      - ghcr.io/shopify/{{ .ProjectName }}:{{ .Version }}-armv7
 
 changelog:
   sort: asc
