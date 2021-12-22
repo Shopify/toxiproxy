@@ -49,7 +49,7 @@ stopping you from creating a client in any other language (see
       1. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
    2. [Populating](#2-populating-toxiproxy)
    3. [Using](#3-using-toxiproxy)
-   4. [Loggin](#4-logging)
+   4. [Logging](#4-logging)
 5. [Toxics](#toxics)
    1. [Latency](#latency)
    2. [Down](#down)
