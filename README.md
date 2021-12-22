@@ -364,7 +364,7 @@ Please consult your respective client library on usage.
 ### 4. Logging
 
 There are the following log levels: panic, fatal, error, warn or warning, info, debug and trace.
-The level could be updated via environmental variable `LOG_LEVEL`.
+The level could be updated via environment variable `LOG_LEVEL`.
 
 ### Toxics
 
