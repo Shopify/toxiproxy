@@ -47,17 +47,13 @@ func main() {
 	server.Listen(host, port)
 }
 
-const LOG_LEVEL_DEFAULT = "info"
-
 func setupLogger() {
 	val, ok := os.LookupEnv("LOG_LEVEL")
-	level := LOG_LEVEL_DEFAULT
 	if ok {
-		level = val
+		lvl, err := logrus.ParseLevel(val)
+		if err != nil {
+			return
+		}
+		logrus.SetLevel(lvl)
 	}
-	lvl, err := logrus.ParseLevel(level)
-	if err != nil {
-		return
-	}
-	logrus.SetLevel(lvl)
 }
