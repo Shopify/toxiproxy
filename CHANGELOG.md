@@ -1,5 +1,7 @@
 # [Unreleased]
 
+# [2.3.0]
+
 * Store all the executable `main` packages in `cmd` folder. (#335, @miry)
 * Extract common test helpers to own files. (#336, @miry)
 * Client: Allow HTTPS endpoints. (#338, @chen-anders)
