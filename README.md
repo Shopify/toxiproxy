@@ -49,6 +49,7 @@ stopping you from creating a client in any other language (see
       1. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
    2. [Populating](#2-populating-toxiproxy)
    3. [Using](#3-using-toxiproxy)
+   4. [Logging](#4-logging)
 5. [Toxics](#toxics)
    1. [Latency](#latency)
    2. [Down](#down)
@@ -359,6 +360,11 @@ toxiproxy-cli toxic add -t latency -a latency=1000 shopify_test_redis_master
 ```
 
 Please consult your respective client library on usage.
+
+### 4. Logging
+
+There are the following log levels: panic, fatal, error, warn or warning, info, debug and trace.
+The level could be updated via environment variable `LOG_LEVEL`.
 
 ### Toxics
 

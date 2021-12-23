@@ -7,6 +7,7 @@
 * fix: The release-test task is always success.
   add: Allow to run release-test on arm machines. (#340, @miry)
 * Upgrade `goreleaser`. Support `armv7` and `armv6` oses. (#339, @mitchellrj)
+* Allow to change log level for server. (#346, @miry)
 
 # [2.2.0]
 

@@ -31,19 +31,20 @@ func (server *ApiServer) PopulateConfig(filename string) {
 			"config": filename,
 			"error":  err,
 		}).Error("Error reading config file")
+		return
+	}
+
+	proxies, err := server.Collection.PopulateJson(file)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"config": filename,
+			"error":  err,
+		}).Error("Failed to populate proxies from file")
 	} else {
-		proxies, err := server.Collection.PopulateJson(file)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"config": filename,
-				"error":  err,
-			}).Error("Failed to populate proxies from file")
-		} else {
-			logrus.WithFields(logrus.Fields{
-				"config":  filename,
-				"proxies": len(proxies),
-			}).Info("Populated proxies from file")
-		}
+		logrus.WithFields(logrus.Fields{
+			"config":  filename,
+			"proxies": len(proxies),
+		}).Info("Populated proxies from file")
 	}
 }
 

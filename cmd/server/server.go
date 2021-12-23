@@ -5,8 +5,11 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/Shopify/toxiproxy/v2"
 )
@@ -27,6 +30,8 @@ func init() {
 }
 
 func main() {
+	setupLogger()
+
 	server := toxiproxy.NewServer()
 	if len(config) > 0 {
 		server.PopulateConfig(config)
@@ -41,4 +46,25 @@ func main() {
 	}()
 
 	server.Listen(host, port)
+}
+
+func setupLogger() {
+	val, ok := os.LookupEnv("LOG_LEVEL")
+	if !ok {
+		return
+	}
+
+	lvl, err := logrus.ParseLevel(val)
+	if err == nil {
+		logrus.SetLevel(lvl)
+		return
+	}
+
+	valid_levels := make([]string, len(logrus.AllLevels))
+	for i, level := range logrus.AllLevels {
+		valid_levels[i] = level.String()
+	}
+	levels := strings.Join(valid_levels, ",")
+
+	logrus.Errorf("unknown LOG_LEVEL value: \"%s\", use one of: %s", val, levels)
 }
