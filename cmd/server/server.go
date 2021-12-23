@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -49,11 +50,21 @@ func main() {
 
 func setupLogger() {
 	val, ok := os.LookupEnv("LOG_LEVEL")
-	if ok {
-		lvl, err := logrus.ParseLevel(val)
-		if err != nil {
-			return
-		}
-		logrus.SetLevel(lvl)
+	if !ok {
+		return
 	}
+
+	lvl, err := logrus.ParseLevel(val)
+	if err == nil {
+		logrus.SetLevel(lvl)
+		return
+	}
+
+	valid_levels := make([]string, len(logrus.AllLevels))
+	for i, level := range logrus.AllLevels {
+		valid_levels[i] = level.String()
+	}
+	levels := strings.Join(valid_levels, ",")
+
+	logrus.Errorf("unknown LOG_LEVEL value: \"%s\", use one of: %s", val, levels)
 }
