@@ -5,6 +5,9 @@ set -ueo pipefail
 VERSION_FULL="$(git describe --abbrev=0 --tags)"
 VERSION=${VERSION_FULL:1}
 ARCH=$(uname -m)
+if [ $ARCH == "x86_64" ]; then
+  ARCH="amd64"
+fi
 
 docker run -v $(PWD)/dist:/dist --pull always --rm -it ubuntu bash -c "set -xe; dpkg -i /dist/toxiproxy_*_linux_${ARCH}.deb; ls -1 /usr/bin/toxiproxy-*; /usr/bin/toxiproxy-cli --version ; /usr/bin/toxiproxy-cli --version | grep -o -e 'toxiproxy-cli version ${VERSION}'"
 docker run -v $(PWD)/dist:/dist --pull always --rm -it centos bash -c "set -xe; yum install -y /dist/toxiproxy_*_linux_${ARCH}.rpm; ls -1 /usr/bin/toxiproxy-*; /usr/bin/toxiproxy-cli --version | grep \"toxiproxy-cli version ${VERSION}\""
