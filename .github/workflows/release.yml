@@ -23,6 +23,25 @@ jobs:
           fetch-depth: 0
 
       -
+        name: GPG config
+        run: |
+          mkdir -p ~/.gnupg
+          cat << EOF >> ~/.gnupg/options
+          keyserver keys.openpgp.org
+          keyserver-options auto-key-retrieve
+          EOF
+
+      -
+        name: Verify tag signature
+        run: |
+          # NOTE: Solve the problem with Github action checkout https://github.com/actions/checkout/issues/290
+          git fetch --tags --force
+
+          version=${GITHUB_REF#refs/tags/*}
+          git show $version
+          git tag -v $version
+
+      -
         name: Log into registry ${{ env.REGISTRY }}
         uses: docker/login-action@42d299face0c5c43a0487c477f595ac9cf22f1a7
         with:

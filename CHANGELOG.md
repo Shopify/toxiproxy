@@ -1,5 +1,7 @@
 # [Unreleased]
 
+* Verify git tag on release (#347, @miry)
+
 # [2.3.0] - 2021-12-23
 
 * Store all the executable `main` packages in `cmd` folder. (#335, @miry)
