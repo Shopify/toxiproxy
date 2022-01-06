@@ -1,9 +1,16 @@
+OS := $(shell uname -s)
+GO_VERSION := $(shell go version | cut -f3 -d" ")
+GO_MINOR_VERSION := $(shell echo $(GO_VERSION) | cut -f2 -d.)
+GO_PATCH_VERSION := $(shell echo $(GO_VERSION) | cut -f3 -d. | sed "s/^\s*$$/0/")
+MALLOC_ENV := $(shell [ $(OS) = Darwin -a $(GO_MINOR_VERSION) -eq 17 -a $(GO_PATCH_VERSION) -lt 6 ] && echo "MallocNanoZone=0")
+
 .PHONY: all
 all: setup build test bench fmt lint
 
 .PHONY: test
 test:
-	go test -v -race -timeout 1m ./...
+	# NOTE: https://github.com/golang/go/issues/49138
+	$(MALLOC_ENV) go test -v -race -timeout 1m ./...
 
 .PHONY: bench
 bench:

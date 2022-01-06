@@ -1,6 +1,7 @@
 # [Unreleased]
 
 * Verify git tag on release (#347, @miry)
+* Fix MacOS 12 tests for go17 with -race flag (#351 @strech)
 
 # [2.3.0] - 2021-12-23
 
