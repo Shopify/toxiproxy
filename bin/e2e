@@ -22,7 +22,7 @@ go run testing/endpoint.go 2>&1 | sed -e 's/^/[web] /' &
 
 echo "=== Starting Toxiproxy"
 
-LOG_LEVEL=debug ./dist/toxiproxy-server  2>&1 | sed -e 's/^/[toxiproxy] /' &
+LOG_LEVEL=debug ./dist/toxiproxy-server 2>&1 | sed -e 's/^/[toxiproxy] /' &
 
 echo "=== Wait when service are available"
 
