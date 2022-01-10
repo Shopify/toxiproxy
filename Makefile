@@ -12,6 +12,14 @@ test:
 	# NOTE: https://github.com/golang/go/issues/49138
 	$(MALLOC_ENV) go test -v -race -timeout 1m ./...
 
+.PHONY: test-e2e
+test-e2e: build
+	scripts/test-e2e
+
+.PHONY: test-release
+test-release: test bench test-e2e release-dry
+	scripts/test-release
+
 .PHONY: bench
 bench:
 	# TODO: Investigate why benchmarks require more sockets: ulimit -n 10240
@@ -28,10 +36,6 @@ fmt:
 lint:
 	golangci-lint run
 
-.PHONY: e2e
-e2e: build
-	bin/e2e
-
 .PHONY: build
 build: dist clean
 	go build -ldflags="-s -w" -o ./dist/toxiproxy-server ./cmd/server
@@ -44,10 +48,6 @@ release:
 .PHONY: release-dry
 release-dry:
 	goreleaser release --rm-dist --skip-publish --skip-validate
-
-.PHONY: release-test
-release-test: test bench e2e release-dry
-	bin/release_test
 
 .PHONY: setup
 setup:

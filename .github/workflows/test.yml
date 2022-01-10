@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   test:
@@ -12,48 +12,40 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        go: [ '1.17', '1.16', '1.15', '1.14' ]
+        go: ["1.17", "1.16", "1.15", "1.14"]
     name: Go ${{ matrix.go }}
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      -
-        name: Setup go
+      - name: Setup go
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go }}
-      -
-        name: Tests
+      - name: Tests
         run: make test
 
-      -
-        name: benchmarks
+      - name: benchmarks
         run: make bench
 
   build:
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
-      -
-        name: Setup go
+      - name: Setup go
         uses: actions/setup-go@v2
         with:
           go-version: 1.17
 
-      -
-        name: E2E tests
-        run: make e2e
+      - name: E2E tests
+        run: make test-e2e
 
-      -
-        name: Build
+      - name: Build
         uses: goreleaser/goreleaser-action@5df302e5e9e4c66310a6b6493a8865b12c555af2
         with:
           distribution: goreleaser
