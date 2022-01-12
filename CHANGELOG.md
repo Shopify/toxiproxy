@@ -3,7 +3,7 @@
 * Verify git tag on release (#347, @miry)
 * Fix MacOS 12 tests for go17 with -race flag (#351, @strech)
 * Rename `testing/` and `bin/` folders (#354, @strech)
-* Added verbose error on proxy upstream dialing
+* Added verbose error on proxy upstream dialing (#355, @f-dg)
 
 # [2.3.0] - 2021-12-23
 
