@@ -184,7 +184,7 @@ func (proxy *Proxy) server() {
 				"client":   client.RemoteAddr(),
 				"proxy":    proxy.Listen,
 				"upstream": proxy.Upstream,
-			}).Error("Unable to open connection to upstream")
+			}).Error("Unable to open connection to upstream: " + err.Error())
 			client.Close()
 			continue
 		}
