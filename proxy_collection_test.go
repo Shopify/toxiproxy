@@ -41,6 +41,30 @@ func TestAddTwoProxiesToCollection(t *testing.T) {
 	}
 }
 
+func TestAddOrReplaceProxyToCollectionWithRandomPort(t *testing.T) {
+	collection := toxiproxy.NewProxyCollection()
+	proxy1 := NewTestProxy("test", "localhost:20000")
+	proxy2 := NewTestProxy("test", "localhost:0")
+
+	err := collection.AddOrReplace(proxy1, false)
+	if err != nil {
+		t.Error("Expected to be able to add first proxy to collection")
+	}
+
+	err = collection.AddOrReplace(proxy2, false)
+	if err != nil {
+		t.Error("Expected to be able to add second proxy to collection")
+	}
+
+	proxyByName, err := collection.Get("test")
+	if err != nil {
+		t.Error("Expected to find proxy in collection")
+	}
+	if proxyByName.Listen != proxy1.Listen {
+		t.Error("Expected original `.Listen` to be unchanged")
+	}
+}
+
 func TestListProxies(t *testing.T) {
 	collection := toxiproxy.NewProxyCollection()
 	proxy := NewTestProxy("test", "localhost:20000")

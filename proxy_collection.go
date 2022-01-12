@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"sync"
 )
 
@@ -51,6 +52,16 @@ func (collection *ProxyCollection) AddOrReplace(proxy *Proxy, start bool) error 
 		if existing.Listen == proxy.Listen && existing.Upstream == proxy.Upstream {
 			return nil
 		}
+
+		// this is heavier than using strings.HasSuffix but is safe for ipv6 etc.
+		_, port, err := net.SplitHostPort(proxy.Listen)
+		if err != nil {
+			return err
+		}
+		if port == "0" {
+			return nil
+		}
+
 		existing.Stop()
 	}
 
