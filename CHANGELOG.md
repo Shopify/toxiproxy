@@ -4,6 +4,7 @@
 * Fix MacOS 12 tests for go17 with -race flag (#351, @strech)
 * Rename `testing/` and `bin/` folders (#354, @strech)
 * Added verbose error on proxy upstream dialing (#355, @f-dg)
+* Improve server startup message (#358, @areveny)
 
 # [2.3.0] - 2021-12-23
 
