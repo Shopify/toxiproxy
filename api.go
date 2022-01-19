@@ -81,7 +81,8 @@ func (server *ApiServer) Listen(host string, port string) {
 		"host":    host,
 		"port":    port,
 		"version": Version,
-	}).Info("API HTTP server starting")
+	}).Info("Toxiproxy HTTP server is starting")
+	logrus.Printf("Toxiproxy has started. Verify with `curl %s:%s/version`", host, port)
 
 	err := http.ListenAndServe(net.JoinHostPort(host, port), nil)
 	if err != nil {
