@@ -38,14 +38,14 @@ func TestSlicerToxic(t *testing.T) {
 
 	buf := make([]byte, 0, len(data))
 	reads := 0
-L:
-	for {
+
+	for timeout := false; !timeout; {
 		select {
 		case c := <-output:
 			reads++
 			buf = append(buf, c.Data...)
 		case <-time.After(10 * time.Millisecond):
-			break L
+			timeout = true
 		}
 	}
 
@@ -86,14 +86,14 @@ func TestSlicerToxicZeroSizeVariation(t *testing.T) {
 
 	buf := make([]byte, 0, len(data))
 	reads := 0
-L:
-	for {
+
+	for timeout := false; !timeout; {
 		select {
 		case c := <-output:
 			reads++
 			buf = append(buf, c.Data...)
 		case <-time.After(10 * time.Millisecond):
-			break L
+			timeout = true
 		}
 	}
 
