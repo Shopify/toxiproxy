@@ -81,7 +81,7 @@ func (server *ApiServer) Listen(host string, port string) {
 		"host":    host,
 		"port":    port,
 		"version": Version,
-	}).Info("API HTTP server starting")
+	}).Infof("Starting HTTP server on endpoint %s:%s", host, port)
 
 	err := http.ListenAndServe(net.JoinHostPort(host, port), nil)
 	if err != nil {
