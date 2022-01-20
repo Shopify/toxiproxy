@@ -31,10 +31,13 @@ fmt:
 	go fmt ./...
 	goimports -w **/*.go
 	golangci-lint run --fix
+	shfmt -l -s -w -kp -i 2 scripts/* Dockerfile Makefile
 
 .PHONY: lint
 lint:
 	golangci-lint run
+	shellcheck scripts/*
+	shfmt -l -s -d -kp -i 2 scripts/*
 
 .PHONY: build
 build: dist clean
