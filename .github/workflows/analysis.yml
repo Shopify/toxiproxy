@@ -25,6 +25,13 @@ jobs:
         with:
           version: v1.42.1
 
+      -
+        name: shellcheck
+        uses: azohra/shell-linter@6bbeaa868df09c34ddc008e6030cfe89c03394a1
+        with:
+          path: scripts/*
+          severity: error
+
 
   vulnerabilities:
     runs-on: ubuntu-latest
