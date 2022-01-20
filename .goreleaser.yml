@@ -3,7 +3,7 @@
 project_name: toxiproxy
 
 env:
-- GO111MODULE=on
+  - GO111MODULE=on
 
 before:
   hooks:
