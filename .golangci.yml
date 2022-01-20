@@ -1,3 +1,5 @@
+---
+
 linters:
   disable-all: true
   enable:

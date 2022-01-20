@@ -1,3 +1,5 @@
+---
+
 project_name: toxiproxy
 
 env:
@@ -51,7 +53,7 @@ builds:
     binary: toxiproxy-server-{{.Os}}-{{.Arch}}v{{.Arm}}
 
   - &build_client
-    <<: *build_default 
+    <<: *build_default
     id: client
     main: ./cmd/cli
     binary: toxiproxy-cli-{{.Os}}-{{.Arch}}
@@ -101,10 +103,10 @@ nfpms:
       - apk
       - deb
       - rpm
-    # NOTE: Starting with Ubuntu 15.04, Upstart will be deprecated in favor of Systemd.
-    # contents:
-    #   - src: share/toxiproxy.conf
-    #     dst: /etc/init/toxiproxy.conf
+      # NOTE: Starting with Ubuntu 15.04, Upstart will be deprecated in favor of Systemd.
+      # contents:
+      #   - src: share/toxiproxy.conf
+      #     dst: /etc/init/toxiproxy.conf
 
 dockers:
   - &docker

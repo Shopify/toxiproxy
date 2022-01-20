@@ -38,6 +38,7 @@ lint:
 	golangci-lint run
 	shellcheck scripts/*
 	shfmt -l -s -d -kp -i 2 scripts/*
+	yamllint .
 
 .PHONY: build
 build: dist clean

@@ -1,0 +1,18 @@
+---
+
+yaml-files:
+  - '*.yaml'
+  - '*.yml'
+
+ignore: |
+  vendor/**/*
+
+rules:
+  line-length:
+    max: 100
+    level: warning
+  comments:
+    require-starting-space: true
+  comments-indentation: enable
+  document-start:
+    present: true
