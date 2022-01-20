@@ -45,8 +45,8 @@ builds:
     goarch:
       - arm
     goarm:
-      - 6
-      - 7
+      - '6'
+      - '7'
     ignore:
       - goos: windows
         goarch: arm
@@ -63,8 +63,8 @@ builds:
     goarch:
       - arm
     goarm:
-      - 6
-      - 7
+      - '6'
+      - '7'
     ignore:
       - goos: windows
         goarch: arm
@@ -85,7 +85,7 @@ checksum:
   name_template: checksums.txt
 
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  name_template: '{{ incpatch .Version }}-next'
 
 nfpms:
   -
@@ -151,7 +151,7 @@ dockers:
       - --label=org.opencontainers.image.licenses=MIT
   - <<: *docker
     goarch: arm
-    goarm: 7
+    goarm: '7'
     image_templates:
       - ghcr.io/shopify/toxiproxy:{{ .Version }}-armv7
       - ghcr.io/shopify/toxiproxy:v{{ .Major }}-armv7
@@ -169,7 +169,7 @@ dockers:
       - --label=org.opencontainers.image.licenses=MIT
   - <<: *docker
     goarch: arm
-    goarm: 6
+    goarm: '6'
     image_templates:
       - ghcr.io/shopify/toxiproxy:{{ .Version }}-armv6
       - ghcr.io/shopify/toxiproxy:v{{ .Major }}-armv6
@@ -208,13 +208,13 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
-      - '^Merge'
+      - ^Merge
 
 archives:
   -
     id: archive_binaries
     format: binary
-    name_template: "{{ .Binary }}"
+    name_template: '{{ .Binary }}'
     builds:
       - server
       - client
