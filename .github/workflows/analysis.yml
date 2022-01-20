@@ -1,3 +1,5 @@
+---
+
 name: Analysis
 
 on:
@@ -6,32 +8,33 @@ on:
   pull_request:
     branches: [ master ]
   schedule:
-    - cron: '13 7 * * 6'
+    - cron: 13 7 * * 6
 
 jobs:
   linting:
     runs-on: ubuntu-latest
 
     steps:
-      -
-        name: checkout
+      - name: checkout
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
-      -
-        name: golangci-lint
+      - name: golangci-lint
         uses: golangci/golangci-lint-action@5c56cd6c9dc07901af25baab6f2b0d9f3b7c3018
         with:
-          version: v1.42.1
+          version: v1.43.0
 
-      -
-        name: shellcheck
+      - name: shellcheck
         uses: azohra/shell-linter@6bbeaa868df09c34ddc008e6030cfe89c03394a1
         with:
-          path: scripts/*
+          path: scripts/test-*
           severity: error
 
+      - name: yaml-lint
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          config_file: .yamllint.yml
 
   vulnerabilities:
     runs-on: ubuntu-latest
@@ -40,18 +43,15 @@ jobs:
       security-events: write
 
     steps:
-      -
-        name: checkout
+      - name: checkout
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
-      -
-        name: initialize
+      - name: initialize
         uses: github/codeql-action/init@v1
         with:
           languages: go
 
-      -
-        name: codeql analyze
+      - name: codeql analyze
         uses: github/codeql-action/analyze@v1
