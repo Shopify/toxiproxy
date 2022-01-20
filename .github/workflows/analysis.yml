@@ -25,15 +25,19 @@ jobs:
         name: golangci-lint
         uses: golangci/golangci-lint-action@5c56cd6c9dc07901af25baab6f2b0d9f3b7c3018
         with:
-          version: v1.42.1
+          version: v1.43.0
 
       -
         name: shellcheck
         uses: azohra/shell-linter@6bbeaa868df09c34ddc008e6030cfe89c03394a1
         with:
-          path: scripts/*
+          path: scripts/test-*
           severity: error
-
+      - name: yaml-lint
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: myfolder/*values*.yaml
+          config_file: .yamllint.yml
 
   vulnerabilities:
     runs-on: ubuntu-latest
