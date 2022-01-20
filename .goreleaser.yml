@@ -33,14 +33,16 @@ builds:
       - arm64
 
     ignore:
-      - goos: windows
+      -
+        goos: windows
         goarch: arm64
       - goarch: arm
 
     ldflags:
       - -s -w -X github.com/Shopify/toxiproxy/v2.Version={{.Version}}
 
-  - <<: *build_default
+  -
+    <<: *build_default
     id: server-arm
     goarch:
       - arm
@@ -48,7 +50,8 @@ builds:
       - '6'
       - '7'
     ignore:
-      - goos: windows
+      -
+        goos: windows
         goarch: arm
     binary: toxiproxy-server-{{.Os}}-{{.Arch}}v{{.Arm}}
 
@@ -58,7 +61,8 @@ builds:
     main: ./cmd/cli
     binary: toxiproxy-cli-{{.Os}}-{{.Arch}}
 
-  - <<: *build_client
+  -
+    <<: *build_client
     id: client-arm
     goarch:
       - arm
@@ -66,16 +70,19 @@ builds:
       - '6'
       - '7'
     ignore:
-      - goos: windows
+      -
+        goos: windows
         goarch: arm
     binary: toxiproxy-cli-{{.Os}}-{{.Arch}}v{{.Arm}}
 
-  - <<: *build_default
+  -
+    <<: *build_default
     id: pkg-server
     no_unique_dist_dir: false
     binary: toxiproxy-server
 
-  - <<: *build_default
+  -
+    <<: *build_default
     id: pkg-client
     no_unique_dist_dir: false
     main: ./cmd/cli
@@ -132,7 +139,8 @@ dockers:
       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.licenses=MIT
-  - <<: *docker
+  -
+    <<: *docker
     goarch: arm64
     image_templates:
       - ghcr.io/shopify/toxiproxy:{{ .Version }}-arm64
@@ -149,7 +157,8 @@ dockers:
       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.licenses=MIT
-  - <<: *docker
+  -
+    <<: *docker
     goarch: arm
     goarm: '7'
     image_templates:
@@ -167,7 +176,8 @@ dockers:
       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.licenses=MIT
-  - <<: *docker
+  -
+    <<: *docker
     goarch: arm
     goarm: '6'
     image_templates:

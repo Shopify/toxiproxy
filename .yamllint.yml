@@ -6,6 +6,7 @@ yaml-files:
 
 ignore: |
   vendor/**/*
+  dist/*.yaml
 
 rules:
   comments:
@@ -29,4 +30,3 @@ rules:
   quoted-strings:
     quote-type: single
     required: only-when-needed
-

@@ -16,37 +16,45 @@ jobs:
         go: ['1.17', '1.16', '1.15', '1.14']
     name: Go ${{ matrix.go }}
     steps:
-      - name: Checkout
+      -
+        name: Checkout
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: Setup go
+      -
+        name: Setup go
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go }}
-      - name: Tests
+      -
+        name: Tests
         run: make test
 
-      - name: benchmarks
+      -
+        name: benchmarks
         run: make bench
 
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      -
+        name: Checkout
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
-      - name: Setup go
+      -
+        name: Setup go
         uses: actions/setup-go@v2
         with:
           go-version: 1.17
 
-      - name: E2E tests
+      -
+        name: E2E tests
         run: make test-e2e
 
-      - name: Build
+      -
+        name: Build
         uses: goreleaser/goreleaser-action@79d4afbba1b4eff8b9a98e3d2e58c4dbaf094e2b
         with:
           distribution: goreleaser

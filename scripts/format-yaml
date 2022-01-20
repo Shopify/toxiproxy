@@ -1,0 +1,47 @@
+#!/usr/bin/env ruby
+
+require "yaml"
+
+ARRAY_PATTERN = /^([ \t]*)- ([^ :]+: .+)$/
+YAML_FILES_EXTS = %w[.yml .yaml]
+
+def format_file(file)
+  return unless YAML_FILES_EXTS.include?(file[-4..])
+  yaml = File.read(file)
+  content = yaml.split("\n")
+  result = []
+  while line = content.shift
+    m = line.match ARRAY_PATTERN
+    if m && content[0].match(/^#{m[1]}  [^ ].*/)
+      result << m[1] + "-" << m[1] + "  " + m[2]
+    else
+      result << line
+    end
+  end
+
+  result << ""
+  result = result.join("\n")
+
+  return if result == yaml
+
+  File.open(file, 'w') do |file|
+    file.write result
+  end
+
+rescue => e
+  $stderr.puts "ERROR: Could not process file #{file} : #{e.message}"
+  raise
+end
+
+def process_entity(entity)
+  if File.file?(entity)
+    format_file(entity)
+  elsif File.directory?(entity)
+    Dir.children(entity).each {|e| process_entity(entity + "/" + e) }
+  end
+end
+
+ARGV.each do |arg|
+  process_entity arg
+end
+
