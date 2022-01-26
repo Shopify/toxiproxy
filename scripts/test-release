@@ -56,6 +56,6 @@ $server --version | grep -o -e "toxiproxy-server version ${VERSION}"
 goreleaser build --rm-dist --single-target --skip-validate --id client
 bineries=(./dist/toxiproxy-cli-*)
 cli="${bineries[0]}"
-$cli --help 2>&1 \
-  | grep -o -e "toxiproxy-cli - Simulate network and system conditions"
+$cli --help 2>&1 |
+  grep -o -e "toxiproxy-cli - Simulate network and system conditions"
 $cli --version | grep -o -e "toxiproxy-cli version ${VERSION}"

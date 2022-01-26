@@ -5,6 +5,7 @@
 * Rename `testing/` and `bin/` folders (#354, @strech)
 * Added verbose error on proxy upstream dialing (#355, @f-dg)
 * Improve server startup message (#358, @areveny)
+* Introduce yaml linter. (#362, @miry)
 * Handle slicer toxic with zero `SizeVariation` and fix slicing randomization (#359, @areveny)
 
 # [2.3.0] - 2021-12-23

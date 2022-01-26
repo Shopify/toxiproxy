@@ -1,0 +1,32 @@
+---
+
+yaml-files:
+  - "*.yaml"
+  - "*.yml"
+
+ignore: |
+  vendor/**/*
+  dist/*.yaml
+
+rules:
+  comments:
+    require-starting-space: true
+  comments-indentation: enable
+  document-start:
+    present: true
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: true
+  line-length:
+    max: 100
+    level: warning
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: false
+  key-duplicates: enable
+  new-lines:
+    type: unix
+  trailing-spaces: enable
+  quoted-strings:
+    quote-type: double
+    required: only-when-needed
