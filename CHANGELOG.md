@@ -7,6 +7,7 @@
 * Improve server startup message (#358, @areveny)
 * Introduce yaml linter. (#362, @miry)
 * Handle slicer toxic with zero `SizeVariation` and fix slicing randomization (#359, @areveny)
+* Added /metrics endpoint for exposing Prometheus-compatible internal metrics (#366, @neufeldtech)
 
 # [2.3.0] - 2021-12-23
 

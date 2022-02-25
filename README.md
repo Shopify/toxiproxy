@@ -41,31 +41,36 @@ stopping you from creating a client in any other language (see
 
 ## Table of Contents
 
-1. [Why yet another chaotic TCP proxy?](#why-yet-another-chaotic-tcp-proxy)
-2. [Clients](#clients)
-3. [Example](#example)
-4. [Usage](#usage)
-   1. [Installing](#1-installing-toxiproxy)
-      1. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
-   2. [Populating](#2-populating-toxiproxy)
-   3. [Using](#3-using-toxiproxy)
-   4. [Logging](#4-logging)
-5. [Toxics](#toxics)
-   1. [Latency](#latency)
-   2. [Down](#down)
-   3. [Bandwidth](#bandwidth)
-   4. [Slow close](#slow_close)
-   5. [Timeout](#timeout)
-   6. [Reset peer](#reset_peer)
-   7. [Slicer](#slicer)
-6. [HTTP API](#http-api)
-   1. [Proxy fields](#proxy-fields)
-   2. [Toxic fields](#toxic-fields)
-   3. [Endpoints](#endpoints)
-   4. [Populating Proxies](#populating-proxies)
-7. [CLI example](#cli-example)
-8. [FAQ](#frequently-asked-questions)
-9. [Development](#development)
+- [Toxiproxy](#toxiproxy)
+  - [Table of Contents](#table-of-contents)
+  - [Why yet another chaotic TCP proxy?](#why-yet-another-chaotic-tcp-proxy)
+  - [Clients](#clients)
+  - [Example](#example)
+  - [Usage](#usage)
+    - [1. Installing Toxiproxy](#1-installing-toxiproxy)
+      - [Upgrading from Toxiproxy 1.x](#upgrading-from-toxiproxy-1x)
+    - [2. Populating Toxiproxy](#2-populating-toxiproxy)
+    - [3. Using Toxiproxy](#3-using-toxiproxy)
+    - [4. Logging](#4-logging)
+    - [Toxics](#toxics)
+      - [latency](#latency)
+      - [down](#down)
+      - [bandwidth](#bandwidth)
+      - [slow_close](#slow_close)
+      - [timeout](#timeout)
+      - [reset_peer](#reset_peer)
+      - [slicer](#slicer)
+      - [limit_data](#limit_data)
+    - [HTTP API](#http-api)
+      - [Proxy fields:](#proxy-fields)
+      - [Toxic fields:](#toxic-fields)
+      - [Endpoints](#endpoints)
+      - [Populating Proxies](#populating-proxies)
+    - [CLI Example](#cli-example)
+    - [Metrics](#metrics)
+    - [Frequently Asked Questions](#frequently-asked-questions)
+    - [Development](#development)
+    - [Release](#release)
 
 ## Why yet another chaotic TCP proxy?
 
@@ -497,6 +502,7 @@ All endpoints are JSON.
  - **DELETE /proxies/{proxy}/toxics/{toxic}** - Remove an active toxic
  - **POST /reset** - Enable all proxies and remove all active toxics
  - **GET /version** - Returns the server version number
+ - **GET /metrics** - Returns Prometheus-compatible metrics
 
 #### Populating Proxies
 
@@ -564,6 +570,11 @@ Deleted proxy redis
 $ redis-cli -p 26379
 Could not connect to Redis at 127.0.0.1:26379: Connection refused
 ```
+
+### Metrics
+
+Toxiproxy exposes Prometheus-compatible metrics via its HTTP API at /metrics.
+See [METRICS.md](./METRICS.md) for full descriptions
 
 ### Frequently Asked Questions
 

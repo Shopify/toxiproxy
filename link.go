@@ -43,7 +43,6 @@ func NewToxicLink(
 		toxics:    collection,
 		direction: direction,
 	}
-
 	// Initialize the link with ToxicStubs
 	last := make(chan *stream.StreamChunk) // The first toxic is always a noop
 	link.input = stream.NewChanWriter(last)
@@ -63,18 +62,19 @@ func NewToxicLink(
 }
 
 // Start the link with the specified toxics.
-func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser) {
-	go func() {
-		bytes, err := io.Copy(link.input, source)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"name":  link.proxy.Name,
-				"bytes": bytes,
-				"err":   err,
-			}).Warn("Source terminated")
-		}
-		link.input.Close()
-	}()
+func (link *ToxicLink) Start(
+	server *ApiServer,
+	name string,
+	source io.Reader,
+	dest io.WriteCloser,
+) {
+	labels := []string{
+		link.Direction(),
+		link.proxy.Name,
+		link.proxy.Listen,
+		link.proxy.Upstream}
+
+	go link.read(labels, server, source)
 
 	for i, toxic := range link.toxics.chain[link.direction] {
 		if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
@@ -102,19 +102,52 @@ func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser)
 		go link.stubs[i].Run(toxic)
 	}
 
-	go func() {
-		bytes, err := io.Copy(dest, link.output)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"name":  link.proxy.Name,
-				"bytes": bytes,
-				"err":   err,
-			}).Warn("Destination terminated")
-		}
-		dest.Close()
-		link.toxics.RemoveLink(name)
-		link.proxy.RemoveConnection(name)
-	}()
+	go link.write(labels, name, server, dest)
+}
+
+// read copies bytes from a source to the link's input channel.
+func (link *ToxicLink) read(
+	metricLabels []string,
+	server *ApiServer,
+	source io.Reader,
+) {
+	bytes, err := io.Copy(link.input, source)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"name":  link.proxy.Name,
+			"bytes": bytes,
+			"err":   err,
+		}).Warn("Source terminated")
+	}
+	if server.Metrics.proxyMetricsEnabled() {
+		server.Metrics.ProxyMetrics.ReceivedBytesTotal.
+			WithLabelValues(metricLabels...).Add(float64(bytes))
+	}
+	link.input.Close()
+}
+
+// write copies bytes from the link's output channel to a destination.
+func (link *ToxicLink) write(
+	metricLabels []string,
+	name string,
+	server *ApiServer,
+	dest io.WriteCloser,
+) {
+	bytes, err := io.Copy(dest, link.output)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"name":  link.proxy.Name,
+			"bytes": bytes,
+			"err":   err,
+		}).Warn("Destination terminated")
+	}
+	if server.Metrics.proxyMetricsEnabled() {
+		server.Metrics.ProxyMetrics.SentBytesTotal.
+			WithLabelValues(metricLabels...).Add(float64(bytes))
+	}
+	dest.Close()
+	link.toxics.RemoveLink(name)
+	link.proxy.RemoveConnection(name)
 }
 
 // Add a toxic to the end of the chain.
@@ -203,4 +236,12 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 
 		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1])
 	}
+}
+
+// Direction returns the direction of the link (upstream or downstream).
+func (link *ToxicLink) Direction() string {
+	if link.direction == stream.Upstream {
+		return "upstream"
+	}
+	return "downstream"
 }

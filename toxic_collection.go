@@ -173,6 +173,7 @@ func (c *ToxicCollection) RemoveToxic(name string) error {
 }
 
 func (c *ToxicCollection) StartLink(
+	server *ApiServer,
 	name string,
 	input io.Reader,
 	output io.WriteCloser,
@@ -182,7 +183,7 @@ func (c *ToxicCollection) StartLink(
 	defer c.Unlock()
 
 	link := NewToxicLink(c.proxy, c, direction)
-	link.Start(name, input, output)
+	link.Start(server, name, input, output)
 	c.links[name] = link
 }
 
