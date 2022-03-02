@@ -66,7 +66,10 @@ func (collection *ProxyCollection) AddOrReplace(proxy *Proxy, start bool) error 
 	return nil
 }
 
-func (collection *ProxyCollection) PopulateJson(data io.Reader) ([]*Proxy, error) {
+func (collection *ProxyCollection) PopulateJson(
+	server *ApiServer,
+	data io.Reader,
+) ([]*Proxy, error) {
 	input := []struct {
 		Proxy
 		Enabled *bool `json:"enabled"` // Overrides Proxy field to make field nullable
@@ -94,7 +97,7 @@ func (collection *ProxyCollection) PopulateJson(data io.Reader) ([]*Proxy, error
 	proxies := make([]*Proxy, 0, len(input))
 
 	for i := range input {
-		proxy := NewProxy()
+		proxy := NewProxy(server)
 		proxy.Name = input[i].Name
 		proxy.Listen = input[i].Listen
 		proxy.Upstream = input[i].Upstream

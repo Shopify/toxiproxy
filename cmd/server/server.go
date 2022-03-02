@@ -10,17 +10,21 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/collectors"
 )
 
 type cliArguments struct {
-	host         string
-	port         string
-	config       string
-	seed         int64
-	printVersion bool
+	host           string
+	port           string
+	config         string
+	seed           int64
+	printVersion   bool
+	proxyMetrics   bool
+	runtimeMetrics bool
 }
 
 func parseArguments() cliArguments {
@@ -33,6 +37,10 @@ func parseArguments() cliArguments {
 		"JSON file containing proxies to create on startup")
 	flag.Int64Var(&result.seed, "seed", time.Now().UTC().UnixNano(),
 		"Seed for randomizing toxics with")
+	flag.BoolVar(&result.runtimeMetrics, "runtime-metrics", false,
+		`enable runtime-related prometheus metrics (default "false")`)
+	flag.BoolVar(&result.proxyMetrics, "proxy-metrics", false,
+		`enable toxiproxy-specific prometheus metrics (default "false")`)
 	flag.BoolVar(&result.printVersion, "version", false,
 		`print the version (default "false")`)
 	flag.Parse()
@@ -63,7 +71,14 @@ func run(cli cliArguments) {
 
 	rand.Seed(cli.seed)
 
-	server := toxiproxy.NewServer()
+	metrics := toxiproxy.NewMetricsContainer(prometheus.NewRegistry())
+	server := toxiproxy.NewServer(metrics)
+	if cli.proxyMetrics {
+		server.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
+	}
+	if cli.runtimeMetrics {
+		server.Metrics.RuntimeMetrics = collectors.NewRuntimeMetricCollectors()
+	}
 	if len(cli.config) > 0 {
 		server.PopulateConfig(cli.config)
 	}

@@ -30,6 +30,7 @@ type Proxy struct {
 	tomb        tomb.Tomb
 	connections ConnectionList
 	Toxics      *ToxicCollection `json:"-"`
+	apiServer   *ApiServer
 }
 
 type ConnectionList struct {
@@ -47,10 +48,11 @@ func (c *ConnectionList) Unlock() {
 
 var ErrProxyAlreadyStarted = errors.New("Proxy already started")
 
-func NewProxy() *Proxy {
+func NewProxy(server *ApiServer) *Proxy {
 	proxy := &Proxy{
 		started:     make(chan error),
 		connections: ConnectionList{list: make(map[string]net.Conn)},
+		apiServer:   server,
 	}
 	proxy.Toxics = NewToxicCollection(proxy)
 	return proxy
@@ -194,8 +196,8 @@ func (proxy *Proxy) server() {
 		proxy.connections.list[name+"upstream"] = upstream
 		proxy.connections.list[name+"downstream"] = client
 		proxy.connections.Unlock()
-		proxy.Toxics.StartLink(name+"upstream", client, upstream, stream.Upstream)
-		proxy.Toxics.StartLink(name+"downstream", upstream, client, stream.Downstream)
+		proxy.Toxics.StartLink(proxy.apiServer, name+"upstream", client, upstream, stream.Upstream)
+		proxy.Toxics.StartLink(proxy.apiServer, name+"downstream", upstream, client, stream.Downstream)
 	}
 }
 

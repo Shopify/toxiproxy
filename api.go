@@ -16,11 +16,13 @@ import (
 
 type ApiServer struct {
 	Collection *ProxyCollection
+	Metrics    *metricsContainer
 }
 
-func NewServer() *ApiServer {
+func NewServer(m *metricsContainer) *ApiServer {
 	return &ApiServer{
 		Collection: NewProxyCollection(),
+		Metrics:    m,
 	}
 }
 
@@ -34,7 +36,7 @@ func (server *ApiServer) PopulateConfig(filename string) {
 		return
 	}
 
-	proxies, err := server.Collection.PopulateJson(file)
+	proxies, err := server.Collection.PopulateJson(server, file)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"config": filename,
@@ -74,6 +76,10 @@ func (server *ApiServer) Listen(host string, port string) {
 	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE")
 
 	r.HandleFunc("/version", server.Version).Methods("GET")
+
+	if server.Metrics.anyMetricsEnabled() {
+		r.Handle("/metrics", server.Metrics.handler())
+	}
 
 	http.Handle("/", StopBrowsersMiddleware(r))
 
@@ -145,7 +151,7 @@ func (server *ApiServer) ProxyCreate(response http.ResponseWriter, request *http
 		return
 	}
 
-	proxy := NewProxy()
+	proxy := NewProxy(server)
 	proxy.Name = input.Name
 	proxy.Listen = input.Listen
 	proxy.Upstream = input.Upstream
@@ -169,7 +175,7 @@ func (server *ApiServer) ProxyCreate(response http.ResponseWriter, request *http
 }
 
 func (server *ApiServer) Populate(response http.ResponseWriter, request *http.Request) {
-	proxies, err := server.Collection.PopulateJson(request.Body)
+	proxies, err := server.Collection.PopulateJson(server, request.Body)
 
 	apiErr, ok := err.(*ApiError)
 	if !ok && err != nil {

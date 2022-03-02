@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/collectors"
 	"github.com/Shopify/toxiproxy/v2/toxics"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v1"
 )
@@ -21,7 +23,9 @@ func init() {
 }
 
 func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
-	proxy := toxiproxy.NewProxy()
+	srv := toxiproxy.NewServer(toxiproxy.NewMetricsContainer(prometheus.NewRegistry()))
+	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
+	proxy := toxiproxy.NewProxy(srv)
 
 	proxy.Name = name
 	proxy.Listen = "localhost:0"
