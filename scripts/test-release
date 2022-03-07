@@ -22,9 +22,9 @@ docker run -v "$(PWD)"/dist:/dist --pull always --rm -it ubuntu bash -c \
   /usr/bin/toxiproxy-cli --version \
     | grep -o -e 'toxiproxy-cli version ${VERSION}'"
 
-docker run -v "$(PWD)"/dist:/dist --pull always --rm -it centos bash -c \
+docker run -v "$(PWD)"/dist:/dist --pull always --rm -it fedora bash -c \
   "set -xe;
-  yum install -y /dist/toxiproxy_*_linux_${ARCH}.rpm;
+  yum localinstall -y /dist/toxiproxy_*_linux_${ARCH}.rpm;
   ls -1 /usr/bin/toxiproxy-*;
   /usr/bin/toxiproxy-server --version;
   /usr/bin/toxiproxy-server --version \

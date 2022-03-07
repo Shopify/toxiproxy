@@ -1,5 +1,7 @@
 # [Unreleased]
 
+# [2.4.0] - 2022-03-07
+
 * Verify git tag on release (#347, @miry)
 * Fix MacOS 12 tests for go17 with -race flag (#351, @strech)
 * Rename `testing/` and `bin/` folders (#354, @strech)
@@ -169,7 +171,8 @@
 
 Initial public release.
 
-[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/Shopify/toxiproxy/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/Shopify/toxiproxy/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/Shopify/toxiproxy/compare/v2.1.7...v2.2.0
 [2.1.7]: https://github.com/Shopify/toxiproxy/compare/v2.1.6...v2.1.7
