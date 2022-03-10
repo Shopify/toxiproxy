@@ -30,7 +30,9 @@ func TestProxyMetricsReceivedSentBytes(t *testing.T) {
 	w := &testWriteCloser{
 		bufio.NewWriter(bytes.NewBuffer([]byte{})),
 	}
-	proxy.Toxics.StartLink(srv, "testupstream", r, w, stream.Upstream)
+	linkName := "testupstream"
+	proxy.Toxics.StartLink(srv, linkName, r, w, stream.Upstream)
+	proxy.Toxics.RemoveLink(linkName)
 	gotMetrics := prometheusOutput(t, srv, "toxiproxy")
 	if !reflect.DeepEqual(gotMetrics, expectedMetrics) {
 		t.Fatalf("expected: %v got: %v", expectedMetrics, gotMetrics)
