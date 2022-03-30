@@ -75,7 +75,7 @@ stopping you from creating a client in any other language (see
 ## Why yet another chaotic TCP proxy?
 
 The existing ones we found didn't provide the kind of dynamic API we needed for
-integration and unit testing. Linux tools like `nc` and so on are not
+integration and unit testing. Linux tools like `tc` and so on are not
 cross-platform and require root, which makes them problematic in test,
 development and CI environments.
 
