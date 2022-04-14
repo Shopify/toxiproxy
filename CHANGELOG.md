@@ -1,5 +1,7 @@
 # [Unreleased]
 
+* Support go 1.18.
+
 # [2.4.0] - 2022-03-07
 
 * Verify git tag on release (#347, @miry)
