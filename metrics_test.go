@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -15,17 +16,14 @@ import (
 )
 
 func TestProxyMetricsReceivedSentBytes(t *testing.T) {
-	expectedMetrics := []string{
-
-		`toxiproxy_proxy_received_bytes_total{direction="upstream",listener="localhost:0",proxy="test",upstream="upstream"} 5`, //nolint
-		`toxiproxy_proxy_sent_bytes_total{direction="upstream",listener="localhost:0",proxy="test",upstream="upstream"} 5`,     //nolint
-	}
 	srv := NewServer(NewMetricsContainer(prometheus.NewRegistry()))
 	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
+
 	proxy := NewProxy(srv)
-	proxy.Name = "test"
+	proxy.Name = "test_proxy_metrics_received_sent_bytes"
 	proxy.Listen = "localhost:0"
 	proxy.Upstream = "upstream"
+
 	r := bufio.NewReader(bytes.NewBufferString("hello"))
 	w := &testWriteCloser{
 		bufio.NewWriter(bytes.NewBuffer([]byte{})),
@@ -33,21 +31,52 @@ func TestProxyMetricsReceivedSentBytes(t *testing.T) {
 	linkName := "testupstream"
 	proxy.Toxics.StartLink(srv, linkName, r, w, stream.Upstream)
 	proxy.Toxics.RemoveLink(linkName)
-	gotMetrics := prometheusOutput(t, srv, "toxiproxy")
-	if !reflect.DeepEqual(gotMetrics, expectedMetrics) {
-		t.Fatalf("expected: %v got: %v", expectedMetrics, gotMetrics)
+
+	actual := prometheusOutput(t, srv, "toxiproxy_proxy")
+
+	expected := []string{
+		`toxiproxy_proxy_received_bytes_total{` +
+			`direction="upstream",listener="localhost:0",` +
+			`proxy="test_proxy_metrics_received_sent_bytes",upstream="upstream"` +
+			`} 5`,
+
+		`toxiproxy_proxy_sent_bytes_total{` +
+			`direction="upstream",listener="localhost:0",` +
+			`proxy="test_proxy_metrics_received_sent_bytes",upstream="upstream"` +
+			`} 5`,
+	}
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf(
+			"\nexpected:\n  [%v]\ngot:\n  [%v]",
+			strings.Join(expected, "\n  "),
+			strings.Join(actual, "\n  "),
+		)
 	}
 }
+
 func TestRuntimeMetricsBuildInfo(t *testing.T) {
-	expectedMetrics := []string{
-		`go_build_info{checksum="unknown",path="unknown",version="unknown"} 1`,
-	}
 	srv := NewServer(NewMetricsContainer(prometheus.NewRegistry()))
 	srv.Metrics.RuntimeMetrics = collectors.NewRuntimeMetricCollectors()
 
-	gotMetrics := prometheusOutput(t, srv, "go_build_info")
-	if !reflect.DeepEqual(gotMetrics, expectedMetrics) {
-		t.Fatalf("expected: %v got: %v", expectedMetrics, gotMetrics)
+	expected := `go_build_info{checksum="[^"]*",path="[^"]*",version="[^"]*"} 1`
+
+	actual := prometheusOutput(t, srv, "go_build_info")
+
+	if len(actual) != 1 {
+		t.Fatalf(
+			"\nexpected: 1 item\ngot: %d item(s)\nmetrics:\n  %+v",
+			len(actual),
+			strings.Join(actual, "\n  "),
+		)
+	}
+
+	matched, err := regexp.MatchString(expected, actual[0])
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	if !matched {
+		t.Fatalf("\nexpected:\n  %v\nto match:\n  %v", actual[0], expected)
 	}
 }
 
@@ -64,11 +93,13 @@ func prometheusOutput(t *testing.T, apiServer *ApiServer, prefix string) []strin
 
 	testServer := httptest.NewServer(apiServer.Metrics.handler())
 	defer testServer.Close()
+
 	resp, err := http.Get(testServer.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
+
 	var selected []string
 	s := bufio.NewScanner(resp.Body)
 	for s.Scan() {
