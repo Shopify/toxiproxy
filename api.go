@@ -9,18 +9,20 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Shopify/toxiproxy/toxics"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
 type ApiServer struct {
 	Collection *ProxyCollection
+	Metrics    *metricsContainer
 }
 
-func NewServer() *ApiServer {
+func NewServer(m *metricsContainer) *ApiServer {
 	return &ApiServer{
 		Collection: NewProxyCollection(),
+		Metrics:    m,
 	}
 }
 
@@ -31,19 +33,20 @@ func (server *ApiServer) PopulateConfig(filename string) {
 			"config": filename,
 			"error":  err,
 		}).Error("Error reading config file")
+		return
+	}
+
+	proxies, err := server.Collection.PopulateJson(server, file)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"config": filename,
+			"error":  err,
+		}).Error("Failed to populate proxies from file")
 	} else {
-		proxies, err := server.Collection.PopulateJson(file)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"config": filename,
-				"error":  err,
-			}).Error("Failed to populate proxies from file")
-		} else {
-			logrus.WithFields(logrus.Fields{
-				"config":  filename,
-				"proxies": len(proxies),
-			}).Info("Populated proxies from file")
-		}
+		logrus.WithFields(logrus.Fields{
+			"config":  filename,
+			"proxies": len(proxies),
+		}).Info("Populated proxies from file")
 	}
 }
 
@@ -74,13 +77,17 @@ func (server *ApiServer) Listen(host string, port string) {
 
 	r.HandleFunc("/version", server.Version).Methods("GET")
 
+	if server.Metrics.anyMetricsEnabled() {
+		r.Handle("/metrics", server.Metrics.handler())
+	}
+
 	http.Handle("/", StopBrowsersMiddleware(r))
 
 	logrus.WithFields(logrus.Fields{
 		"host":    host,
 		"port":    port,
 		"version": Version,
-	}).Info("API HTTP server starting")
+	}).Infof("Starting HTTP server on endpoint %s:%s", host, port)
 
 	err := http.ListenAndServe(net.JoinHostPort(host, port), nil)
 	if err != nil {
@@ -144,7 +151,7 @@ func (server *ApiServer) ProxyCreate(response http.ResponseWriter, request *http
 		return
 	}
 
-	proxy := NewProxy()
+	proxy := NewProxy(server)
 	proxy.Name = input.Name
 	proxy.Listen = input.Listen
 	proxy.Upstream = input.Upstream
@@ -168,7 +175,7 @@ func (server *ApiServer) ProxyCreate(response http.ResponseWriter, request *http
 }
 
 func (server *ApiServer) Populate(response http.ResponseWriter, request *http.Request) {
-	proxies, err := server.Collection.PopulateJson(request.Body)
+	proxies, err := server.Collection.PopulateJson(server, request.Body)
 
 	apiErr, ok := err.(*ApiError)
 	if !ok && err != nil {
@@ -414,7 +421,10 @@ var (
 	ErrMissingField       = newError("missing required field", http.StatusBadRequest)
 	ErrProxyNotFound      = newError("proxy not found", http.StatusNotFound)
 	ErrProxyAlreadyExists = newError("proxy already exists", http.StatusConflict)
-	ErrInvalidStream      = newError("stream was invalid, can be either upstream or downstream", http.StatusBadRequest)
+	ErrInvalidStream      = newError(
+		"stream was invalid, can be either upstream or downstream",
+		http.StatusBadRequest,
+	)
 	ErrInvalidToxicType   = newError("invalid toxic type", http.StatusBadRequest)
 	ErrToxicAlreadyExists = newError("toxic already exists", http.StatusConflict)
 	ErrToxicNotFound      = newError("toxic not found", http.StatusNotFound)

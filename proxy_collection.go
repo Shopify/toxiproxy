@@ -8,7 +8,7 @@ import (
 )
 
 // ProxyCollection is a collection of proxies. It's the interface for anything
-// to add and remove proxies from the toxiproxy instance. It's responsibilty is
+// to add and remove proxies from the toxiproxy instance. It's responsibility is
 // to maintain the integrity of the proxy set, by guarding for things such as
 // duplicate names.
 type ProxyCollection struct {
@@ -66,7 +66,10 @@ func (collection *ProxyCollection) AddOrReplace(proxy *Proxy, start bool) error 
 	return nil
 }
 
-func (collection *ProxyCollection) PopulateJson(data io.Reader) ([]*Proxy, error) {
+func (collection *ProxyCollection) PopulateJson(
+	server *ApiServer,
+	data io.Reader,
+) ([]*Proxy, error) {
 	input := []struct {
 		Proxy
 		Enabled *bool `json:"enabled"` // Overrides Proxy field to make field nullable
@@ -79,27 +82,27 @@ func (collection *ProxyCollection) PopulateJson(data io.Reader) ([]*Proxy, error
 
 	// Check for valid input before creating any proxies
 	t := true
-	for i, p := range input {
-		if len(p.Name) < 1 {
+	for i := range input {
+		if len(input[i].Name) < 1 {
 			return nil, joinError(fmt.Errorf("name at proxy %d", i+1), ErrMissingField)
 		}
-		if len(p.Upstream) < 1 {
+		if len(input[i].Upstream) < 1 {
 			return nil, joinError(fmt.Errorf("upstream at proxy %d", i+1), ErrMissingField)
 		}
-		if p.Enabled == nil {
+		if input[i].Enabled == nil {
 			input[i].Enabled = &t
 		}
 	}
 
 	proxies := make([]*Proxy, 0, len(input))
 
-	for _, p := range input {
-		proxy := NewProxy()
-		proxy.Name = p.Name
-		proxy.Listen = p.Listen
-		proxy.Upstream = p.Upstream
+	for i := range input {
+		proxy := NewProxy(server)
+		proxy.Name = input[i].Name
+		proxy.Listen = input[i].Listen
+		proxy.Upstream = input[i].Upstream
 
-		err = collection.AddOrReplace(proxy, *p.Enabled)
+		err = collection.AddOrReplace(proxy, *input[i].Enabled)
 		if err != nil {
 			break
 		}

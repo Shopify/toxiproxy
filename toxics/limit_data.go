@@ -1,8 +1,8 @@
 package toxics
 
-import "github.com/Shopify/toxiproxy/stream"
+import "github.com/Shopify/toxiproxy/v2/stream"
 
-// LimitDataToxic has limit in bytes
+// LimitDataToxic has limit in bytes.
 type LimitDataToxic struct {
 	Bytes int64 `json:"bytes"`
 }
@@ -13,7 +13,7 @@ type LimitDataToxicState struct {
 
 func (t *LimitDataToxic) Pipe(stub *ToxicStub) {
 	state := stub.State.(*LimitDataToxicState)
-	var bytesRemaining = t.Bytes - state.bytesTransmitted
+	bytesRemaining := t.Bytes - state.bytesTransmitted
 
 	for {
 		select {

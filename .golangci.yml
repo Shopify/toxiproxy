@@ -1,0 +1,45 @@
+---
+run:
+  go: "1.17"
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - exhaustive
+    - funlen
+    - gocritic
+    - gocyclo
+    - godot
+    - gofmt
+    - goimports
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unused
+    - varcheck
+    - whitespace
+  fast: false
+linters-settings:
+  gosec:
+    excludes:
+      - G107
+
+  funlen:
+    lines: 80
+    statements: 30
+
+  lll:
+    line-length: 100
+    tab-width: 2
+
+  misspell:
+    locale: US

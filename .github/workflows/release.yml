@@ -1,0 +1,76 @@
+---
+
+name: Release
+
+on:
+  push:
+    tags: [ v*.*.* ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      -
+        name: GPG config
+        run: |
+          mkdir -p ~/.gnupg
+          cat << EOF >> ~/.gnupg/options
+          keyserver keys.openpgp.org
+          keyserver-options auto-key-retrieve
+          EOF
+
+      -
+        name: Verify tag signature
+        run: |
+          # NOTE: Solve the problem with Github action checkout
+          # https://github.com/actions/checkout/issues/290
+          git fetch --tags --force
+
+          version=${GITHUB_REF#refs/tags/*}
+          git show $version
+          git tag -v $version
+
+      -
+        name: Log into registry ${{ env.REGISTRY }}
+        uses: docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      -
+        name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.17
+
+      -
+        name: Build release changelog
+        run: |
+          version=${GITHUB_REF#refs/tags/v*}
+          mkdir -p tmp
+          sed '/^# \['$version'\]/,/^# \[/!d;//d;/^\s*$/d' CHANGELOG.md > tmp/release_changelog.md
+
+      -
+        name: Release
+        uses: goreleaser/goreleaser-action@68acf3b1adf004ac9c2f0a4259e85c5f66e99bef
+        with:
+          distribution: goreleaser
+          version: v0.184.0
+          args: release --rm-dist --release-notes=tmp/release_changelog.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

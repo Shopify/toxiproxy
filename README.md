@@ -1,7 +1,6 @@
 # Toxiproxy
 [![GitHub release](https://img.shields.io/github/release/Shopify/toxiproxy.svg)](https://github.com/Shopify/toxiproxy/releases/latest)
-[![Build Status](https://travis-ci.org/Shopify/toxiproxy.svg?branch=master)](https://travis-ci.org/Shopify/toxiproxy)
-[![IRC Channel](https://img.shields.io/badge/chat-on%20freenode-brightgreen.svg)](https://kiwiirc.com/client/irc.freenode.net/#toxiproxy)
+![Build Status](https://github.com/Shopify/toxiproxy/actions/workflows/test.yml/badge.svg)
 
 ![](http://i.imgur.com/sOaNw0o.png)
 
@@ -42,29 +41,36 @@ stopping you from creating a client in any other language (see
 
 ## Table of Contents
 
-1. [Why yet another chaotic TCP proxy?](#why-yet-another-chaotic-tcp-proxy)
-2. [Clients](#clients)
-3. [Example](#example)
-4. [Usage](#usage)
-   1. [Installing](#1-installing-toxiproxy)
-      1. [Upgrading from 1.x](#upgrading-from-toxiproxy-1x)
-   2. [Populating](#2-populating-toxiproxy)
-   3. [Using](#3-using-toxiproxy)
-5. [Toxics](#toxics)
-   1. [Latency](#latency)
-   2. [Down](#down)
-   3. [Bandwidth](#bandwidth)
-   4. [Slow close](#slow_close)
-   5. [Timeout](#timeout)
-   6. [Slicer](#slicer)
-6. [HTTP API](#http-api)
-   1. [Proxy fields](#proxy-fields)
-   2. [Toxic fields](#toxic-fields)
-   3. [Endpoints](#endpoints)
-   4. [Populating Proxies](#populating-proxies)
-7. [CLI example](#cli-example)
-8. [FAQ](#frequently-asked-questions)
-9. [Development](#development)
+- [Toxiproxy](#toxiproxy)
+  - [Table of Contents](#table-of-contents)
+  - [Why yet another chaotic TCP proxy?](#why-yet-another-chaotic-tcp-proxy)
+  - [Clients](#clients)
+  - [Example](#example)
+  - [Usage](#usage)
+    - [1. Installing Toxiproxy](#1-installing-toxiproxy)
+      - [Upgrading from Toxiproxy 1.x](#upgrading-from-toxiproxy-1x)
+    - [2. Populating Toxiproxy](#2-populating-toxiproxy)
+    - [3. Using Toxiproxy](#3-using-toxiproxy)
+    - [4. Logging](#4-logging)
+    - [Toxics](#toxics)
+      - [latency](#latency)
+      - [down](#down)
+      - [bandwidth](#bandwidth)
+      - [slow_close](#slow_close)
+      - [timeout](#timeout)
+      - [reset_peer](#reset_peer)
+      - [slicer](#slicer)
+      - [limit_data](#limit_data)
+    - [HTTP API](#http-api)
+      - [Proxy fields:](#proxy-fields)
+      - [Toxic fields:](#toxic-fields)
+      - [Endpoints](#endpoints)
+      - [Populating Proxies](#populating-proxies)
+    - [CLI Example](#cli-example)
+    - [Metrics](#metrics)
+    - [Frequently Asked Questions](#frequently-asked-questions)
+    - [Development](#development)
+    - [Release](#release)
 
 ## Why yet another chaotic TCP proxy?
 
@@ -83,6 +89,8 @@ development and CI environments.
 * [toxiproxy-node-client](https://github.com/ihsw/toxiproxy-node-client)
 * [toxiproxy-java](https://github.com/trekawek/toxiproxy-java)
 * [toxiproxy-haskell](https://github.com/jpittis/toxiproxy-haskell)
+* [toxiproxy-rust](https://github.com/itarato/toxiproxy_rust)
+* [toxiproxy-elixir](https://github.com/Jcambass/toxiproxy_ex)
 
 ## Example
 
@@ -207,9 +215,17 @@ $ sudo service toxiproxy start
 
 **OS X**
 
+With [Homebrew](https://brew.sh/):
+
 ```bash
 $ brew tap shopify/shopify
 $ brew install toxiproxy
+```
+
+Or with [MacPorts](https://www.macports.org/):
+
+```bash
+$ port install toxiproxy
 ```
 
 **Windows**
@@ -218,14 +234,19 @@ Toxiproxy for Windows is available for download at https://github.com/Shopify/to
 
 **Docker**
 
-Toxiproxy is available on [Docker Hub](https://hub.docker.com/r/shopify/toxiproxy/).
+Toxiproxy is available on [Github container registry](https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy).
+Old versions `<= 2.1.4` are available on on [Docker Hub](https://hub.docker.com/r/shopify/toxiproxy/).
 
 ```bash
-$ docker pull shopify/toxiproxy
-$ docker run -it shopify/toxiproxy
+$ docker pull ghcr.io/shopify/toxiproxy
+$ docker run --rm -it ghcr.io/shopify/toxiproxy
 ```
 
 If using Toxiproxy from the host rather than other containers, enable host networking with `--net=host`.
+
+```shell
+$ docker run --rm --entrypoint="/toxiproxy-cli" -it ghcr.io/shopify/toxiproxy list
+```
 
 **Source**
 
@@ -278,7 +299,7 @@ documentation on the population helpers.
 Alternatively use the CLI to create proxies, e.g.:
 
 ```bash
-toxiproxy-cli create shopify_test_redis_master -l localhost:26379 -u localhost:6379
+toxiproxy-cli create -l localhost:26379 -u localhost:6379 shopify_test_redis_master
 ```
 
 We recommend a naming such as the above: `<app>_<env>_<data store>_<shard>`.
@@ -340,10 +361,15 @@ end
 Or via the CLI:
 
 ```bash
-toxiproxy-cli toxic add shopify_test_redis_master -t latency -a latency=1000
+toxiproxy-cli toxic add -t latency -a latency=1000 shopify_test_redis_master
 ```
 
 Please consult your respective client library on usage.
+
+### 4. Logging
+
+There are the following log levels: panic, fatal, error, warn or warning, info, debug and trace.
+The level could be updated via environment variable `LOG_LEVEL`.
 
 ### Toxics
 
@@ -389,6 +415,15 @@ Attributes:
 Stops all data from getting through, and closes the connection after `timeout`. If
 `timeout` is 0, the connection won't close, and data will be delayed until the
 toxic is removed.
+
+Attributes:
+
+ - `timeout`: time in milliseconds
+
+#### reset_peer
+
+Simulate TCP RESET (Connection reset by peer) on the connections by closing the stub Input
+immediately or after a `timeout`.
 
 Attributes:
 
@@ -467,11 +502,12 @@ All endpoints are JSON.
  - **DELETE /proxies/{proxy}/toxics/{toxic}** - Remove an active toxic
  - **POST /reset** - Enable all proxies and remove all active toxics
  - **GET /version** - Returns the server version number
+ - **GET /metrics** - Returns Prometheus-compatible metrics
 
 #### Populating Proxies
 
 Proxies can be added and configured in bulk using the `/populate` endpoint. This is done by
-passing an json array of proxies to toxiproxy. If a proxy with the same name already exists,
+passing a json array of proxies to toxiproxy. If a proxy with the same name already exists,
 it will be compared to the new proxy and replaced if the `upstream` and `listen` address don't match.
 
 A `/populate` call can be included for example at application start to ensure all required proxies
@@ -481,7 +517,7 @@ fields are consistent with the new data.
 ### CLI Example
 
 ```bash
-$ toxiproxy-cli create redis -l localhost:26379 -u localhost:6379
+$ toxiproxy-cli create -l localhost:26379 -u localhost:6379 redis
 Created new proxy redis
 $ toxiproxy-cli list
 Listen          Upstream        Name  Enabled Toxics
@@ -500,7 +536,7 @@ OK
 ```
 
 ```bash
-$ toxiproxy-cli toxic add redis -t latency -a latency=1000
+$ toxiproxy-cli toxic add -t latency -a latency=1000 redis
 Added downstream latency toxic 'latency_downstream' on proxy 'redis'
 ```
 
@@ -515,7 +551,7 @@ $ redis-cli -p 26379
 ```
 
 ```bash
-$ toxiproxy-cli toxic remove redis -n latency_downstream
+$ toxiproxy-cli toxic remove -n latency_downstream redis
 Removed toxic 'latency_downstream' on proxy 'redis'
 ```
 
@@ -534,6 +570,11 @@ Deleted proxy redis
 $ redis-cli -p 26379
 Could not connect to Redis at 127.0.0.1:26379: Connection refused
 ```
+
+### Metrics
+
+Toxiproxy exposes Prometheus-compatible metrics via its HTTP API at /metrics.
+See [METRICS.md](./METRICS.md) for full descriptions
 
 ### Frequently Asked Questions
 
@@ -569,25 +610,12 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 * `make`. Build a toxiproxy development binary for the current platform.
 * `make all`. Build Toxiproxy binaries and packages for all platforms. Requires
   to have Go compiled with cross compilation enabled on Linux and Darwin (amd64)
-  as well as [`fpm`](https://github.com/jordansissel/fpm) in your `$PATH` to
-  build the Debian package.
+  as well as [`goreleaser`](https://goreleaser.com/) in your `$PATH` to
+  build binaries the Linux package.
 * `make test`. Run the Toxiproxy tests.
-* `make darwin`. Build binary for Darwin.
-* `make linux`. Build binary for Linux.
-* `make windows`. Build binary for Windows.
 
 ### Release
 
-1. Ensure this release has run internally for `Shopify/shopify` for at least a
-   day which is the best fuzzy test for robustness we have.
-2. Update `CHANGELOG.md`
-3. Bump `VERSION`
-4. Change versions in `README.md`
-5. Commit
-6. Tag
-7. `make release` to create binaries, packages and push new Docker image
-8. Create [Github draft release](https://github.com/Shopify/toxiproxy/releases/new) against new tag and upload binaries and Debian package
-9. [Bump version for Homebrew](https://github.com/Shopify/homebrew-shopify/blob/master/toxiproxy.rb#L9)
-
+See [RELEASE.md](./RELEASE.md)
 
 [blog]: https://shopifyengineering.myshopify.com/blogs/engineering/building-and-testing-resilient-ruby-on-rails-applications

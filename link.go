@@ -2,10 +2,12 @@ package toxiproxy
 
 import (
 	"io"
+	"net"
 
-	"github.com/Shopify/toxiproxy/stream"
-	"github.com/Shopify/toxiproxy/toxics"
 	"github.com/sirupsen/logrus"
+
+	"github.com/Shopify/toxiproxy/v2/stream"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
 // ToxicLinks are single direction pipelines that connects an input and output via
@@ -15,7 +17,7 @@ import (
 //
 //         NoopToxic  LatencyToxic
 //             v           v
-// Input > ToxicStub > ToxicStub > Output
+// Input > ToxicStub > ToxicStub > Output.
 //
 type ToxicLink struct {
 	stubs     []*toxics.ToxicStub
@@ -26,14 +28,21 @@ type ToxicLink struct {
 	direction stream.Direction
 }
 
-func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Direction) *ToxicLink {
+func NewToxicLink(
+	proxy *Proxy,
+	collection *ToxicCollection,
+	direction stream.Direction,
+) *ToxicLink {
 	link := &ToxicLink{
-		stubs:     make([]*toxics.ToxicStub, len(collection.chain[direction]), cap(collection.chain[direction])),
+		stubs: make(
+			[]*toxics.ToxicStub,
+			len(collection.chain[direction]),
+			cap(collection.chain[direction]),
+		),
 		proxy:     proxy,
 		toxics:    collection,
 		direction: direction,
 	}
-
 	// Initialize the link with ToxicStubs
 	last := make(chan *stream.StreamChunk) // The first toxic is always a noop
 	link.input = stream.NewChanWriter(last)
@@ -52,39 +61,93 @@ func NewToxicLink(proxy *Proxy, collection *ToxicCollection, direction stream.Di
 	return link
 }
 
-// Start the link with the specified toxics
-func (link *ToxicLink) Start(name string, source io.Reader, dest io.WriteCloser) {
-	go func() {
-		bytes, err := io.Copy(link.input, source)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"name":  link.proxy.Name,
-				"bytes": bytes,
-				"err":   err,
-			}).Warn("Source terminated")
-		}
-		link.input.Close()
-	}()
+// Start the link with the specified toxics.
+func (link *ToxicLink) Start(
+	server *ApiServer,
+	name string,
+	source io.Reader,
+	dest io.WriteCloser,
+) {
+	labels := []string{
+		link.Direction(),
+		link.proxy.Name,
+		link.proxy.Listen,
+		link.proxy.Upstream}
+
+	go link.read(labels, server, source)
+
 	for i, toxic := range link.toxics.chain[link.direction] {
 		if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
 			link.stubs[i].State = stateful.NewState()
 		}
 
+		if _, ok := toxic.Toxic.(*toxics.ResetToxic); ok {
+			if err := source.(*net.TCPConn).SetLinger(0); err != nil {
+				logrus.WithFields(logrus.Fields{
+					"name":  link.proxy.Name,
+					"toxic": toxic.Type,
+					"err":   err,
+				}).Error("source: Unable to setLinger(ms)")
+			}
+
+			if err := dest.(*net.TCPConn).SetLinger(0); err != nil {
+				logrus.WithFields(logrus.Fields{
+					"name":  link.proxy.Name,
+					"toxic": toxic.Type,
+					"err":   err,
+				}).Error("dest: Unable to setLinger(ms)")
+			}
+		}
+
 		go link.stubs[i].Run(toxic)
 	}
-	go func() {
-		bytes, err := io.Copy(dest, link.output)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"name":  link.proxy.Name,
-				"bytes": bytes,
-				"err":   err,
-			}).Warn("Destination terminated")
-		}
-		dest.Close()
-		link.toxics.RemoveLink(name)
-		link.proxy.RemoveConnection(name)
-	}()
+
+	go link.write(labels, name, server, dest)
+}
+
+// read copies bytes from a source to the link's input channel.
+func (link *ToxicLink) read(
+	metricLabels []string,
+	server *ApiServer,
+	source io.Reader,
+) {
+	bytes, err := io.Copy(link.input, source)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"name":  link.proxy.Name,
+			"bytes": bytes,
+			"err":   err,
+		}).Warn("Source terminated")
+	}
+	if server.Metrics.proxyMetricsEnabled() {
+		server.Metrics.ProxyMetrics.ReceivedBytesTotal.
+			WithLabelValues(metricLabels...).Add(float64(bytes))
+	}
+	link.input.Close()
+}
+
+// write copies bytes from the link's output channel to a destination.
+func (link *ToxicLink) write(
+	metricLabels []string,
+	name string,
+	server *ApiServer,
+	dest io.WriteCloser,
+) {
+	bytes, err := io.Copy(dest, link.output)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"name":  link.proxy.Name,
+			"bytes": bytes,
+			"err":   err,
+		}).Warn("Destination terminated")
+	}
+	if server.Metrics.proxyMetricsEnabled() {
+		server.Metrics.ProxyMetrics.SentBytesTotal.
+			WithLabelValues(metricLabels...).Add(float64(bytes))
+	}
+	dest.Close()
+	link.toxics.RemoveLink(name)
+	link.proxy.RemoveConnection(name)
 }
 
 // Add a toxic to the end of the chain.
@@ -173,4 +236,12 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 
 		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1])
 	}
+}
+
+// Direction returns the direction of the link (upstream or downstream).
+func (link *ToxicLink) Direction() string {
+	if link.direction == stream.Upstream {
+		return "upstream"
+	}
+	return "downstream"
 }

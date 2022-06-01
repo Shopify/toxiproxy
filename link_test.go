@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Shopify/toxiproxy/stream"
-	"github.com/Shopify/toxiproxy/testhelper"
-	"github.com/Shopify/toxiproxy/toxics"
+	"github.com/Shopify/toxiproxy/v2/stream"
+	"github.com/Shopify/toxiproxy/v2/testhelper"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
 func TestToxicsAreLoaded(t *testing.T) {
@@ -22,11 +22,17 @@ func TestStubInitializaation(t *testing.T) {
 	link := NewToxicLink(nil, collection, stream.Downstream)
 	if len(link.stubs) != 1 {
 		t.Fatalf("Link created with wrong number of stubs: %d != 1", len(link.stubs))
-	} else if cap(link.stubs) != toxics.Count()+1 {
+	}
+
+	if cap(link.stubs) != toxics.Count()+1 {
 		t.Fatalf("Link created with wrong capacity: %d != %d", cap(link.stubs), toxics.Count()+1)
-	} else if cap(link.stubs[0].Input) != 0 {
+	}
+
+	if cap(link.stubs[0].Input) != 0 {
 		t.Fatalf("Noop buffer was not initialized as 0: %d", cap(link.stubs[0].Input))
-	} else if cap(link.stubs[0].Output) != 0 {
+	}
+
+	if cap(link.stubs[0].Output) != 0 {
 		t.Fatalf("Link output buffer was not initialized as 0: %d", cap(link.stubs[0].Output))
 	}
 }
@@ -47,16 +53,27 @@ func TestStubInitializaationWithToxics(t *testing.T) {
 		Toxicity:  1,
 	})
 	link := NewToxicLink(nil, collection, stream.Downstream)
+
 	if len(link.stubs) != 3 {
 		t.Fatalf("Link created with wrong number of stubs: %d != 3", len(link.stubs))
-	} else if cap(link.stubs) != toxics.Count()+1 {
+	}
+
+	if cap(link.stubs) != toxics.Count()+1 {
 		t.Fatalf("Link created with wrong capacity: %d != %d", cap(link.stubs), toxics.Count()+1)
-	} else if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
+	}
+
+	if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
 		t.Fatalf("Link output buffer was not initialized as 0: %d", cap(link.stubs[0].Output))
 	}
+
 	for i, toxic := range collection.chain[stream.Downstream] {
 		if cap(link.stubs[i].Input) != toxic.BufferSize {
-			t.Fatalf("%s buffer was not initialized as %d: %d", toxic.Type, toxic.BufferSize, cap(link.stubs[i].Input))
+			t.Fatalf(
+				"%s buffer was not initialized as %d: %d",
+				toxic.Type,
+				toxic.BufferSize,
+				cap(link.stubs[i].Input),
+			)
 		}
 	}
 }
@@ -88,7 +105,12 @@ func TestAddRemoveStubs(t *testing.T) {
 	}
 	for i, toxic := range collection.chain[stream.Downstream] {
 		if cap(link.stubs[i].Input) != toxic.BufferSize {
-			t.Fatalf("%s buffer was not initialized as %d: %d", toxic.Type, toxic.BufferSize, cap(link.stubs[i].Input))
+			t.Fatalf(
+				"%s buffer was not initialized as %d: %d",
+				toxic.Type,
+				toxic.BufferSize,
+				cap(link.stubs[i].Input),
+			)
 		}
 	}
 
@@ -99,7 +121,12 @@ func TestAddRemoveStubs(t *testing.T) {
 	}
 	for i, toxic := range collection.chain[stream.Downstream] {
 		if cap(link.stubs[i].Input) != toxic.BufferSize {
-			t.Fatalf("%s buffer was not initialized as %d: %d", toxic.Type, toxic.BufferSize, cap(link.stubs[i].Input))
+			t.Fatalf(
+				"%s buffer was not initialized as %d: %d",
+				toxic.Type,
+				toxic.BufferSize,
+				cap(link.stubs[i].Input),
+			)
 		}
 	}
 }

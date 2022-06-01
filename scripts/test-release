@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+set -ueo pipefail
+
+VERSION_FULL="$(git describe --abbrev=0 --tags)"
+VERSION=${VERSION_FULL:1}
+ARCH=$(uname -m)
+if [ "${ARCH}" == "x86_64" ]; then
+  ARCH="amd64"
+fi
+
+goreleaser release --rm-dist --skip-publish --skip-validate
+
+docker run -v "$(PWD)"/dist:/dist --pull always --rm -it ubuntu bash -c \
+  "set -xe;
+  dpkg -i /dist/toxiproxy_*_linux_${ARCH}.deb;
+  ls -1 /usr/bin/toxiproxy-*;
+  /usr/bin/toxiproxy-server --version;
+  /usr/bin/toxiproxy-server --version \
+    | grep -o -e 'toxiproxy-server version ${VERSION}';
+  /usr/bin/toxiproxy-cli --version;
+  /usr/bin/toxiproxy-cli --version \
+    | grep -o -e 'toxiproxy-cli version ${VERSION}'"
+
+docker run -v "$(PWD)"/dist:/dist --pull always --rm -it fedora bash -c \
+  "set -xe;
+  yum localinstall -y /dist/toxiproxy_*_linux_${ARCH}.rpm;
+  ls -1 /usr/bin/toxiproxy-*;
+  /usr/bin/toxiproxy-server --version;
+  /usr/bin/toxiproxy-server --version \
+    | grep -o -e 'toxiproxy-server version ${VERSION}';
+  /usr/bin/toxiproxy-cli --version;
+  /usr/bin/toxiproxy-cli --version \
+    | grep -o -e 'toxiproxy-cli version ${VERSION}'"
+
+docker run -v "$(PWD)"/dist:/dist --pull always --rm -it alpine sh -c \
+  "set -xe;
+  apk add --allow-untrusted --no-cache /dist/toxiproxy_*_linux_${ARCH}.apk;
+  ls -1 /usr/bin/toxiproxy-*;
+  /usr/bin/toxiproxy-server --version;
+  /usr/bin/toxiproxy-server --version \
+    | grep -o -e 'toxiproxy-server version ${VERSION}';
+  /usr/bin/toxiproxy-cli --version;
+  /usr/bin/toxiproxy-cli --version \
+    | grep -o -e 'toxiproxy-cli version ${VERSION}'"
+
+tar -ztvf dist/toxiproxy_*_linux_amd64.tar.gz | grep -o -e toxiproxy-server
+tar -ztvf dist/toxiproxy_*_linux_amd64.tar.gz | grep -o -e toxiproxy-cli
+
+goreleaser build --rm-dist --single-target --skip-validate --id server
+bineries=(./dist/toxiproxy-server-*)
+server="${bineries[0]}"
+$server --help 2>&1 | grep -o -e "Usage of ./dist/toxiproxy-server"
+$server --version | grep -o -e "toxiproxy-server version ${VERSION}"
+
+goreleaser build --rm-dist --single-target --skip-validate --id client
+bineries=(./dist/toxiproxy-cli-*)
+cli="${bineries[0]}"
+$cli --help 2>&1 |
+  grep -o -e "toxiproxy-cli - Simulate network and system conditions"
+$cli --version | grep -o -e "toxiproxy-cli version ${VERSION}"

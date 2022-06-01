@@ -1,21 +1,17 @@
+---
+
 name: toxiproxy
 
 type: go
 
 up:
   - homebrew:
-    - openssl
-    - gnu-tar
+      - gnu-tar
+      - golangci-lint
+      - goreleaser
+      - shellcheck
+      - shfmt
+      - yamllint
   - go:
-      version: 1.12
+      version: 1.18
       modules: true
-  - ruby: 2.6.3
-  - bundler
-
-commands:
-  build:
-    run: go build ./...
-    desc: 'build the project'
-  test:
-    run: go test ./...
-    desc: 'run unit tests'

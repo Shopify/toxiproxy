@@ -1,0 +1,29 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# Unix-style newlines with a newline ending every file
+[*]
+charset                  = utf-8
+end_of_line              = lf
+insert_final_newline     = true
+trim_trailing_whitespace = true
+max_line_length          = 100
+
+[Makefile]
+indent_style = tab
+
+[{scripts/*, *.sh}]
+max_line_length    = 80
+indent_style       = space
+indent_size        = 2
+shell_variant      = bash
+binary_next_line   = true
+switch_case_indent = true
+space_redirects    = true
+keep_padding       = true
+
+[*.{yaml,yml}]
+indent_style       = space
+indent_size        = 2
+
+[*.go]
+indent_style = tab
