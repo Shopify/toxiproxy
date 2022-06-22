@@ -57,7 +57,7 @@
   * Linter to check whether HTTP response body is closed successfully (#317, @miry)
   * Make sure the function are not big (#318, @miry)
     * Extract client flags specs to seprate methods.
-      Introduce a new way to manage toxics with `ToxicOptions` sturcture (#321, @miry)
+      Introduce a new way to manage toxics with `ToxicOptions` structure (#321, @miry)
     * Split `Proxy.server` to multiple small (#322, @miry)
     * Extract initializetion of fake upstream server to test helper (#323, @miry)
     * Support a list of well knonwn linters (#326, @miry)
