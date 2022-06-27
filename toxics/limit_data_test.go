@@ -3,7 +3,6 @@ package toxics_test
 import (
 	"bytes"
 	"crypto/rand"
-	"fmt"
 	"testing"
 
 	"github.com/Shopify/toxiproxy/v2/stream"
@@ -26,7 +25,7 @@ func checkOutgoingChunk(t *testing.T, output chan *stream.StreamChunk, expected 
 
 func checkRemainingChunks(t *testing.T, output chan *stream.StreamChunk) {
 	if len(output) != 0 {
-		t.Error(fmt.Sprintf("There is %d chunks in output channel. 0 is expected.", len(output)))
+		t.Errorf("There is %d chunks in output channel. 0 is expected.", len(output))
 	}
 }
 
