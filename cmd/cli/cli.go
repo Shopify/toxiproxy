@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -574,7 +575,7 @@ func parseAddToxicParams(c *cli.Context) (*toxiproxy.ToxicOptions, error) {
 func parseAttributes(c *cli.Context, name string) toxiproxy.Attributes {
 	parsed := map[string]interface{}{}
 	args := c.StringSlice(name)
-
+	var t map[string]interface{}
 	for _, raw := range args {
 		kv := strings.SplitN(raw, "=", 2)
 		if len(kv) < 2 {
@@ -582,6 +583,9 @@ func parseAttributes(c *cli.Context, name string) toxiproxy.Attributes {
 		}
 		if float, err := strconv.ParseFloat(kv[1], 64); err == nil {
 			parsed[kv[0]] = float
+		} else if err := json.Unmarshal([]byte(kv[1]), &t); err == nil {
+			parsed[kv[0]] = t
+			continue
 		} else {
 			parsed[kv[0]] = kv[1]
 		}

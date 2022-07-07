@@ -15,6 +15,9 @@ type ModifyBodyToxic struct {
 }
 
 func (t *ModifyBodyToxic) ModifyResponseBody(resp *http.Response) {
+	if t.Body == "" {
+		return
+	}
 	httputils.SetResponseBody(resp, t.Body)
 }
 

@@ -37,7 +37,7 @@ func TestToxicModifiesHTTPStatusCode(t *testing.T) {
 
 	AssertStatusCodeNotEqual(t, resp.StatusCode, 500)
 
-	proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "status_code", "downstream", &toxics.StatusCodeToxic{StatusCode: 500, ModifyResponseBody: false}))
+	proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "status_code", "downstream", &toxics.StatusCodeToxic{StatusCode: 500, ModifyResponseBody: 0}))
 
 	resp, err = http.Get("http://" + proxy.Listen)
 	if err != nil {
@@ -71,7 +71,7 @@ func TestToxicModifiesBodyWithStatusCode(t *testing.T) {
 	AssertStatusCodeNotEqual(t, resp.StatusCode, 500)
 	AssertBodyNotEqual(t, body, []byte(httputils.Status500))
 
-	proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "status_code", "downstream", &toxics.StatusCodeToxic{StatusCode: 500, ModifyResponseBody: true}))
+	proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "status_code", "downstream", &toxics.StatusCodeToxic{StatusCode: 500, ModifyResponseBody: 1}))
 
 	resp, err = http.Get("http://" + proxy.Listen)
 	if err != nil {
@@ -108,7 +108,7 @@ func TestUnsupportedStatusCode(t *testing.T) {
 	statusCode := resp.StatusCode
 	initialBody, _ := ioutil.ReadAll(resp.Body)
 
-	proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "status_code", "downstream", &toxics.StatusCodeToxic{StatusCode: 1000, ModifyResponseBody: true}))
+	proxy.Toxics.AddToxicJson(ToxicToJson(t, "", "status_code", "downstream", &toxics.StatusCodeToxic{StatusCode: 1000, ModifyResponseBody: 1}))
 
 	resp, err = http.Get("http://" + proxy.Listen)
 	if err != nil {

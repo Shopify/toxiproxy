@@ -5,3 +5,5 @@ dist/
 vendor/
 
 tmp/
+
+.vscode/
