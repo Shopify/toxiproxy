@@ -618,4 +618,4 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 
 See [RELEASE.md](./RELEASE.md)
 
-[blog]: https://shopifyengineering.myshopify.com/blogs/engineering/building-and-testing-resilient-ruby-on-rails-applications
+[blog]: https://shopify.engineering/building-and-testing-resilient-ruby-on-rails-applications
