@@ -10,6 +10,10 @@ on:
 
 jobs:
   cla:
+    permissions:
+      actions: write
+      pull-requests: write
+
     runs-on: ubuntu-latest
     if: |
       (github.event.issue.pull_request
