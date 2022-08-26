@@ -10,20 +10,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/zerolog"
+	tomb "gopkg.in/tomb.v1"
+
 	"github.com/Shopify/toxiproxy/v2"
 	"github.com/Shopify/toxiproxy/v2/collectors"
 	"github.com/Shopify/toxiproxy/v2/toxics"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
-	tomb "gopkg.in/tomb.v1"
 )
 
-func init() {
-	logrus.SetLevel(logrus.FatalLevel)
-}
-
 func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
-	srv := toxiproxy.NewServer(toxiproxy.NewMetricsContainer(prometheus.NewRegistry()))
+	srv := toxiproxy.NewServer(
+		toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
+		zerolog.Nop(),
+	)
 	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
 	proxy := toxiproxy.NewProxy(srv, name, "localhost:0", upstream)
 

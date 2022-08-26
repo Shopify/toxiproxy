@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/rs/zerolog"
+
 	"github.com/Shopify/toxiproxy/v2/stream"
 	"github.com/Shopify/toxiproxy/v2/toxics"
 )
@@ -182,7 +184,14 @@ func (c *ToxicCollection) StartLink(
 	c.Lock()
 	defer c.Unlock()
 
-	link := NewToxicLink(c.proxy, c, direction)
+	var logger zerolog.Logger
+	if c.proxy.Logger != nil {
+		logger = *c.proxy.Logger
+	} else {
+		logger = zerolog.Nop()
+	}
+
+	link := NewToxicLink(c.proxy, c, direction, logger)
 	link.Start(server, name, input, output)
 	c.links[name] = link
 }

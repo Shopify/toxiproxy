@@ -7,9 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/zerolog"
+
 	"github.com/Shopify/toxiproxy/v2"
 	tclient "github.com/Shopify/toxiproxy/v2/client"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var testServer *toxiproxy.ApiServer
@@ -20,7 +22,10 @@ func WithServer(t *testing.T, f func(string)) {
 	// Make sure only one server is running at a time. Apparently there's no clean
 	// way to shut it down between each test run.
 	if testServer == nil {
-		testServer = toxiproxy.NewServer(toxiproxy.NewMetricsContainer(prometheus.NewRegistry()))
+		testServer = toxiproxy.NewServer(
+			toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
+			zerolog.Nop(),
+		)
 
 		go testServer.Listen("localhost", "8475")
 

@@ -8,15 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/Shopify/toxiproxy/v2"
 	"github.com/Shopify/toxiproxy/v2/testhelper"
 )
-
-func init() {
-	logrus.SetLevel(logrus.FatalLevel)
-}
 
 func TestProxySimpleMessage(t *testing.T) {
 	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *toxiproxy.Proxy) {

@@ -4,14 +4,19 @@ import (
 	"net"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/zerolog"
+
 	"github.com/Shopify/toxiproxy/v2"
 	"github.com/Shopify/toxiproxy/v2/collectors"
 	"github.com/Shopify/toxiproxy/v2/testhelper"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
-	srv := toxiproxy.NewServer(toxiproxy.NewMetricsContainer(prometheus.NewRegistry()))
+	srv := toxiproxy.NewServer(
+		toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
+		zerolog.Nop(),
+	)
 	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
 	proxy := toxiproxy.NewProxy(srv, name, "localhost:0", upstream)
 

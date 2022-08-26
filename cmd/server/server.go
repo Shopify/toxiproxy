@@ -6,12 +6,12 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
-	"strings"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
 
 	"github.com/Shopify/toxiproxy/v2"
 	"github.com/Shopify/toxiproxy/v2/collectors"
@@ -67,12 +67,12 @@ func run(cli cliArguments) {
 		return
 	}
 
-	setupLogger()
+	logger := setupLogger()
 
 	rand.Seed(cli.seed)
 
 	metrics := toxiproxy.NewMetricsContainer(prometheus.NewRegistry())
-	server := toxiproxy.NewServer(metrics)
+	server := toxiproxy.NewServer(metrics, logger)
 	if cli.proxyMetrics {
 		server.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
 	}
@@ -86,23 +86,37 @@ func run(cli cliArguments) {
 	server.Listen(cli.host, cli.port)
 }
 
-func setupLogger() {
+func setupLogger() zerolog.Logger {
+	zerolog.TimestampFunc = func() time.Time {
+		return time.Now().UTC()
+	}
+
+	zerolog.CallerMarshalFunc = func(file string, line int) string {
+		short := file
+		for i := len(file) - 1; i > 0; i-- {
+			if file[i] == '/' {
+				short = file[i+1:]
+				break
+			}
+		}
+		file = short
+		return file + ":" + strconv.Itoa(line)
+	}
+
+	logger := zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+
 	val, ok := os.LookupEnv("LOG_LEVEL")
 	if !ok {
-		return
+		return logger
 	}
 
-	lvl, err := logrus.ParseLevel(val)
+	lvl, err := zerolog.ParseLevel(val)
 	if err == nil {
-		logrus.SetLevel(lvl)
-		return
+		logger = logger.Level(lvl)
+	} else {
+		l := &logger
+		l.Err(err).Msgf("unknown LOG_LEVEL value: \"%s\"", val)
 	}
 
-	valid_levels := make([]string, len(logrus.AllLevels))
-	for i, level := range logrus.AllLevels {
-		valid_levels[i] = level.String()
-	}
-	levels := strings.Join(valid_levels, ",")
-
-	logrus.Errorf("unknown LOG_LEVEL value: \"%s\", use one of: %s", val, levels)
+	return logger
 }

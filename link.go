@@ -4,7 +4,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
 
 	"github.com/Shopify/toxiproxy/v2/stream"
 	"github.com/Shopify/toxiproxy/v2/toxics"
@@ -26,12 +26,14 @@ type ToxicLink struct {
 	input     *stream.ChanWriter
 	output    *stream.ChanReader
 	direction stream.Direction
+	Logger    *zerolog.Logger
 }
 
 func NewToxicLink(
 	proxy *Proxy,
 	collection *ToxicCollection,
 	direction stream.Direction,
+	logger zerolog.Logger,
 ) *ToxicLink {
 	link := &ToxicLink{
 		stubs: make(
@@ -42,6 +44,7 @@ func NewToxicLink(
 		proxy:     proxy,
 		toxics:    collection,
 		direction: direction,
+		Logger:    &logger,
 	}
 	// Initialize the link with ToxicStubs
 	last := make(chan *stream.StreamChunk) // The first toxic is always a noop
@@ -68,6 +71,9 @@ func (link *ToxicLink) Start(
 	source io.Reader,
 	dest io.WriteCloser,
 ) {
+	logger := link.Logger
+	logger.Debug().Msg("Setup connection")
+
 	labels := []string{
 		link.Direction(),
 		link.proxy.Name,
@@ -83,19 +89,15 @@ func (link *ToxicLink) Start(
 
 		if _, ok := toxic.Toxic.(*toxics.ResetToxic); ok {
 			if err := source.(*net.TCPConn).SetLinger(0); err != nil {
-				logrus.WithFields(logrus.Fields{
-					"name":  link.proxy.Name,
-					"toxic": toxic.Type,
-					"err":   err,
-				}).Error("source: Unable to setLinger(ms)")
+				logger.Err(err).
+					Str("toxic", toxic.Type).
+					Msg("source: Unable to setLinger(ms)")
 			}
 
 			if err := dest.(*net.TCPConn).SetLinger(0); err != nil {
-				logrus.WithFields(logrus.Fields{
-					"name":  link.proxy.Name,
-					"toxic": toxic.Type,
-					"err":   err,
-				}).Error("dest: Unable to setLinger(ms)")
+				logger.Err(err).
+					Str("toxic", toxic.Type).
+					Msg("dest: Unable to setLinger(ms)")
 			}
 		}
 
@@ -111,13 +113,13 @@ func (link *ToxicLink) read(
 	server *ApiServer,
 	source io.Reader,
 ) {
+	logger := link.Logger
 	bytes, err := io.Copy(link.input, source)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"name":  link.proxy.Name,
-			"bytes": bytes,
-			"err":   err,
-		}).Warn("Source terminated")
+		logger.Warn().
+			Int64("bytes", bytes).
+			Err(err).
+			Msg("Source terminated")
 	}
 	if server.Metrics.proxyMetricsEnabled() {
 		server.Metrics.ProxyMetrics.ReceivedBytesTotal.
@@ -133,13 +135,13 @@ func (link *ToxicLink) write(
 	server *ApiServer,
 	dest io.WriteCloser,
 ) {
+	logger := link.Logger
 	bytes, err := io.Copy(dest, link.output)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"name":  link.proxy.Name,
-			"bytes": bytes,
-			"err":   err,
-		}).Warn("Destination terminated")
+		logger.Warn().
+			Int64("bytes", bytes).
+			Err(err).
+			Msg("Destination terminated")
 	}
 	if server.Metrics.proxyMetricsEnabled() {
 		server.Metrics.ProxyMetrics.SentBytesTotal.

@@ -5,9 +5,10 @@ import (
 	"net"
 	"sync"
 
-	"github.com/Shopify/toxiproxy/v2/stream"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
 	tomb "gopkg.in/tomb.v1"
+
+	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
 // Proxy represents the proxy in its entirety with all its links. The main
@@ -15,7 +16,6 @@ import (
 // client and upstream.
 //
 // Client <-> toxiproxy <-> Upstream.
-//
 type Proxy struct {
 	sync.Mutex
 
@@ -31,6 +31,7 @@ type Proxy struct {
 	connections ConnectionList
 	Toxics      *ToxicCollection `json:"-"`
 	apiServer   *ApiServer
+	Logger      *zerolog.Logger
 }
 
 type ConnectionList struct {
@@ -49,6 +50,13 @@ func (c *ConnectionList) Unlock() {
 var ErrProxyAlreadyStarted = errors.New("Proxy already started")
 
 func NewProxy(server *ApiServer, name, listen, upstream string) *Proxy {
+	l := server.Logger.
+		With().
+		Str("name", name).
+		Str("listen", listen).
+		Str("upstream", upstream).
+		Logger()
+
 	proxy := &Proxy{
 		Name:        name,
 		Listen:      listen,
@@ -56,6 +64,7 @@ func NewProxy(server *ApiServer, name, listen, upstream string) *Proxy {
 		started:     make(chan error),
 		connections: ConnectionList{list: make(map[string]net.Conn)},
 		apiServer:   server,
+		Logger:      &l,
 	}
 	proxy.Toxics = NewToxicCollection(proxy)
 	return proxy
@@ -104,11 +113,9 @@ func (proxy *Proxy) listen() error {
 	proxy.Listen = proxy.listener.Addr().String()
 	proxy.started <- nil
 
-	logrus.WithFields(logrus.Fields{
-		"name":     proxy.Name,
-		"proxy":    proxy.Listen,
-		"upstream": proxy.Upstream,
-	}).Info("Started proxy")
+	proxy.Logger.
+		Info().
+		Msg("Started proxy")
 
 	return nil
 }
@@ -117,11 +124,10 @@ func (proxy *Proxy) close() {
 	// Unblock proxy.listener.Accept()
 	err := proxy.listener.Close()
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"proxy":  proxy.Name,
-			"listen": proxy.Listen,
-			"err":    err,
-		}).Warn("Attempted to close an already closed proxy server")
+		proxy.Logger.
+			Warn().
+			Err(err).
+			Msg("Attempted to close an already closed proxy server")
 	}
 }
 
@@ -166,30 +172,25 @@ func (proxy *Proxy) server() {
 			select {
 			case <-acceptTomb.Dying():
 			default:
-				logrus.WithFields(logrus.Fields{
-					"proxy":  proxy.Name,
-					"listen": proxy.Listen,
-					"err":    err,
-				}).Warn("Error while accepting client")
+				proxy.Logger.
+					Warn().
+					Err(err).
+					Msg("Error while accepting client")
 			}
 			return
 		}
 
-		logrus.WithFields(logrus.Fields{
-			"name":     proxy.Name,
-			"client":   client.RemoteAddr(),
-			"proxy":    proxy.Listen,
-			"upstream": proxy.Upstream,
-		}).Info("Accepted client")
+		proxy.Logger.
+			Info().
+			Str("client", client.RemoteAddr().String()).
+			Msg("Accepted client")
 
 		upstream, err := net.Dial("tcp", proxy.Upstream)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"name":     proxy.Name,
-				"client":   client.RemoteAddr(),
-				"proxy":    proxy.Listen,
-				"upstream": proxy.Upstream,
-			}).Error("Unable to open connection to upstream: " + err.Error())
+			proxy.Logger.
+				Err(err).
+				Str("client", client.RemoteAddr().String()).
+				Msg("Unable to open connection to upstream")
 			client.Close()
 			continue
 		}
@@ -240,9 +241,7 @@ func stop(proxy *Proxy) {
 		conn.Close()
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"name":     proxy.Name,
-		"proxy":    proxy.Listen,
-		"upstream": proxy.Upstream,
-	}).Info("Terminated proxy")
+	proxy.Logger.
+		Info().
+		Msg("Terminated proxy")
 }

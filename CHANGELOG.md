@@ -2,6 +2,8 @@
 
 * Support go 1.18, 1.19. (@miry)
 * `toxiproxy.NewProxy` now accepts `name`, `listen addr` and `upstream addr`. (#418, @miry)
+* Replace logrus with zerolog. (#413, @miry)
+* Log HTTP requests to API server. (#413, @miry)
 
 # [2.4.0] - 2022-03-07
 

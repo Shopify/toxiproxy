@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/Shopify/toxiproxy/v2/stream"
 	"github.com/Shopify/toxiproxy/v2/testhelper"
 	"github.com/Shopify/toxiproxy/v2/toxics"
@@ -19,7 +21,7 @@ func TestToxicsAreLoaded(t *testing.T) {
 
 func TestStubInitializaation(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 	if len(link.stubs) != 1 {
 		t.Fatalf("Link created with wrong number of stubs: %d != 1", len(link.stubs))
 	}
@@ -52,7 +54,7 @@ func TestStubInitializaationWithToxics(t *testing.T) {
 		Direction: stream.Downstream,
 		Toxicity:  1,
 	})
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 
 	if len(link.stubs) != 3 {
 		t.Fatalf("Link created with wrong number of stubs: %d != 3", len(link.stubs))
@@ -80,7 +82,7 @@ func TestStubInitializaationWithToxics(t *testing.T) {
 
 func TestAddRemoveStubs(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 
@@ -133,7 +135,7 @@ func TestAddRemoveStubs(t *testing.T) {
 
 func TestNoDataDropped(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 
@@ -189,7 +191,7 @@ func TestNoDataDropped(t *testing.T) {
 
 func TestToxicity(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 
@@ -236,7 +238,7 @@ func TestToxicity(t *testing.T) {
 
 func TestStateCreated(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 
