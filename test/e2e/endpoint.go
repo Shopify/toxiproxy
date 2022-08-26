@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
+
+	"github.com/gorilla/mux"
 )
 
 var (
@@ -41,9 +44,19 @@ func main() {
 		stuff[i] = byte(i % 256)
 	}
 	hex.Encode(out, stuff)
-	http.HandleFunc("/test1", handler1)
-	http.HandleFunc("/test2", handler2)
+
+	r := mux.NewRouter()
+	r.HandleFunc("/test1", handler1)
+	r.HandleFunc("/test2", handler2)
 
 	log.Println("Listening :20002")
-	log.Fatal(http.ListenAndServe(":20002", nil))
+
+	srv := &http.Server{
+		Handler:      r,
+		Addr:         ":20002",
+		WriteTimeout: 3 * time.Second,
+		ReadTimeout:  3 * time.Second,
+	}
+
+	log.Fatal(srv.ListenAndServe())
 }

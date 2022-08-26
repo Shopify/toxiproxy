@@ -1,11 +1,10 @@
 ---
 run:
-  go: "1.17"
+  go: "1.15"
 linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - exhaustive
@@ -22,10 +21,8 @@ linters:
     - lll
     - misspell
     - staticcheck
-    - structcheck
     - typecheck
     - unused
-    - varcheck
     - whitespace
   fast: false
 linters-settings:

@@ -23,8 +23,8 @@ type SlicerToxic struct {
 // Returns a list of chunk offsets to slice up a packet of the
 // given total size. For example, for a size of 100, output might be:
 //
-//     []int{0, 18, 18, 43, 43, 67, 67, 77, 77, 100}
-//           ^---^  ^----^  ^----^  ^----^  ^-----^
+// |    []int{0, 18, 18, 43, 43, 67, 67, 77, 77, 100}
+// |          ^---^  ^----^  ^----^  ^----^  ^-----^
 //
 // This tries to get fairly evenly-varying chunks (no tendency
 // to have a small/large chunk at the start/end).

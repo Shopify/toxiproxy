@@ -15,10 +15,9 @@ import (
 // and removed as they are enabled/disabled. New toxics are always added to the end
 // of the chain.
 //
-//         NoopToxic  LatencyToxic
-//             v           v
-// Input > ToxicStub > ToxicStub > Output.
-//
+// |         NoopToxic  LatencyToxic
+// |             v           v
+// | Input > ToxicStub > ToxicStub > Output.
 type ToxicLink struct {
 	stubs     []*toxics.ToxicStub
 	proxy     *Proxy
