@@ -13,5 +13,5 @@ up:
       - shfmt
       - yamllint
   - go:
-      version: 1.18
+      version: 1.19
       modules: true

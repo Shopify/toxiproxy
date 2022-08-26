@@ -56,7 +56,7 @@ jobs:
         name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.17
+          go-version: 1.19
 
       -
         name: Build release changelog
@@ -70,7 +70,7 @@ jobs:
         uses: goreleaser/goreleaser-action@68acf3b1adf004ac9c2f0a4259e85c5f66e99bef
         with:
           distribution: goreleaser
-          version: v0.184.0
+          version: v1.10.3
           args: release --rm-dist --release-notes=tmp/release_changelog.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

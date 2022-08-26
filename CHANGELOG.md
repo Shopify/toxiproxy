@@ -1,6 +1,6 @@
 # [Unreleased]
 
-* Support go 1.18.
+* Support go 1.18, 1.19.
 
 # [2.4.0] - 2022-03-07
 
