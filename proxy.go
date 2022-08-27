@@ -48,8 +48,11 @@ func (c *ConnectionList) Unlock() {
 
 var ErrProxyAlreadyStarted = errors.New("Proxy already started")
 
-func NewProxy(server *ApiServer) *Proxy {
+func NewProxy(server *ApiServer, name, listen, upstream string) *Proxy {
 	proxy := &Proxy{
+		Name:        name,
+		Listen:      listen,
+		Upstream:    upstream,
 		started:     make(chan error),
 		connections: ConnectionList{list: make(map[string]net.Conn)},
 		apiServer:   server,

@@ -25,11 +25,7 @@ func init() {
 func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
 	srv := toxiproxy.NewServer(toxiproxy.NewMetricsContainer(prometheus.NewRegistry()))
 	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
-	proxy := toxiproxy.NewProxy(srv)
-
-	proxy.Name = name
-	proxy.Listen = "localhost:0"
-	proxy.Upstream = upstream
+	proxy := toxiproxy.NewProxy(srv, name, "localhost:0", upstream)
 
 	return proxy
 }

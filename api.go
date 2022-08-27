@@ -151,10 +151,7 @@ func (server *ApiServer) ProxyCreate(response http.ResponseWriter, request *http
 		return
 	}
 
-	proxy := NewProxy(server)
-	proxy.Name = input.Name
-	proxy.Listen = input.Listen
-	proxy.Upstream = input.Upstream
+	proxy := NewProxy(server, input.Name, input.Listen, input.Upstream)
 
 	err = server.Collection.Add(proxy, input.Enabled)
 	if apiError(response, err) {

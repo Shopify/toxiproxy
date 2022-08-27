@@ -1,6 +1,7 @@
 # [Unreleased]
 
-* Support go 1.18, 1.19.
+* Support go 1.18, 1.19. (@miry)
+* `toxiproxy.NewProxy` now accepts `name`, `listen addr` and `upstream addr`. (#418, @miry)
 
 # [2.4.0] - 2022-03-07
 
