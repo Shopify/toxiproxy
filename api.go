@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
 
 	"github.com/Shopify/toxiproxy/v2/toxics"
 )
@@ -61,7 +62,18 @@ func timeoutMiddleware(next http.Handler) http.Handler {
 
 func (server *ApiServer) Listen(host string, port string) {
 	r := mux.NewRouter()
-	r.Use(server.loggingMiddleware)
+	r.Use(hlog.NewHandler(*server.Logger))
+	r.Use(hlog.RequestIDHandler("request_id", ""))
+	r.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+		hlog.FromRequest(r).Debug().
+			Str("client", r.RemoteAddr).
+			Str("method", r.Method).
+			Stringer("url", r.URL).
+			Int("status", status).
+			Int("size", size).
+			Dur("duration", duration).
+			Msg("")
+	}))
 	r.Use(timeoutMiddleware)
 
 	r.HandleFunc("/reset", server.ResetState).Methods("POST")
@@ -98,19 +110,6 @@ func (server *ApiServer) Listen(host string, port string) {
 	}
 }
 
-func (server *ApiServer) loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		server.
-			Logger.
-			Debug().
-			Str("client", r.RemoteAddr).
-			Str("method", r.Method).
-			Str("uri", r.RequestURI).
-			Msg("")
-		next.ServeHTTP(w, r)
-	})
-}
-
 func (server *ApiServer) ProxyIndex(response http.ResponseWriter, request *http.Request) {
 	proxies := server.Collection.Proxies()
 	marshalData := make(map[string]interface{}, len(proxies))
@@ -127,7 +126,8 @@ func (server *ApiServer) ProxyIndex(response http.ResponseWriter, request *http.
 	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("ProxyIndex: Failed to write response to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("ProxyIndex: Failed to write response to client")
 	}
 }
 
@@ -146,7 +146,8 @@ func (server *ApiServer) ResetState(response http.ResponseWriter, request *http.
 	response.WriteHeader(http.StatusNoContent)
 	_, err := response.Write(nil)
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("ResetState: Failed to write headers to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("ResetState: Failed to write headers to client")
 	}
 }
 
@@ -183,7 +184,8 @@ func (server *ApiServer) ProxyCreate(response http.ResponseWriter, request *http
 	response.WriteHeader(http.StatusCreated)
 	_, err = response.Write(data)
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("ProxyCreate: Failed to write response to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("ProxyCreate: Failed to write response to client")
 	}
 }
 
@@ -192,7 +194,8 @@ func (server *ApiServer) Populate(response http.ResponseWriter, request *http.Re
 
 	apiErr, ok := err.(*ApiError)
 	if !ok && err != nil {
-		server.Logger.Warn().Err(err).Msg("Error did not include status code")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("Error did not include status code")
 		apiErr = &ApiError{err.Error(), http.StatusInternalServerError}
 	}
 
@@ -213,7 +216,8 @@ func (server *ApiServer) Populate(response http.ResponseWriter, request *http.Re
 	response.WriteHeader(responseCode)
 	_, err = response.Write(data)
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("Populate: Failed to write response to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("Populate: Failed to write response to client")
 	}
 }
 
@@ -265,7 +269,8 @@ func (server *ApiServer) ProxyUpdate(response http.ResponseWriter, request *http
 	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("ProxyUpdate: Failed to write response to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("ProxyUpdate: Failed to write response to client")
 	}
 }
 
@@ -280,7 +285,8 @@ func (server *ApiServer) ProxyDelete(response http.ResponseWriter, request *http
 	response.WriteHeader(http.StatusNoContent)
 	_, err = response.Write(nil)
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("ProxyDelete: Failed to write headers to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("ProxyDelete: Failed to write headers to client")
 	}
 }
 
@@ -301,7 +307,8 @@ func (server *ApiServer) ToxicIndex(response http.ResponseWriter, request *http.
 	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("ToxicIndex: Failed to write response to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("ToxicIndex: Failed to write response to client")
 	}
 }
 
@@ -326,7 +333,8 @@ func (server *ApiServer) ToxicCreate(response http.ResponseWriter, request *http
 	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("ToxicCreate: Failed to write response to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("ToxicCreate: Failed to write response to client")
 	}
 }
 
@@ -352,7 +360,8 @@ func (server *ApiServer) ToxicShow(response http.ResponseWriter, request *http.R
 	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("ToxicShow: Failed to write response to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("ToxicShow: Failed to write response to client")
 	}
 }
 
@@ -377,7 +386,8 @@ func (server *ApiServer) ToxicUpdate(response http.ResponseWriter, request *http
 	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("ToxicUpdate: Failed to write response to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("ToxicUpdate: Failed to write response to client")
 	}
 }
 
@@ -397,7 +407,8 @@ func (server *ApiServer) ToxicDelete(response http.ResponseWriter, request *http
 	response.WriteHeader(http.StatusNoContent)
 	_, err = response.Write(nil)
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("ToxicDelete: Failed to write headers to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("ToxicDelete: Failed to write headers to client")
 	}
 }
 
@@ -405,7 +416,8 @@ func (server *ApiServer) Version(response http.ResponseWriter, request *http.Req
 	response.Header().Set("Content-Type", "text/plain;charset=utf-8")
 	_, err := response.Write([]byte(Version))
 	if err != nil {
-		server.Logger.Warn().Err(err).Msg("Version: Failed to write response to client")
+		log := zerolog.Ctx(request.Context())
+		log.Warn().Err(err).Msg("Version: Failed to write response to client")
 	}
 }
 
