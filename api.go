@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
@@ -54,9 +55,14 @@ func StopBrowsersMiddleware(h http.Handler) http.Handler {
 	})
 }
 
+func timeoutMiddleware(next http.Handler) http.Handler {
+	return http.TimeoutHandler(next, 5*time.Second, "")
+}
+
 func (server *ApiServer) Listen(host string, port string) {
 	r := mux.NewRouter()
 	r.Use(server.loggingMiddleware)
+	r.Use(timeoutMiddleware)
 
 	r.HandleFunc("/reset", server.ResetState).Methods("POST")
 	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
