@@ -63,37 +63,52 @@ func timeoutMiddleware(next http.Handler) http.Handler {
 func (server *ApiServer) Listen(host string, port string) {
 	r := mux.NewRouter()
 	r.Use(hlog.NewHandler(*server.Logger))
-	r.Use(hlog.RequestIDHandler("request_id", ""))
+	r.Use(hlog.RequestIDHandler("request_id", "X-Toxiproxy-Request-Id"))
 	r.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
-		hlog.FromRequest(r).Debug().
+		handler := mux.CurrentRoute(r).GetName()
+		zerolog.Ctx(r.Context()).
+			Debug().
 			Str("client", r.RemoteAddr).
 			Str("method", r.Method).
 			Stringer("url", r.URL).
 			Int("status", status).
 			Int("size", size).
 			Dur("duration", duration).
+			Str("handler", handler).
 			Msg("")
 	}))
 	r.Use(stopBrowsersMiddleware)
 	r.Use(timeoutMiddleware)
 
-	r.HandleFunc("/reset", server.ResetState).Methods("POST")
-	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET")
-	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST")
-	r.HandleFunc("/populate", server.Populate).Methods("POST")
-	r.HandleFunc("/proxies/{proxy}", server.ProxyShow).Methods("GET")
-	r.HandleFunc("/proxies/{proxy}", server.ProxyUpdate).Methods("POST")
-	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE")
-	r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicIndex).Methods("GET")
-	r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicCreate).Methods("POST")
-	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicShow).Methods("GET")
-	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicUpdate).Methods("POST")
-	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE")
+	r.HandleFunc("/reset", server.ResetState).Methods("POST").
+		Name("ResetState")
+	r.HandleFunc("/proxies", server.ProxyIndex).Methods("GET").
+		Name("ProxyIndex")
+	r.HandleFunc("/proxies", server.ProxyCreate).Methods("POST").
+		Name("ProxyCreate")
+	r.HandleFunc("/populate", server.Populate).Methods("POST").
+		Name("Populate")
+	r.HandleFunc("/proxies/{proxy}", server.ProxyShow).Methods("GET").
+		Name("ProxyShow")
+	r.HandleFunc("/proxies/{proxy}", server.ProxyUpdate).Methods("POST").
+		Name("ProxyUpdate")
+	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE").
+		Name("ProxyDelete")
+	r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicIndex).Methods("GET").
+		Name("ToxicIndex")
+	r.HandleFunc("/proxies/{proxy}/toxics", server.ToxicCreate).Methods("POST").
+		Name("ToxicCreate")
+	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicShow).Methods("GET").
+		Name("ToxicShow")
+	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicUpdate).Methods("POST").
+		Name("ToxicUpdate")
+	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE").
+		Name("ToxicDelete")
 
-	r.HandleFunc("/version", server.Version).Methods("GET")
+	r.HandleFunc("/version", server.Version).Methods("GET").Name("Version")
 
 	if server.Metrics.anyMetricsEnabled() {
-		r.Handle("/metrics", server.Metrics.handler())
+		r.Handle("/metrics", server.Metrics.handler()).Name("Metrics")
 	}
 
 	server.Logger.

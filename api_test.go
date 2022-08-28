@@ -42,6 +42,24 @@ func WithServer(t *testing.T, f func(string)) {
 
 	f("http://localhost:8475")
 }
+func TestRequestId(t *testing.T) {
+	WithServer(t, func(addr string) {
+		client := http.Client{}
+
+		req, _ := http.NewRequest("GET", "http://localhost:8475/version", nil)
+		req.Header.Add("User-Agent", "curl")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("Does not expect errors from client: %+v", err)
+		}
+		defer resp.Body.Close()
+
+		if _, ok := resp.Header["X-Toxiproxy-Request-Id"]; !ok {
+			t.Fatalf("Expect http response with header X-Toxiproxy-Request-Id, got %+v", resp.Header)
+		}
+	})
+}
 
 func TestBrowserGets403(t *testing.T) {
 	WithServer(t, func(addr string) {
