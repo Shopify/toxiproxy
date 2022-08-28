@@ -54,4 +54,6 @@ jobs:
         with:
           distribution: goreleaser
           version: v1.10.3
-          args: build --snapshot --rm-dist --skip-post-hooks --skip-validate
+          args: build --snapshot --rm-dist --skip-post-hooks --skip-validate --single-target
+        env:
+          GOOS: linux
