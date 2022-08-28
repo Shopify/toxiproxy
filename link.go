@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"time"
 
 	"github.com/rs/zerolog"
 
@@ -73,7 +74,10 @@ func (link *ToxicLink) Start(
 	dest io.WriteCloser,
 ) {
 	logger := link.Logger
-	logger.Debug().Msg("Setup connection")
+	logger.
+		Debug().
+		Str("direction", link.Direction()).
+		Msg("Setup connection")
 
 	labels := []string{
 		link.Direction(),
@@ -133,23 +137,33 @@ func (link *ToxicLink) read(
 func (link *ToxicLink) write(
 	metricLabels []string,
 	name string,
-	server *ApiServer,
+	server *ApiServer, // TODO: Replace with AppConfig for Metrics and Logger
 	dest io.WriteCloser,
 ) {
-	logger := link.Logger
+	logger := link.Logger.
+		With().
+		Str("component", "ToxicLink").
+		Str("method", "write").
+		Str("link", name).
+		Str("proxy", link.proxy.Name).
+		Str("link_addr", fmt.Sprintf("%p", link)).
+		Logger()
+
 	bytes, err := io.Copy(dest, link.output)
 	if err != nil {
 		logger.Warn().
 			Int64("bytes", bytes).
 			Err(err).
-			Msg("Destination terminated")
-	}
-	if server.Metrics.proxyMetricsEnabled() {
+			Msg("Could not write to destination")
+	} else if server.Metrics.proxyMetricsEnabled() {
 		server.Metrics.ProxyMetrics.SentBytesTotal.
 			WithLabelValues(metricLabels...).Add(float64(bytes))
 	}
+
 	dest.Close()
+	logger.Trace().Msgf("Remove link %s from ToxicCollection", name)
 	link.toxics.RemoveLink(name)
+	logger.Trace().Msgf("RemoveConnection %s from Proxy %s", name, link.proxy.Name)
 	link.proxy.RemoveConnection(name)
 }
 
@@ -211,11 +225,11 @@ func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapp
 			}
 		}
 
-		log.Trace().Msg("Interrupt the previous toxic to update its output")
+		log.Trace().Msg("Interrupting the previous toxic to update its output")
 		stop := make(chan bool)
-		go func() {
-			stop <- link.stubs[toxic_index-1].InterruptToxic()
-		}()
+		go func(stub *toxics.ToxicStub, stop chan bool) {
+			stop <- stub.InterruptToxic()
+		}(link.stubs[toxic_index-1], stop)
 
 		// Unblock the previous toxic if it is trying to flush
 		// If the previous toxic is closed, continue flusing until we reach the end.
@@ -231,9 +245,14 @@ func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapp
 					if !stopped {
 						<-stop
 					}
-					return
+					return // TODO: There are some steps after this to clean buffer
 				}
-				link.stubs[toxic_index].Output <- tmp
+
+				err := link.stubs[toxic_index].WriteOutput(tmp, 5*time.Second)
+				if err != nil {
+					log.Err(err).
+						Msg("Could not write last packets after interrupt to Output")
+				}
 			}
 		}
 
@@ -244,7 +263,11 @@ func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapp
 				link.stubs[toxic_index].Close()
 				return
 			}
-			link.stubs[toxic_index].Output <- tmp
+			err := link.stubs[toxic_index].WriteOutput(tmp, 5*time.Second)
+			if err != nil {
+				log.Err(err).
+					Msg("Could not write last packets after interrupt to Output")
+			}
 		}
 
 		link.stubs[toxic_index-1].Output = link.stubs[toxic_index].Output

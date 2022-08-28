@@ -1,4 +1,5 @@
 OS := $(shell uname -s)
+ARCH := $(shell uname -m)
 GO_VERSION := $(shell go version | cut -f3 -d" ")
 GO_MINOR_VERSION := $(shell echo $(GO_VERSION) | cut -f2 -d.)
 GO_PATCH_VERSION := $(shell echo $(GO_VERSION) | cut -f3 -d. | sed "s/^\s*$$/0/")
@@ -13,8 +14,9 @@ test:
 	$(MALLOC_ENV) go test -v -race -timeout 1m ./...
 
 .PHONY: test-e2e
-test-e2e: build
+test-e2e: build container.build
 	scripts/test-e2e
+	timeout -v --foreground 20m scripts/test-e2e-hazelcast toxiproxy
 
 .PHONY: test-release
 test-release: test bench test-e2e release-dry
@@ -44,6 +46,13 @@ lint:
 build: dist clean
 	go build -ldflags="-s -w" -o ./dist/toxiproxy-server ./cmd/server
 	go build -ldflags="-s -w" -o ./dist/toxiproxy-cli ./cmd/cli
+
+.PHONY: container.build
+container.build:
+	env GOOS=linux CGO_ENABLED=0 go build -ldflags="-s -w" -o ./dist/toxiproxy-server-linux-$(ARCH) ./cmd/server
+	env GOOS=linux CGO_ENABLED=0 go build -ldflags="-s -w" -o ./dist/toxiproxy-cli-linux-$(ARCH) ./cmd/cli
+	docker build -f Dockerfile -t toxiproxy dist
+	docker run --rm toxiproxy --version
 
 .PHONY: release
 release:

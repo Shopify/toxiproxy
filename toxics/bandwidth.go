@@ -50,7 +50,11 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 					sleep -= 100 * time.Millisecond
 				case <-stub.Interrupt:
 					logger.Trace().Msg("BandwidthToxic was interrupted during writing data")
-					stub.Output <- p // Don't drop any data on the floor
+					err := stub.WriteOutput(p, 5*time.Second) // Don't drop any data on the floor
+					if err != nil {
+						logger.Warn().Err(err).
+							Msg("Could not write last packets after interrupt to Output")
+					}
 					return
 				}
 			}
@@ -62,7 +66,11 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 				stub.Output <- p
 			case <-stub.Interrupt:
 				logger.Trace().Msg("BandwidthToxic was interrupted during writing data")
-				stub.Output <- p // Don't drop any data on the floor
+				err := stub.WriteOutput(p, 5*time.Second) // Don't drop any data on the floor
+				if err != nil {
+					logger.Warn().Err(err).
+						Msg("Could not write last packets after interrupt to Output")
+				}
 				return
 			}
 		}

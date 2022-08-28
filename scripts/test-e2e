@@ -28,6 +28,10 @@ function cleanup() {
 }
 trap "cleanup" EXIT SIGINT SIGTERM
 
+echo "= Toxiproxy E2E tests"
+echo
+echo "== Setup"
+echo
 echo "=== Starting Web service"
 
 pkill -15 "toxiproxy-server" || true
@@ -56,7 +60,6 @@ cli toggle shopify_http
 echo -e "-----------------\n"
 
 echo "== Benchmarking"
-
 echo
 echo "=== Without toxics"
 

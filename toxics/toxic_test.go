@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"io"
 	"net"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/Shopify/toxiproxy/v2"
 	"github.com/Shopify/toxiproxy/v2/collectors"
+	"github.com/Shopify/toxiproxy/v2/stream"
 	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
@@ -350,4 +352,43 @@ func BenchmarkProxyBandwidth(b *testing.B) {
 	if err != nil {
 		b.Error("Failed to close TCP connection", err)
 	}
+}
+
+func TestToxicStub_WriteOutput(t *testing.T) {
+	input := make(chan *stream.StreamChunk)
+	output := make(chan *stream.StreamChunk)
+	stub := toxics.NewToxicStub(input, output)
+
+	buf := make([]byte, 42)
+	rand.Read(buf)
+
+	t.Run("when no read in 1 second", func(t *testing.T) {
+		err := stub.WriteOutput(&stream.StreamChunk{Data: buf}, time.Second)
+		if err == nil {
+			t.Error("Expected to have error")
+		}
+
+		expected := "timeout: could not write to output in 1 seconds"
+		if err.Error() != expected {
+			t.Errorf("Expected error: %s, got %s", expected, err)
+		}
+	})
+
+	t.Run("when read is available", func(t *testing.T) {
+		go func(t *testing.T, stub *toxics.ToxicStub, expected []byte) {
+			select {
+			case <-time.After(5 * time.Second):
+				t.Error("Timeout of running test to read from output.")
+			case chunk := <-output:
+				if !bytes.Equal(chunk.Data, buf) {
+					t.Error("Data in Output different from Write")
+				}
+			}
+		}(t, stub, buf)
+
+		err := stub.WriteOutput(&stream.StreamChunk{Data: buf}, 5*time.Second)
+		if err != nil {
+			t.Errorf("Unexpected error: %+v", err)
+		}
+	})
 }

@@ -1,9 +1,11 @@
 package toxics
 
 import (
+	"fmt"
 	"math/rand"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/Shopify/toxiproxy/v2/stream"
 )
@@ -84,6 +86,22 @@ func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 		toxic.Pipe(s)
 	} else {
 		new(NoopToxic).Pipe(s)
+	}
+}
+
+// WriteOutput allows to write to Output with timeout to avoid deadlocks.
+// If duration is 0, then wait until other goroutines finish reading from Output.
+func (s *ToxicStub) WriteOutput(p *stream.StreamChunk, d time.Duration) error {
+	if d == 0 {
+		s.Output <- p
+		return nil
+	}
+
+	select {
+	case s.Output <- p:
+		return nil
+	case <-time.After(d):
+		return fmt.Errorf("timeout: could not write to output in %d seconds", int(d.Seconds()))
 	}
 }
 

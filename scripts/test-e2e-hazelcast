@@ -1,0 +1,142 @@
+#!/bin/bash
+
+# Usage:
+#   test-e2e-hazelcast [docker image name for toxiproxy]
+
+set -ueo pipefail
+
+cd "$(dirname "$0")"
+
+toxiproxy="../dist/toxiproxy-cli"
+state="started"
+
+cli() {
+  ../dist/toxiproxy-cli "$@" 2>&1 | sed -e 's/^/[client] /'
+}
+
+wait_for_url() {
+  curl -s --retry-connrefused --retry 5 --retry-delay 2 --retry-max-time 30 \
+       --max-time 1 -L -I -X GET "${1}"
+}
+
+# Stop all background jobs on exit
+function cleanup() {
+  echo -e "\n\n== Teardown: state=${state}"
+  if [[ $state != "success" ]]; then
+    docker kill -s SIGQUIT member-proxy
+    docker logs -t member-proxy
+  fi
+  docker stop member-proxy member0 member1 member2 &> /dev/null || true
+  docker network rm toxiproxy-e2e &> /dev/null || true
+}
+trap "cleanup" EXIT SIGINT SIGTERM
+
+LATEST_TAG=$(git describe --tags --abbrev=0)
+IMAGE_HAZELCAST="hazelcast/hazelcast:5.1.2-slim"
+IMAGE_TOXIPROXY="${1:-ghcr.io/shopify/toxiproxy:${LATEST_TAG:1}}"
+TOXIPROXY_BASE_URL="http://localhost:8474"
+
+echo "= Toxiproxy E2E tests with Hazelcast cluster"
+echo
+echo "== Setup"
+echo
+echo "=== Starting Toxiproxy"
+
+docker rm -f member-proxy member0 member1 member2 &>/dev/null
+docker network rm toxiproxy-e2e &>/dev/null || true
+
+docker network create --subnet 172.18.5.0/24 toxiproxy-e2e
+
+docker run --rm -t "${IMAGE_TOXIPROXY}" --version
+docker run -d \
+        --name member-proxy \
+        --network toxiproxy-e2e \
+        --ip 172.18.5.2 \
+        -p 8474:8474 \
+        -e LOG_LEVEL=trace \
+        "$IMAGE_TOXIPROXY"
+
+echo "=== Wait Toxiproxy API is available"
+wait_for_url "${TOXIPROXY_BASE_URL}/version"
+
+echo "=== Prepare proxies for Hazelcast cluster"
+for i in {0..2}; do
+  echo "> Create proxy for member${i} on port 600${i}"
+  # curl --data "{\"name\": \"member${i}\", \"upstream\": \"member${i}:5701\", \"listen\": \"0.0.0.0:600${i}\"}" "${TOXIPROXY_BASE_URL}/proxies"
+  cli create -l "0.0.0.0:600${i}" -u "member${i}:5701" "member${i}"
+  echo
+done
+
+echo
+echo "=== Strating Hazelcast containers"
+for i in {0..2}; do
+  echo "> Start Hazelcast on host member${i}"
+  docker run -d --rm \
+            --name "member${i}" \
+            --network toxiproxy-e2e \
+            --ip "172.18.5.1${i}" \
+            --volume "${PWD}/hazelcast.xml:/opt/hazelcast/config/hazelcast-docker.xml" \
+            --env HZ_PHONE_HOME_ENABLED=false \
+            --env JAVA_OPTS="-DproxyPort=600${i} -DproxyPort0=6000 -DproxyPort1=6001 -DproxyPort2=6002" \
+            "$IMAGE_HAZELCAST"
+done
+
+echo "> Wait for cluster join (30s)..."
+sleep 30
+
+echo "> Output of member0"
+docker logs -t -n 10 member0
+
+echo
+echo "=== Initialize toxics for cluster"
+for i in {0..2}; do
+  echo "> Adding toxics to member${i} proxy"
+  # curl --data "{\"name\": \"member${i}_downstream\", \"stream\": \"downstream\", \"toxicity\": 1.0, \"type\": \"bandwidth\", \"attributes\": { \"rate\": 0 }}" "${TOXIPROXY_BASE_URL}/proxies/member${i}/toxics"
+  cli toxic add --type=bandwidth \
+                      --downstream \
+                      --toxicName="member${i}_downstream" \
+                      --attribute="rate=0" \
+                      --toxicity=1 \
+                      "member${i}"
+  # curl --data "{\"name\": \"member${i}_upstream\", \"stream\": \"upstream\", \"toxicity\": 1.0, \"type\": \"bandwidth\", \"attributes\": { \"rate\": 0 }}" "${TOXIPROXY_BASE_URL}/proxies/member${i}/toxics"
+  cli toxic add --type=bandwidth \
+                      --upstream \
+                      --toxicName="member${i}_upstream" \
+                      --attribute="rate=0" \
+                      --toxicity=1 \
+                      "member${i}"
+  echo
+  cli inspect "member${i}"
+  echo
+done
+
+echo "=== Wait for a the Hazelcast cluster split-brain (60s)..."
+sleep 60
+
+echo "=== Validate output of Toxiproxy and single member"
+docker logs -t -n 10 member0
+docker logs -t -n 10 member-proxy
+
+echo "=== Removing toxics from proxies"
+for i in {0..2}; do
+  echo "[$(date)] > Remove downstream bandwith Toxic for member${i} proxy"
+  # curl -v -X DELETE "${TOXIPROXY_BASE_URL}/proxies/member${i}/toxics/member${i}_downstream"
+  cli toxic delete --toxicName="member${i}_downstream" "member${i}"
+  echo "[$(date)] > Remove ustream bandwith Toxic for member${i} proxy"
+  # curl -v -X DELETE "${TOXIPROXY_BASE_URL}/proxies/member${i}/toxics/member${i}_upstream"
+  cli toxic delete --toxicName="member${i}_upstream" "member${i}"
+done
+
+echo "=== Validate output of Toxiproxy and single member after removing toxics"
+docker logs -t -n 10 member0
+docker logs -t -n 10 member-proxy
+
+cli list
+cli inspect member0
+cli inspect member1
+cli inspect member2
+
+echo -e "=================\n"
+
+echo "Succcess!"
+state="success"

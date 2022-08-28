@@ -27,7 +27,7 @@ func stopBrowsersMiddleware(next http.Handler) http.Handler {
 }
 
 func timeoutMiddleware(next http.Handler) http.Handler {
-	return http.TimeoutHandler(next, 30*time.Second, "")
+	return http.TimeoutHandler(next, 25*time.Second, "")
 }
 
 type ApiServer struct {
@@ -121,7 +121,7 @@ func (server *ApiServer) Listen(host string, port string) {
 	srv := &http.Server{
 		Handler:      r,
 		Addr:         net.JoinHostPort(host, port),
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 30 * time.Second,
 		ReadTimeout:  10 * time.Second,
 	}
 
