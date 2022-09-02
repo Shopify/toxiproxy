@@ -3,6 +3,7 @@ package toxiproxy
 import (
 	"io"
 	"net"
+	"time"
 
 	"github.com/rs/zerolog"
 
@@ -218,7 +219,11 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 					}
 					return
 				}
-				link.stubs[i].Output <- tmp
+				select {
+				case link.stubs[i].Output<-tmp:
+				case <-time.After(5 * time.Second):
+					// TODO: Output is blocked. Drop package. It is a fast fix.
+				}
 			}
 		}
 
@@ -229,7 +234,11 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 				link.stubs[i].Close()
 				return
 			}
-			link.stubs[i].Output <- tmp
+			select {
+			case link.stubs[i].Output<-tmp:
+			case <-time.After(5 * time.Second):
+				// TODO: Output is blocked. Drop package. It is a fast fix.
+			}
 		}
 
 		link.stubs[i-1].Output = link.stubs[i].Output
