@@ -45,6 +45,11 @@ build: dist clean
 	go build -ldflags="-s -w" -o ./dist/toxiproxy-server ./cmd/server
 	go build -ldflags="-s -w" -o ./dist/toxiproxy-cli ./cmd/cli
 
+.PHONY: container.build
+container.build:
+	GOOS=linux goreleaser build --rm-dist --skip-validate --single-target
+	docker build -f Dockerfile -t toxiproxy dist
+
 .PHONY: release
 release:
 	goreleaser release --rm-dist

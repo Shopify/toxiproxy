@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<hazelcast xmlns="http://www.hazelcast.com/schema/config"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://www.hazelcast.com/schema/config
+           http://www.hazelcast.com/schema/config/hazelcast-config-5.1.xsd">
+
+    <properties>
+        <property name="hazelcast.merge.next.run.delay.seconds">15</property>
+        <property name="hazelcast.merge.first.run.delay.seconds">20</property>
+        <property name="hazelcast.partition.migration.chunks.enabled">false</property>
+        <property name="hazelcast.heartbeat.failuredetector.type">deadline</property>
+        <property name="hazelcast.heartbeat.interval.seconds">3</property>
+        <property name="hazelcast.max.no.heartbeat.seconds">10</property>
+    </properties>
+
+    <network>
+        <public-address>member-proxy:${proxyPort}</public-address>
+        <port auto-increment="false">5701</port>
+        <join>
+            <auto-detection enabled="false"/>
+            <tcp-ip enabled="true">
+                <member-list>
+                    <member>member-proxy:${proxyPort0}</member>
+                    <member>member-proxy:${proxyPort1}</member>
+                    <member>member-proxy:${proxyPort2}</member>
+                </member-list>
+            </tcp-ip>
+        </join>
+    </network>
+</hazelcast>

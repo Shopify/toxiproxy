@@ -1,0 +1,96 @@
+#!/bin/bash
+
+set -x
+
+IMAGE_HAZELCAST="hazelcast/hazelcast:5.1.2-slim"
+if [[ -z $1 ]]
+then
+  IMAGE_TOXIPROXY="ghcr.io/shopify/toxiproxy:2.4.0"
+else
+  IMAGE_TOXIPROXY="${1}"
+fi
+
+TOXIPROXY_BASE_URL="http://localhost:8474"
+
+# cleanup
+docker rm -f member-proxy member0 member1 member2
+docker network rm toxiproxy-254
+
+# test
+docker run --rm -t "${IMAGE_TOXIPROXY}" --version
+
+echo "Create network for the test"
+docker network create --subnet 172.18.5.0/24 toxiproxy-254
+
+echo "Start the toxiproxy"
+docker run -d --network toxiproxy-254 --name member-proxy -p 8474:8474 -e LOG_LEVEL=trace --ip 172.18.5.2 "$IMAGE_TOXIPROXY"
+
+echo "Wait for toxiproxy start (5s)..."
+sleep 5
+curl "${TOXIPROXY_BASE_URL}/proxies"
+
+for i in {0..2}; do
+  echo "Create proxy for member${i} on port 600${i}"
+  curl --data "{\"name\": \"member${i}\", \"upstream\": \"member${i}:5701\", \"listen\": \"0.0.0.0:600${i}\"}" "${TOXIPROXY_BASE_URL}/proxies"
+  echo
+done
+
+
+echo
+for i in {0..2}; do
+  echo "Start Hazelcast on host member${i}"
+  docker run -d --rm --network toxiproxy-254 --name member${i} --ip 172.18.5.1${i} \
+    --volume "`pwd`/hazelcast-config.xml:/opt/hazelcast/config/hazelcast-docker.xml" --env HZ_PHONE_HOME_ENABLED=false \
+    --env JAVA_OPTS="-DproxyPort=600${i} -DproxyPort0=6000 -DproxyPort1=6001 -DproxyPort2=6002" "$IMAGE_HAZELCAST"
+done
+
+echo "Wait for cluster join (30s)..."
+sleep 30
+
+echo "Log tail from Hazelcast member0:"
+docker logs member0 | tail -n 10
+
+# For each proxy:
+#toxics().bandwidth(CUT_CONNECTION_DOWNSTREAM, ToxicDirection.DOWNSTREAM, 0);
+#toxics().bandwidth(CUT_CONNECTION_UPSTREAM, ToxicDirection.UPSTREAM, 0);
+#
+# toxicJson.addProperty("name", name);
+# toxicJson.addProperty("stream", stream.name().toLowerCase());
+# toxicJson.addProperty("toxicity", toxicity);
+# toxicJson.addProperty("type", getType().name().toLowerCase());
+# toxicJson.add("attributes", getAttributes());
+
+for i in {0..2}; do
+  echo "Create downstream bandwith Toxic for member${i}"
+  curl --data "{\"name\": \"member${i}_downstream\", \"stream\": \"downstream\", \"toxicity\": 1.0, \"type\": \"bandwidth\", \"attributes\": { \"rate\": 0 }}" "${TOXIPROXY_BASE_URL}/proxies/member${i}/toxics"
+  echo
+  echo "Create upstream bandwith Toxic for member${i}"
+  curl --data "{\"name\": \"member${i}_upstream\", \"stream\": \"upstream\", \"toxicity\": 1.0, \"type\": \"bandwidth\", \"attributes\": { \"rate\": 0 }}" "${TOXIPROXY_BASE_URL}/proxies/member${i}/toxics"
+  echo
+done
+
+echo "Wait for a the Hazelcast cluster split-brain (60s)..."
+sleep 60
+
+echo "Log tail from Hazelcast member0:"
+docker logs -t -n 10 member0
+docker logs -t -n 10 member-proxy
+
+# For each proxy
+#toxics().get(CUT_CONNECTION_DOWNSTREAM).remove();
+#toxics().get(CUT_CONNECTION_UPSTREAM).remove();
+
+for i in {0..2}; do
+  echo "$(date) Remove downstream bandwith Toxic for member${i}"
+  curl -X DELETE "${TOXIPROXY_BASE_URL}/proxies/member${i}/toxics/member${i}_downstream"
+  echo "$(date) Remove upstream bandwith Toxic for member${i}"
+  curl -X DELETE "${TOXIPROXY_BASE_URL}/proxies/member${i}/toxics/member${i}_upstream"
+done
+
+../dist/toxiproxy-cli list
+../dist/toxiproxy-cli inspect member0
+../dist/toxiproxy-cli inspect member1
+../dist/toxiproxy-cli inspect member2
+
+# docker kill -s SIGQUIT member-proxy
+# docker stop member-proxy member0 member1 member2
