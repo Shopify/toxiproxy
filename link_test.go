@@ -3,6 +3,8 @@ package toxiproxy
 import (
 	"encoding/binary"
 	"io"
+	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -187,6 +189,70 @@ func TestNoDataDropped(t *testing.T) {
 	if n != 0 || err != io.EOF {
 		t.Fatalf("Expected EOF: %d %v", n, err)
 	}
+}
+
+func TestRemoveToxicWithBrokenConnection(t *testing.T) {
+	t.Skip("Is not ready")
+	collection := NewToxicCollection(nil)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.New(os.Stdout).With().Caller().Timestamp().Logger())
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	collection.links["test"] = link
+
+	toxics := [2]*toxics.ToxicWrapper{
+		&toxics.ToxicWrapper{
+			Toxic: &toxics.BandwidthToxic{
+				Rate: 0,
+			},
+			Type:       "bandwidth",
+			Direction:  stream.Downstream,
+			Toxicity:   1,
+		},
+		&toxics.ToxicWrapper{
+			Toxic: &toxics.BandwidthToxic{
+				Rate: 0,
+			},
+			Type:       "bandwidth",
+			Direction:  stream.Upstream,
+			Toxicity:   1,
+		},
+	}
+
+	collection.chainAddToxic(toxics[0])
+	collection.chainAddToxic(toxics[1])
+
+	done := make(chan struct{})
+	defer close(done)
+
+	var data uint16 = 42
+	go func() {
+		for {
+			select {
+			case <-done:
+				link.input.Close()
+				return
+			case <- time.After(10*time.Second):
+				log.Println("Finish load")
+				return
+			default:
+				buf := make([]byte, 2)
+				binary.BigEndian.PutUint16(buf, data)
+				link.input.Write(buf)
+			}
+		}
+	}()
+
+
+	log.Println("Start removing toxic")
+
+	collection.chainRemoveToxic(toxics[0])
+
+	log.Println("Finish removing toxic")
+
+	log.Println("Start removing toxic")
+
+	collection.chainRemoveToxic(toxics[1])
+
+	log.Println("Finish removing toxic")
 }
 
 func TestToxicity(t *testing.T) {
