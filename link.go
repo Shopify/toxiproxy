@@ -241,8 +241,5 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 
 // Direction returns the direction of the link (upstream or downstream).
 func (link *ToxicLink) Direction() string {
-	if link.direction == stream.Upstream {
-		return "upstream"
-	}
-	return "downstream"
+	return link.direction.String()
 }

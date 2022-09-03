@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -98,14 +97,11 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 		return nil, joinError(err, ErrBadRequestBody)
 	}
 
-	switch strings.ToLower(wrapper.Stream) {
-	case "downstream":
-		wrapper.Direction = stream.Downstream
-	case "upstream":
-		wrapper.Direction = stream.Upstream
-	default:
+	wrapper.Direction, err = stream.ParseDirection(wrapper.Stream)
+	if err != nil {
 		return nil, ErrInvalidStream
 	}
+
 	if wrapper.Name == "" {
 		wrapper.Name = fmt.Sprintf("%s_%s", wrapper.Type, wrapper.Stream)
 	}

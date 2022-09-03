@@ -7,6 +7,8 @@
 * Add TimeoutHandler for the HTTP API server. (#420, @miry)
 * Set Write and Read timeouts for HTTP API server connections. (#423, @miry)
 * Show uniq request id in API HTTP response. (#425, @miry)
+* Add method to parse `stream.Direction` from string.
+  Allow to convert `stream.Direction` to string. (#430, @miry)
 
 # [2.4.0] - 2022-03-07
 

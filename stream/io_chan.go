@@ -6,14 +6,6 @@ import (
 	"time"
 )
 
-type Direction uint8
-
-const (
-	Upstream Direction = iota
-	Downstream
-	NumDirections
-)
-
 // Stores a slice of bytes with its receive timestamp.
 type StreamChunk struct {
 	Data      []byte
