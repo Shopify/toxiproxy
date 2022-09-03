@@ -2,36 +2,56 @@
 
 set -ueo pipefail
 
+cd "$(dirname "$0")"
+
+server="../dist/toxiproxy-server"
+state="started"
+
+benchmark() {
+  go test -bench=.. ../test/e2e -v
+}
+
+cli() {
+  ../dist/toxiproxy-cli "$@" 2>&1 | sed -e 's/^/[client] /'
+}
+
 wait_for_url() {
   curl -s --retry-connrefused --retry 5 --retry-delay 2 --retry-max-time 30 \
        --max-time 1 -L -I -X GET "${1}"
 }
 
 # Stop all background jobs on exit
-trap 'pkill -15 -f "dist/toxiproxy-server -proxy-metrics -runtime-metrics$"; pkill -15 -f "exe/endpoint$"' \
-     EXIT SIGINT SIGTERM
+function cleanup() {
+  echo -e "\n\n== Teardown: state=${state}"
+  pkill -15 -f "toxiproxy-server -proxy-metrics -runtime-metrics$"
+  pkill -15 -f "exe/endpoint$"
+}
+trap "cleanup" EXIT SIGINT SIGTERM
 
 echo "=== Starting Web service"
 
-go run test/e2e/endpoint.go 2>&1 | sed -e 's/^/[web] /' &
+pkill -15 "toxiproxy-server" || true
+pkill -15 -f "exe/endpoint$" || true
+
+go run ../test/e2e/endpoint.go 2>&1 | sed -e 's/^/[web] /' &
 
 echo "=== Starting Toxiproxy"
 
-LOG_LEVEL=debug ./dist/toxiproxy-server -proxy-metrics -runtime-metrics 2>&1 | sed -e 's/^/[toxiproxy] /' &
+LOG_LEVEL=debug $server -proxy-metrics -runtime-metrics 2>&1 | sed -e 's/^/[toxiproxy] /' &
 
-echo "=== Wait when service are available"
+echo "=== Wait when services are available"
 
 wait_for_url http://localhost:20002/test2
 wait_for_url http://localhost:8474/version
 
 echo "=== Test client to manipulate proxy"
 
-./dist/toxiproxy-cli -h http://localhost:8474 \
+cli -h http://localhost:8474 \
                      create -l localhost:20000 -u localhost:20002 shopify_http
-./dist/toxiproxy-cli list
-./dist/toxiproxy-cli toggle shopify_http
-./dist/toxiproxy-cli inspect shopify_http
-./dist/toxiproxy-cli toggle shopify_http
+cli list
+cli toggle shopify_http
+cli inspect shopify_http
+cli toggle shopify_http
 
 echo -e "-----------------\n"
 
@@ -40,123 +60,120 @@ echo "== Benchmarking"
 echo
 echo "=== Without toxics"
 
-go test -bench=. ./test/e2e -v
+benchmark
 
 echo -e "-----------------\n"
 
 echo "=== Latency toxic downstream"
 
-./dist/toxiproxy-cli toxic add --downstream \
-                               --type=latency \
-                               --toxicName="latency_downstream" \
-                               --attribute="latency=1000" \
-                               --attribute="jitter=50" \
-                               --toxicity=0.99 \
-                               shopify_http
-./dist/toxiproxy-cli inspect shopify_http
+cli toxic add --downstream \
+              --type=latency \
+              --toxicName="latency_downstream" \
+              --attribute="latency=1000" \
+              --attribute="jitter=50" \
+              --toxicity=0.99 \
+              shopify_http
+cli inspect shopify_http
 
-go test -bench=. ./test/e2e -v
+benchmark
 
-./dist/toxiproxy-cli toxic update --toxicName="latency_downstream" \
-                                  --attribute="jitter=20" \
-                                  --toxicity=0.7 \
-                                  shopify_http
-./dist/toxiproxy-cli inspect shopify_http
+cli toxic update --toxicName="latency_downstream" \
+                 --attribute="jitter=20" \
+                 --toxicity=0.7 \
+                 shopify_http
+cli inspect shopify_http
 
-./dist/toxiproxy-cli toxic delete --toxicName="latency_downstream" shopify_http
+cli toxic delete --toxicName="latency_downstream" shopify_http
 
 echo -e "-----------------\n"
 
 echo "=== Latency toxic upstream"
 
-./dist/toxiproxy-cli toxic add --upstream \
-                               --type=latency \
-                               --toxicName="latency_upstream" \
-                               --attribute="latency=1000" \
-                               --attribute="jitter=50" \
-                               --toxicity=1 \
-                               shopify_http
-./dist/toxiproxy-cli inspect shopify_http
+cli toxic add --upstream \
+              --type=latency \
+              --toxicName="latency_upstream" \
+              --attribute="latency=1000" \
+              --attribute="jitter=50" \
+              --toxicity=1 \
+              shopify_http
+cli inspect shopify_http
 
-go test -bench=. ./test/e2e -v
+benchmark
 
-./dist/toxiproxy-cli toxic update --toxicName="latency_upstream" \
-                                  --attribute="jitter=20" \
-                                  --toxicity=0.3 \
-                                  shopify_http
-./dist/toxiproxy-cli inspect shopify_http
+cli toxic update --toxicName="latency_upstream" \
+                 --attribute="jitter=20" \
+                 --toxicity=0.3 \
+                 shopify_http
+cli inspect shopify_http
 
-./dist/toxiproxy-cli toxic delete --toxicName="latency_upstream" shopify_http
+cli toxic delete --toxicName="latency_upstream" shopify_http
 
 echo -e "-----------------\n"
 
 echo "=== Bandwidth toxic"
 
-./dist/toxiproxy-cli toxic add --type=bandwidth \
-                               --toxicName="bandwidth_kb_per_second" \
-                               --attribute="rate=1" \
-                               --toxicity=0.5 \
-                               shopify_http
-./dist/toxiproxy-cli toxic update --toxicName="bandwidth_kb_per_second" \
-                                  --attribute="rate=10" \
-                                  --toxicity=1.0 \
-                                  shopify_http
+cli toxic add --type=bandwidth \
+              --toxicName="bandwidth_kb_per_second" \
+              --attribute="rate=1" \
+              --toxicity=0.5 \
+              shopify_http
+cli toxic update --toxicName="bandwidth_kb_per_second" \
+                 --attribute="rate=10" \
+                 --toxicity=1.0 \
+                 shopify_http
 
-go test -bench=. ./test/e2e -v
+benchmark
 
-./dist/toxiproxy-cli toxic delete --toxicName="bandwidth_kb_per_second" \
+cli toxic delete --toxicName="bandwidth_kb_per_second" \
                                   shopify_http
 
 echo -e "-----------------\n"
 
 echo "=== Timeout toxic"
 
-./dist/toxiproxy-cli toxic add --type=timeout \
-                               --toxicName="timeout_ms" \
-                               --attribute="timeout=10" \
-                               --toxicity=0.1 \
-                               shopify_http
-./dist/toxiproxy-cli toxic delete --toxicName="timeout_ms" shopify_http
+cli toxic add --type=timeout \
+              --toxicName="timeout_ms" \
+              --attribute="timeout=10" \
+              --toxicity=0.1 \
+              shopify_http
+cli toxic delete --toxicName="timeout_ms" shopify_http
 
 echo -e "-----------------\n"
 
 echo "=== Slicer toxic"
 
-./dist/toxiproxy-cli toxic add --type=slicer \
-                               --toxicName="slicer_us" \
-                               --attribute="average_size=64" \
-                               --attribute="size_variation=32" \
-                               --attribute="delay=10" \
-                               --toxicity=1.0 \
-                               shopify_http
-go test -bench=. ./test/e2e -v
-./dist/toxiproxy-cli toxic delete --toxicName="slicer_us" shopify_http
+cli toxic add --type=slicer \
+               --toxicName="slicer_us" \
+               --attribute="average_size=64" \
+               --attribute="size_variation=32" \
+               --attribute="delay=10" \
+               --toxicity=1.0 \
+               shopify_http
+benchmark
+cli toxic delete --toxicName="slicer_us" shopify_http
 
 echo -e "-----------------\n"
 
 echo "=== Reset peer toxic"
 
-./dist/toxiproxy-cli toxic add --type=reset_peer \
-                               --toxicName="reset_peer" \
-                               --attribute="timeout=2000" \
-                               --toxicity=1.0 \
-                               shopify_http
-./dist/toxiproxy-cli inspect shopify_http
-./dist/toxiproxy-cli toxic delete --toxicName="reset_peer" shopify_http
+cli toxic add --type=reset_peer \
+              --toxicName="reset_peer" \
+              --attribute="timeout=2000" \
+              --toxicity=1.0 \
+              shopify_http
+cli inspect shopify_http
+cli toxic delete --toxicName="reset_peer" shopify_http
 
 echo -e "-----------------\n"
 
-echo "=== Metrics test"
+echo "== Metrics test"
 wait_for_url http://localhost:20000/test1
 curl -s http://localhost:8474/metrics | grep -E '^toxiproxy_proxy_sent_bytes_total{direction="downstream",listener="127.0.0.1:20000",proxy="shopify_http",upstream="localhost:20002"} [0-9]+'
 curl -s http://localhost:8474/metrics | grep -E '^go_info'
 curl -s http://localhost:8474/metrics | grep -E '^go_goroutines'
 echo -e "-----------------\n"
 
-echo "== Teardown"
-
-./dist/toxiproxy-cli delete shopify_http
-
 echo -e "=================\n"
 
 echo "Succcess!"
+state="success"
