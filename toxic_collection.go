@@ -205,11 +205,8 @@ func (c *ToxicCollection) RemoveLink(name string) {
 // All following functions assume the lock is already grabbed.
 func (c *ToxicCollection) findToxicByName(name string) *toxics.ToxicWrapper {
 	for dir := range c.chain {
-		for i, toxic := range c.chain[dir] {
-			if i == 0 {
-				// Skip the first noop toxic, it has no name
-				continue
-			}
+		// Skip the first noop toxic, it has no name
+		for _, toxic := range c.chain[dir][1:] {
 			if toxic.Name == name {
 				return toxic
 			}
