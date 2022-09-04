@@ -2,6 +2,7 @@ package toxics_test
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net"
 	"testing"
@@ -85,7 +86,7 @@ func TestTimeoutToxicDoesNotCauseHang(t *testing.T) {
 		}
 
 		err := testhelper.TimeoutAfter(time.Second, func() {
-			proxy.Toxics.RemoveToxic("might_block")
+			proxy.Toxics.RemoveToxic(context.Background(), "might_block")
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -99,7 +100,7 @@ func TestTimeoutToxicClosesConnectionOnRemove(t *testing.T) {
 			ToxicToJson(t, "to_delete", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 0}),
 		)
 
-		proxy.Toxics.RemoveToxic("to_delete")
+		proxy.Toxics.RemoveToxic(context.Background(), "to_delete")
 
 		err := testhelper.TimeoutAfter(time.Second, func() {
 			buf := make([]byte, 1)

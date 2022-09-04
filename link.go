@@ -1,6 +1,8 @@
 package toxiproxy
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"net"
 
@@ -183,23 +185,36 @@ func (link *ToxicLink) UpdateToxic(toxic *toxics.ToxicWrapper) {
 }
 
 // Remove an existing toxic from the chain.
-func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
-	i := toxic.Index
+func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapper) {
+	toxic_index := toxic.Index
+	log := zerolog.Ctx(ctx).
+		With().
+		Str("component", "ToxicLink").
+		Str("method", "RemoveToxic").
+		Str("toxic", toxic.Name).
+		Str("toxic_type", toxic.Type).
+		Int("toxic_index", toxic.Index).
+		Str("link_addr", fmt.Sprintf("%p", link)).
+		Str("toxic_stub_addr", fmt.Sprintf("%p", link.stubs[toxic_index])).
+		Str("prev_toxic_stub_addr", fmt.Sprintf("%p", link.stubs[toxic_index-1])).
+		Logger()
 
-	if link.stubs[i].InterruptToxic() {
+	if link.stubs[toxic_index].InterruptToxic() {
 		cleanup, ok := toxic.Toxic.(toxics.CleanupToxic)
 		if ok {
-			cleanup.Cleanup(link.stubs[i])
+			cleanup.Cleanup(link.stubs[toxic_index])
 			// Cleanup could have closed the stub.
-			if link.stubs[i].Closed() {
+			if link.stubs[toxic_index].Closed() {
+				log.Trace().Msg("Cleanup closed toxic and removed toxic")
+				// TODO: Check if cleanup happen would link.stubs recalculated?
 				return
 			}
 		}
 
+		log.Trace().Msg("Interrupt the previous toxic to update its output")
 		stop := make(chan bool)
-		// Interrupt the previous toxic to update its output
 		go func() {
-			stop <- link.stubs[i-1].InterruptToxic()
+			stop <- link.stubs[toxic_index-1].InterruptToxic()
 		}()
 
 		// Unblock the previous toxic if it is trying to flush
@@ -210,32 +225,32 @@ func (link *ToxicLink) RemoveToxic(toxic *toxics.ToxicWrapper) {
 			select {
 			case interrupted = <-stop:
 				stopped = true
-			case tmp := <-link.stubs[i].Input:
+			case tmp := <-link.stubs[toxic_index].Input:
 				if tmp == nil {
-					link.stubs[i].Close()
+					link.stubs[toxic_index].Close()
 					if !stopped {
 						<-stop
 					}
 					return
 				}
-				link.stubs[i].Output <- tmp
+				link.stubs[toxic_index].Output <- tmp
 			}
 		}
 
 		// Empty the toxic's buffer if necessary
-		for len(link.stubs[i].Input) > 0 {
-			tmp := <-link.stubs[i].Input
+		for len(link.stubs[toxic_index].Input) > 0 {
+			tmp := <-link.stubs[toxic_index].Input
 			if tmp == nil {
-				link.stubs[i].Close()
+				link.stubs[toxic_index].Close()
 				return
 			}
-			link.stubs[i].Output <- tmp
+			link.stubs[toxic_index].Output <- tmp
 		}
 
-		link.stubs[i-1].Output = link.stubs[i].Output
-		link.stubs = append(link.stubs[:i], link.stubs[i+1:]...)
+		link.stubs[toxic_index-1].Output = link.stubs[toxic_index].Output
+		link.stubs = append(link.stubs[:toxic_index], link.stubs[toxic_index+1:]...)
 
-		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1])
+		go link.stubs[toxic_index-1].Run(link.toxics.chain[link.direction][toxic_index-1])
 	}
 }
 

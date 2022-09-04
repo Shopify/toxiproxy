@@ -16,6 +16,20 @@ import (
 	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
+func stopBrowsersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.UserAgent(), "Mozilla/") {
+			http.Error(w, "User agent not allowed", 403)
+		} else {
+			next.ServeHTTP(w, r)
+		}
+	})
+}
+
+func timeoutMiddleware(next http.Handler) http.Handler {
+	return http.TimeoutHandler(next, 30*time.Second, "")
+}
+
 type ApiServer struct {
 	Collection *ProxyCollection
 	Metrics    *metricsContainer
@@ -44,20 +58,6 @@ func (server *ApiServer) PopulateConfig(filename string) {
 	} else {
 		logger.Info().Int("proxies", len(proxies)).Msg("Populated proxies from file")
 	}
-}
-
-func stopBrowsersMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.UserAgent(), "Mozilla/") {
-			http.Error(w, "User agent not allowed", 403)
-		} else {
-			next.ServeHTTP(w, r)
-		}
-	})
-}
-
-func timeoutMiddleware(next http.Handler) http.Handler {
-	return http.TimeoutHandler(next, 5*time.Second, "")
 }
 
 func (server *ApiServer) Listen(host string, port string) {
@@ -153,6 +153,7 @@ func (server *ApiServer) ProxyIndex(response http.ResponseWriter, request *http.
 }
 
 func (server *ApiServer) ResetState(response http.ResponseWriter, request *http.Request) {
+	ctx := request.Context()
 	proxies := server.Collection.Proxies()
 
 	for _, proxy := range proxies {
@@ -161,13 +162,13 @@ func (server *ApiServer) ResetState(response http.ResponseWriter, request *http.
 			return
 		}
 
-		proxy.Toxics.ResetToxics()
+		proxy.Toxics.ResetToxics(ctx)
 	}
 
 	response.WriteHeader(http.StatusNoContent)
 	_, err := response.Write(nil)
 	if err != nil {
-		log := zerolog.Ctx(request.Context())
+		log := zerolog.Ctx(ctx)
 		log.Warn().Err(err).Msg("ResetState: Failed to write headers to client")
 	}
 }
@@ -414,13 +415,15 @@ func (server *ApiServer) ToxicUpdate(response http.ResponseWriter, request *http
 
 func (server *ApiServer) ToxicDelete(response http.ResponseWriter, request *http.Request) {
 	vars := mux.Vars(request)
+	ctx := request.Context()
+	log := zerolog.Ctx(ctx)
 
 	proxy, err := server.Collection.Get(vars["proxy"])
 	if server.apiError(response, err) {
 		return
 	}
 
-	err = proxy.Toxics.RemoveToxic(vars["toxic"])
+	err = proxy.Toxics.RemoveToxic(ctx, vars["toxic"])
 	if server.apiError(response, err) {
 		return
 	}
@@ -428,7 +431,6 @@ func (server *ApiServer) ToxicDelete(response http.ResponseWriter, request *http
 	response.WriteHeader(http.StatusNoContent)
 	_, err = response.Write(nil)
 	if err != nil {
-		log := zerolog.Ctx(request.Context())
 		log.Warn().Err(err).Msg("ToxicDelete: Failed to write headers to client")
 	}
 }

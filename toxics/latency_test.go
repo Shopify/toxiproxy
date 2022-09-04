@@ -3,6 +3,7 @@ package toxics_test
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"io"
 	"net"
 	"strconv"
@@ -103,8 +104,9 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *toxics.LatencyToxic) {
 			time.Duration(upLatency.Jitter+downLatency.Jitter+20)*time.Millisecond,
 		)
 
-		proxy.Toxics.RemoveToxic("latency_up")
-		proxy.Toxics.RemoveToxic("latency_down")
+		ctx := context.Background()
+		proxy.Toxics.RemoveToxic(ctx, "latency_up")
+		proxy.Toxics.RemoveToxic(ctx, "latency_down")
 
 		err = conn.Close()
 		if err != nil {
@@ -169,7 +171,7 @@ func TestLatencyToxicCloseRace(t *testing.T) {
 		}
 		conn.Write([]byte("hello"))
 		conn.Close()
-		proxy.Toxics.RemoveToxic("latency")
+		proxy.Toxics.RemoveToxic(context.Background(), "latency")
 	}
 }
 
@@ -206,7 +208,7 @@ func TestTwoLatencyToxics(t *testing.T) {
 		)
 
 		for i := range toxics {
-			proxy.Toxics.RemoveToxic("latency_" + strconv.Itoa(i))
+			proxy.Toxics.RemoveToxic(context.Background(), "latency_"+strconv.Itoa(i))
 		}
 
 		err = conn.Close()

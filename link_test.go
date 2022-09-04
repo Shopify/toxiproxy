@@ -1,8 +1,11 @@
 package toxiproxy
 
 import (
+	"context"
 	"encoding/binary"
+	"flag"
 	"io"
+	"os"
 	"testing"
 	"time"
 
@@ -81,6 +84,7 @@ func TestStubInitializaationWithToxics(t *testing.T) {
 }
 
 func TestAddRemoveStubs(t *testing.T) {
+	ctx := context.Background()
 	collection := NewToxicCollection(nil)
 	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
@@ -117,7 +121,7 @@ func TestAddRemoveStubs(t *testing.T) {
 	}
 
 	// Remove stubs
-	collection.chainRemoveToxic(toxic)
+	collection.chainRemoveToxic(ctx, toxic)
 	if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
 		t.Fatalf("Link output buffer was not initialized as 0: %d", cap(link.stubs[0].Output))
 	}
@@ -134,6 +138,7 @@ func TestAddRemoveStubs(t *testing.T) {
 }
 
 func TestNoDataDropped(t *testing.T) {
+	ctx := context.Background()
 	collection := NewToxicCollection(nil)
 	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
@@ -159,17 +164,17 @@ func TestNoDataDropped(t *testing.T) {
 		}
 		link.input.Close()
 	}()
-	go func() {
+	go func(ctx context.Context) {
 		for {
 			select {
 			case <-done:
 				return
 			default:
 				collection.chainAddToxic(toxic)
-				collection.chainRemoveToxic(toxic)
+				collection.chainRemoveToxic(ctx, toxic)
 			}
 		}
-	}()
+	}(ctx)
 
 	buf := make([]byte, 2)
 	for i := 0; i < 64*1024; i++ {
@@ -238,7 +243,11 @@ func TestToxicity(t *testing.T) {
 
 func TestStateCreated(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
+	log := zerolog.Nop()
+	if flag.Lookup("test.v").DefValue == "true" {
+		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+	}
+	link := NewToxicLink(nil, collection, stream.Downstream, log)
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 

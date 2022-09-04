@@ -2,6 +2,7 @@ package toxiproxy
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,14 +44,14 @@ func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 	return collection
 }
 
-func (c *ToxicCollection) ResetToxics() {
+func (c *ToxicCollection) ResetToxics(ctx context.Context) {
 	c.Lock()
 	defer c.Unlock()
 
 	// Remove all but the first noop toxic
 	for dir := range c.chain {
 		for len(c.chain[dir]) > 1 {
-			c.chainRemoveToxic(c.chain[dir][1])
+			c.chainRemoveToxic(ctx, c.chain[dir][1])
 		}
 	}
 }
@@ -158,16 +159,28 @@ func (c *ToxicCollection) UpdateToxicJson(
 	return nil, ErrToxicNotFound
 }
 
-func (c *ToxicCollection) RemoveToxic(name string) error {
+func (c *ToxicCollection) RemoveToxic(ctx context.Context, name string) error {
+	log := zerolog.Ctx(ctx).
+		With().
+		Str("component", "ToxicCollection").
+		Str("method", "RemoveToxic").
+		Str("toxic", name).
+		Str("proxy", c.proxy.Name).
+		Logger()
+	log.Trace().Msg("Acquire locking...")
 	c.Lock()
 	defer c.Unlock()
 
+	log.Trace().Msg("Getting toxic by name...")
 	toxic := c.findToxicByName(name)
-	if toxic != nil {
-		c.chainRemoveToxic(toxic)
-		return nil
+	if toxic == nil {
+		log.Trace().Msg("Could not find toxic by name")
+		return ErrToxicNotFound
 	}
-	return ErrToxicNotFound
+
+	c.chainRemoveToxic(ctx, toxic)
+	log.Trace().Msg("Finished")
+	return nil
 }
 
 func (c *ToxicCollection) StartLink(
@@ -217,17 +230,17 @@ func (c *ToxicCollection) chainAddToxic(toxic *toxics.ToxicWrapper) {
 	c.chain[dir] = append(c.chain[dir], toxic)
 
 	// Asynchronously add the toxic to each link
-	group := sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 	for _, link := range c.links {
 		if link.direction == dir {
-			group.Add(1)
-			go func(link *ToxicLink) {
-				defer group.Done()
+			wg.Add(1)
+			go func(link *ToxicLink, wg *sync.WaitGroup) {
+				defer wg.Done()
 				link.AddToxic(toxic)
-			}(link)
+			}(link, &wg)
 		}
 	}
-	group.Wait()
+	wg.Wait()
 }
 
 func (c *ToxicCollection) chainUpdateToxic(toxic *toxics.ToxicWrapper) {
@@ -247,7 +260,15 @@ func (c *ToxicCollection) chainUpdateToxic(toxic *toxics.ToxicWrapper) {
 	group.Wait()
 }
 
-func (c *ToxicCollection) chainRemoveToxic(toxic *toxics.ToxicWrapper) {
+func (c *ToxicCollection) chainRemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapper) {
+	log := zerolog.Ctx(ctx).
+		With().
+		Str("component", "ToxicCollection").
+		Str("method", "chainRemoveToxic").
+		Str("toxic", toxic.Name).
+		Str("direction", toxic.Direction.String()).
+		Logger()
+
 	dir := toxic.Direction
 	c.chain[dir] = append(c.chain[dir][:toxic.Index], c.chain[dir][toxic.Index+1:]...)
 	for i := toxic.Index; i < len(c.chain[dir]); i++ {
@@ -255,17 +276,24 @@ func (c *ToxicCollection) chainRemoveToxic(toxic *toxics.ToxicWrapper) {
 	}
 
 	// Asynchronously remove the toxic from each link
-	group := sync.WaitGroup{}
+	wg := sync.WaitGroup{}
+
+	event_array := zerolog.Arr()
 	for _, link := range c.links {
 		if link.direction == dir {
-			group.Add(1)
-			go func(link *ToxicLink) {
-				defer group.Done()
-				link.RemoveToxic(toxic)
-			}(link)
+			event_array = event_array.Str(fmt.Sprintf("Link[%p] %s", link, link.Direction()))
+			wg.Add(1)
+			go func(ctx context.Context, link *ToxicLink, log zerolog.Logger) {
+				defer wg.Done()
+				link.RemoveToxic(ctx, toxic)
+			}(ctx, link, log)
 		}
 	}
-	group.Wait()
+
+	log.Trace().
+		Array("links", event_array).
+		Msg("Waiting to update links")
+	wg.Wait()
 
 	toxic.Index = -1
 }
