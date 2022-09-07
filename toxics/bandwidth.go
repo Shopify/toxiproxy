@@ -1,7 +1,10 @@
 package toxics
 
 import (
+	"fmt"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/Shopify/toxiproxy/v2/stream"
 )
@@ -13,10 +16,17 @@ type BandwidthToxic struct {
 }
 
 func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
+	logger := log.With().
+		Str("component", "BandwidthToxic").
+		Str("method", "Pipe").
+		Str("toxic_type", "bandwidth").
+		Str("addr", fmt.Sprintf("%p", t)).
+		Logger()
 	var sleep time.Duration = 0
 	for {
 		select {
 		case <-stub.Interrupt:
+			logger.Trace().Msg("BandwidthToxic was interrupted")
 			return
 		case p := <-stub.Input:
 			if p == nil {
@@ -39,6 +49,7 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 					p.Data = p.Data[t.Rate*100:]
 					sleep -= 100 * time.Millisecond
 				case <-stub.Interrupt:
+					logger.Trace().Msg("BandwidthToxic was interrupted during writing data")
 					stub.Output <- p // Don't drop any data on the floor
 					return
 				}
@@ -50,6 +61,7 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 				sleep -= time.Since(start)
 				stub.Output <- p
 			case <-stub.Interrupt:
+				logger.Trace().Msg("BandwidthToxic was interrupted during writing data")
 				stub.Output <- p // Don't drop any data on the floor
 				return
 			}

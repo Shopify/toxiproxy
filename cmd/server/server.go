@@ -12,6 +12,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/Shopify/toxiproxy/v2"
 	"github.com/Shopify/toxiproxy/v2/collectors"
@@ -68,6 +69,7 @@ func run(cli cliArguments) {
 	}
 
 	logger := setupLogger()
+	log.Logger = logger
 
 	rand.Seed(cli.seed)
 

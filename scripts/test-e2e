@@ -37,7 +37,7 @@ go run ../test/e2e/endpoint.go 2>&1 | sed -e 's/^/[web] /' &
 
 echo "=== Starting Toxiproxy"
 
-LOG_LEVEL=debug $server -proxy-metrics -runtime-metrics 2>&1 | sed -e 's/^/[toxiproxy] /' &
+LOG_LEVEL=trace $server -proxy-metrics -runtime-metrics 2>&1 | sed -e 's/^/[toxiproxy] /' &
 
 echo "=== Wait when services are available"
 
