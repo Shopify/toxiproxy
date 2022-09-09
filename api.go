@@ -1,6 +1,7 @@
 package toxiproxy
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -34,7 +35,13 @@ type ApiServer struct {
 	Collection *ProxyCollection
 	Metrics    *metricsContainer
 	Logger     *zerolog.Logger
+	http       *http.Server
 }
+
+const (
+	wait_timeout = 30 * time.Second
+	read_timeout = 15 * time.Second
+)
 
 func NewServer(m *metricsContainer, logger zerolog.Logger) *ApiServer {
 	return &ApiServer{
@@ -44,23 +51,46 @@ func NewServer(m *metricsContainer, logger zerolog.Logger) *ApiServer {
 	}
 }
 
-func (server *ApiServer) PopulateConfig(filename string) {
-	file, err := os.Open(filename)
-	logger := server.Logger
-	if err != nil {
-		logger.Err(err).Str("config", filename).Msg("Error reading config file")
-		return
+func (server *ApiServer) Listen(host string, port string) error {
+	addr := net.JoinHostPort(host, port)
+	server.Logger.
+		Info().
+		Str("address", addr).
+		Msg("Starting Toxiproxy HTTP server")
+
+	server.http = &http.Server{
+		Addr:         addr,
+		Handler:      server.Routes(),
+		WriteTimeout: wait_timeout,
+		ReadTimeout:  read_timeout,
+		IdleTimeout:  60 * time.Second,
 	}
 
-	proxies, err := server.Collection.PopulateJson(server, file)
-	if err != nil {
-		logger.Err(err).Msg("Failed to populate proxies from file")
-	} else {
-		logger.Info().Int("proxies", len(proxies)).Msg("Populated proxies from file")
+	err := server.http.ListenAndServe()
+	if err == http.ErrServerClosed {
+		err = nil
 	}
+
+	return err
 }
 
-func (server *ApiServer) Listen(host string, port string) {
+func (server *ApiServer) Shutdown() error {
+	if server.http == nil {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), wait_timeout)
+	defer cancel()
+
+	err := server.http.Shutdown(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (server *ApiServer) Routes() *mux.Router {
 	r := mux.NewRouter()
 	r.Use(hlog.NewHandler(*server.Logger))
 	r.Use(hlog.RequestIDHandler("request_id", "X-Toxiproxy-Request-Id"))
@@ -111,23 +141,22 @@ func (server *ApiServer) Listen(host string, port string) {
 		r.Handle("/metrics", server.Metrics.handler()).Name("Metrics")
 	}
 
-	server.Logger.
-		Info().
-		Str("host", host).
-		Str("port", port).
-		Str("version", Version).
-		Msgf("Starting HTTP server on endpoint %s:%s", host, port)
+	return r
+}
 
-	srv := &http.Server{
-		Handler:      r,
-		Addr:         net.JoinHostPort(host, port),
-		WriteTimeout: 30 * time.Second,
-		ReadTimeout:  10 * time.Second,
+func (server *ApiServer) PopulateConfig(filename string) {
+	file, err := os.Open(filename)
+	logger := server.Logger
+	if err != nil {
+		logger.Err(err).Str("config", filename).Msg("Error reading config file")
+		return
 	}
 
-	err := srv.ListenAndServe()
+	proxies, err := server.Collection.PopulateJson(server, file)
 	if err != nil {
-		server.Logger.Fatal().Err(err).Msg("ListenAndServe finished with error")
+		logger.Err(err).Msg("Failed to populate proxies from file")
+	} else {
+		logger.Info().Int("proxies", len(proxies)).Msg("Populated proxies from file")
 	}
 }
 

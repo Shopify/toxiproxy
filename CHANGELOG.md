@@ -1,5 +1,7 @@
 # [Unreleased]
 
+* Gracefull shutdown of HTTP server. (#439, @miry)
+
 # [2.5.0] - 2022-09-10
 
 * Update Release steps. (#369, @neufeldtech)

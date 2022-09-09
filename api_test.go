@@ -42,6 +42,7 @@ func WithServer(t *testing.T, f func(string)) {
 
 	f("http://localhost:8475")
 }
+
 func TestRequestId(t *testing.T) {
 	WithServer(t, func(addr string) {
 		client := http.Client{}

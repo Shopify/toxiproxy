@@ -50,28 +50,31 @@ func parseArguments() cliArguments {
 }
 
 func main() {
-	// Handle SIGTERM to exit cleanly
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGTERM)
-	go func() {
-		<-signals
-		os.Exit(0)
-	}()
-
-	cli := parseArguments()
-	run(cli)
+	err := run()
+	if err != nil {
+		fmt.Printf("error: %v", err)
+		os.Exit(1)
+	}
+	os.Exit(0)
 }
 
-func run(cli cliArguments) {
+func run() error {
+	cli := parseArguments()
+
 	if cli.printVersion {
 		fmt.Printf("toxiproxy-server version %s\n", toxiproxy.Version)
-		return
+		return nil
 	}
+
+	rand.Seed(cli.seed)
 
 	logger := setupLogger()
 	log.Logger = logger
 
-	rand.Seed(cli.seed)
+	logger.
+		Info().
+		Str("version", toxiproxy.Version).
+		Msg("Starting Toxiproxy")
 
 	metrics := toxiproxy.NewMetricsContainer(prometheus.NewRegistry())
 	server := toxiproxy.NewServer(metrics, logger)
@@ -81,11 +84,27 @@ func run(cli cliArguments) {
 	if cli.runtimeMetrics {
 		server.Metrics.RuntimeMetrics = collectors.NewRuntimeMetricCollectors()
 	}
+
 	if len(cli.config) > 0 {
 		server.PopulateConfig(cli.config)
 	}
 
-	server.Listen(cli.host, cli.port)
+	go func(server *toxiproxy.ApiServer, host, port string) {
+		err := server.Listen(host, port)
+		if err != nil {
+			server.Logger.Err(err).Msg("Server finished with error")
+		}
+	}(server, cli.host, cli.port)
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	<-signals
+	server.Logger.Info().Msg("Shutdown started")
+	err := server.Shutdown()
+	if err != nil {
+		logger.Err(err).Msg("Shutdown finished with error")
+	}
+	return nil
 }
 
 func setupLogger() zerolog.Logger {

@@ -26,8 +26,8 @@ function cleanup() {
     docker kill -s SIGQUIT member-proxy
     docker logs -t member-proxy
   fi
-  docker stop member-proxy member0 member1 member2 &> /dev/null || true
-  docker network rm toxiproxy-e2e &> /dev/null || true
+  docker stop member-proxy member0 member1 member2 &>/dev/null || true
+  docker network rm toxiproxy-e2e &>/dev/null || true
 }
 trap "cleanup" EXIT SIGINT SIGTERM
 
