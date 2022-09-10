@@ -1,16 +1,21 @@
 # [Unreleased]
 
+# [2.5.0] - 2022-09-10
+
+* Update Release steps. (#369, @neufeldtech)
+* Migrate off probot-CLA to new GitHub Action. (#405, @cursedcoder)
 * Support go 1.18, 1.19. (#415, @miry)
 * `toxiproxy.NewProxy` now accepts `name`, `listen addr` and `upstream addr`. (#418, @miry)
 * Replace logrus with zerolog. (#413, @miry)
 * Log HTTP requests to API server. (#413, #421, @miry)
 * Add TimeoutHandler for the HTTP API server. (#420, @miry)
 * Set Write and Read timeouts for HTTP API server connections. (#423, @miry)
-* Show uniq request id in API HTTP response. (#425, @miry)
-* Add method to parse `stream.Direction` from string.
-  Allow to convert `stream.Direction` to string. (#430, @miry)
-* Add posibility to write to Output with deadline.
-  On interrupting badnwidth toxic use non blocking write. (#436, @miry)
+* Show unique request id in API HTTP response. (#425, @miry)
+* Add method to parse `stream.Direction` from a string.
+  Allow converting `stream.Direction` to string. (#430, @miry)
+* Add the possibility to write to Output with a deadline.
+  On interrupting Bandwidth toxic, use non-blocking writes. (#436, @miry)
+* Update minimum supported Go version 1.17. (#438, @miry)
 
 # [2.4.0] - 2022-03-07
 
@@ -183,7 +188,8 @@
 
 Initial public release.
 
-[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/Shopify/toxiproxy/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/Shopify/toxiproxy/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/Shopify/toxiproxy/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/Shopify/toxiproxy/compare/v2.1.7...v2.2.0

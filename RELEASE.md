@@ -1,4 +1,4 @@
-# Releasing 
+# Releasing
 
 - [Releasing](#releasing)
   - [Before You Begin](#before-you-begin)
@@ -19,7 +19,7 @@ Ensure your local workstation is configured to be able to [Sign commits](https:/
 
 ### Checkout latest code
 
-```bash
+```shell
 git checkout master
 git pull origin master
 ```
@@ -31,7 +31,7 @@ git pull origin master
 
 ### Create Release Commit and Tag
 
-```bash
+```shell
 export RELEASE_VERSION=2.x.y
 git commit -a -S -m "Release $RELEASE_VERSION"
 git tag -s "v$RELEASE_VERSION" # When prompted for a commit message, enter the 'release notes' style message, just like on the releases page
@@ -39,20 +39,20 @@ git tag -s "v$RELEASE_VERSION" # When prompted for a commit message, enter the '
 
 ### Run Pre-Release Tests
 
-```bash
+```shell
 make test-release
 ```
 
 - Push to Master Branch
-```bash
-git push origin master
+```shell
+git push origin master --follow-tags
 ```
 
 ## Push Release Tag
 
 - On your local machine again, push your tag to github
 
-```bash
+```shell
 git push origin "v$RELEASE_VERSION"
 ```
 
@@ -70,7 +70,7 @@ git push origin "v$RELEASE_VERSION"
 
 - Do a manual check of installing toxiproxy via brew
   1. While in the homebrew-shopify directory...
-  ```bash
+  ```shell
   brew install ./toxiproxy.rb --debug
   ```
   Note: it's normal to get some errors when homebrew attempts to load the file as a Cask instead of a formula, just make sure that it still gets installed.
