@@ -4,6 +4,11 @@
 * Support PATCH HTTP method for Proxy update(`PATCH /proxies/{proxy}`) and
   Toxic update(`PATCH /proxies/{proxy}/toxics/{toxic}`) endpoints.
   Deprecat POST HTTP method for those endpoints. (@miry)
+* Client does not parse response body in case of errors for Populate.
+  Requires to get current proxies with new command. (#441, @miry)
+* Client specifies `User-Agent` HTTP header for all requests as
+  "toxiproxy-cli/<version> <os>/<runtime>".
+  Specifies client request content type as `application/json`. (#441, @miry)
 
 # [2.5.0] - 2022-09-10
 

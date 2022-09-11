@@ -9,43 +9,56 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Client holds information about where to connect to Toxiproxy.
 type Client struct {
-	endpoint string
+	UserAgent string
+	endpoint  string
+	http      *http.Client
 }
 
 // NewClient creates a new client which provides the base of all communication
 // with Toxiproxy. Endpoint is the address to the proxy (e.g. localhost:8474 if
 // not overridden).
 func NewClient(endpoint string) *Client {
-	if !strings.HasPrefix(endpoint, "https://") && !strings.HasPrefix(endpoint, "http://") {
+	if !strings.HasPrefix(endpoint, "https://") &&
+		!strings.HasPrefix(endpoint, "http://") {
 		endpoint = "http://" + endpoint
 	}
-	return &Client{endpoint: endpoint}
+
+	http := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	return &Client{
+		UserAgent: "toxiproxy-cli",
+		endpoint:  endpoint,
+		http:      http,
+	}
+}
+
+// Version returns a Toxiproxy running version.
+func (client *Client) Version() ([]byte, error) {
+	return client.get("/version")
 }
 
 // Proxies returns a map with all the proxies and their toxics.
 func (client *Client) Proxies() (map[string]*Proxy, error) {
-	resp, err := http.Get(client.endpoint + "/proxies")
-	if err != nil {
-		return nil, err
-	}
-
-	err = checkError(resp, http.StatusOK, "Proxies")
+	resp, err := client.get("/proxies")
 	if err != nil {
 		return nil, err
 	}
 
 	proxies := make(map[string]*Proxy)
-	err = json.NewDecoder(resp.Body).Decode(&proxies)
+	err = json.Unmarshal(resp, &proxies)
 	if err != nil {
 		return nil, err
 	}
+
 	for _, proxy := range proxies {
 		proxy.client = client
 		proxy.created = true
@@ -75,7 +88,7 @@ func (client *Client) CreateProxy(name, listen, upstream string) (*Proxy, error)
 
 	err := proxy.Save()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Create: %w", err)
 	}
 
 	return proxy, nil
@@ -83,19 +96,13 @@ func (client *Client) CreateProxy(name, listen, upstream string) (*Proxy, error)
 
 // Proxy returns a proxy by name.
 func (client *Client) Proxy(name string) (*Proxy, error) {
-	// TODO url encode
-	resp, err := http.Get(client.endpoint + "/proxies/" + name)
-	if err != nil {
-		return nil, err
-	}
-
-	err = checkError(resp, http.StatusOK, "Proxy")
+	resp, err := client.get("/proxies/" + name)
 	if err != nil {
 		return nil, err
 	}
 
 	proxy := new(Proxy)
-	err = json.NewDecoder(resp.Body).Decode(proxy)
+	err = json.Unmarshal(resp, &proxy)
 	if err != nil {
 		return nil, err
 	}
@@ -118,32 +125,20 @@ func (client *Client) Populate(config []Proxy) ([]*Proxy, error) {
 		return nil, err
 	}
 
-	resp, err := http.Post(
-		client.endpoint+"/populate",
-		"application/json",
-		bytes.NewReader(request),
-	)
+	resp, err := client.post("/populate", bytes.NewReader(request))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Populate: %w", err)
 	}
 
-	// Response body may need to be read twice, we want to return both the proxy list and any errors
-	var body bytes.Buffer
-	tee := io.TeeReader(resp.Body, &body)
-	err = json.NewDecoder(tee).Decode(&proxies)
+	err = json.Unmarshal(resp, &proxies)
 	if err != nil {
 		return nil, err
-	}
-
-	resp.Body = ioutil.NopCloser(&body)
-	err = checkError(resp, http.StatusCreated, "Populate")
-	if err != nil {
-		return proxies.Proxies, err
 	}
 
 	for _, proxy := range proxies.Proxies {
 		proxy.client = client
 	}
+
 	return proxies.Proxies, err
 }
 
@@ -213,10 +208,73 @@ func (client *Client) RemoveToxic(options *ToxicOptions) error {
 
 // ResetState resets the state of all proxies and toxics in Toxiproxy.
 func (client *Client) ResetState() error {
-	resp, err := http.Post(client.endpoint+"/reset", "text/plain", bytes.NewReader([]byte{}))
+	_, err := client.post("/reset", bytes.NewReader([]byte{}))
+	return err
+}
+
+func (c *Client) get(path string) ([]byte, error) {
+	return c.send("GET", path, nil)
+}
+
+func (c *Client) post(path string, body io.Reader) ([]byte, error) {
+	return c.send("POST", path, body)
+}
+
+func (c *Client) patch(path string, body io.Reader) ([]byte, error) {
+	return c.send("PATCH", path, body)
+}
+
+func (c *Client) delete(path string) error {
+	_, err := c.send("DELETE", path, nil)
+	return err
+}
+
+func (c *Client) send(verb, path string, body io.Reader) ([]byte, error) {
+	req, err := http.NewRequest(verb, c.endpoint+path, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("User-Agent", c.UserAgent)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fail to request: %w", err)
+	}
+
+	err = c.validateResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	result, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (c *Client) validateResponse(resp *http.Response) error {
+	if resp.StatusCode < 300 && resp.StatusCode >= 200 {
+		return nil
+	}
+
+	apiError := new(ApiError)
+	err := json.NewDecoder(resp.Body).Decode(&apiError)
 	if err != nil {
 		return err
 	}
+	resp.Body.Close()
 
-	return checkError(resp, http.StatusNoContent, "ResetState")
+	if err != nil {
+		apiError.Message = fmt.Sprintf(
+			"Unexpected response code %d",
+			resp.StatusCode,
+		)
+		apiError.Status = resp.StatusCode
+	}
+	return apiError
 }

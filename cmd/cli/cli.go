@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -262,6 +263,12 @@ type toxiAction func(*cli.Context, *toxiproxy.Client) error
 func withToxi(f toxiAction) func(*cli.Context) error {
 	return func(c *cli.Context) error {
 		toxiproxyClient := toxiproxy.NewClient(hostname)
+		toxiproxyClient.UserAgent = fmt.Sprintf(
+			"toxiproxy-cli/%s (%s/%s)",
+			c.App.Version,
+			runtime.GOOS,
+			runtime.GOARCH,
+		)
 		return f(c, toxiproxyClient)
 	}
 }

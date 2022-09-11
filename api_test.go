@@ -128,10 +128,12 @@ func TestIndexWithNoProxies(t *testing.T) {
 func TestCreateProxyBlankName(t *testing.T) {
 	WithServer(t, func(addr string) {
 		_, err := client.CreateProxy("", "", "")
+
+		expected := "Create: HTTP 400: missing required field: name"
 		if err == nil {
-			t.Fatal("Expected error creating proxy, got nil")
-		} else if err.Error() != "Create: HTTP 400: missing required field: name" {
-			t.Fatal("Expected different error creating proxy:", err)
+			t.Error("Expected error creating proxy, got nil")
+		} else if err.Error() != expected {
+			t.Errorf("Expected error `%s',\n\tgot: `%s'", expected, err)
 		}
 	})
 }
@@ -140,9 +142,9 @@ func TestCreateProxyBlankUpstream(t *testing.T) {
 	WithServer(t, func(addr string) {
 		_, err := client.CreateProxy("test", "", "")
 		if err == nil {
-			t.Fatal("Expected error creating proxy, got nil")
+			t.Error("Expected error creating proxy, got nil")
 		} else if err.Error() != "Create: HTTP 400: missing required field: upstream" {
-			t.Fatal("Expected different error creating proxy:", err)
+			t.Error("Expected different error creating proxy:", err)
 		}
 	})
 }
@@ -333,8 +335,9 @@ func TestPopulateWithBadName(t *testing.T) {
 			t.Fatal("Expected Populate to fail.")
 		}
 
-		if err.Error() != "Populate: HTTP 400: missing required field: name at proxy 2" {
-			t.Fatal("Expected different error during populate:", err)
+		expected := "Populate: HTTP 400: missing required field: name at proxy 2"
+		if err.Error() != expected {
+			t.Fatalf("Expected error `%s',\n\tgot: `%s'", expected, err)
 		}
 
 		if len(testProxies) != 0 {
@@ -377,21 +380,25 @@ func TestPopulateProxyWithBadDataShouldReturnError(t *testing.T) {
 			t.Fatal("Expected Populate to fail.")
 		}
 
-		if len(testProxies) != 1 {
-			t.Fatalf("Wrong number of proxies returned: %d != %d", len(testProxies), 1)
-		}
-
-		if testProxies[0].Name != "one" {
-			t.Fatalf("Wrong proxy name returned: %s != one", testProxies[0].Name)
-		}
-
-		for _, p := range testProxies {
-			AssertProxyUp(t, p.Listen, true)
+		if len(testProxies) != 0 {
+			t.Fatalf("Expected Proxies to be empty, got %v", testProxies)
 		}
 
 		proxies, err := client.Proxies()
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Expected no error, got: %v", err)
+		}
+
+		if len(proxies) != 1 {
+			t.Fatalf("Wrong number of proxies returned: %d != %d", len(proxies), 1)
+		}
+
+		if _, ok := proxies["one"]; !ok {
+			t.Fatal("Proxy `one' was not created!")
+		}
+
+		for _, p := range testProxies {
+			AssertProxyUp(t, p.Listen, true)
 		}
 
 		for _, p := range proxies {
@@ -642,11 +649,12 @@ func TestDeleteProxy(t *testing.T) {
 			t.Fatal("Expected proxy to be deleted from list")
 		}
 
+		expected := "Delete: HTTP 404: proxy not found"
 		err = testProxy.Delete()
 		if err == nil {
-			t.Fatal("Proxy did not result in not found.")
-		} else if err.Error() != "Delete: HTTP 404: proxy not found" {
-			t.Fatal("Incorrect error removing proxy:", err)
+			t.Error("Proxy did not result in not found.")
+		} else if err.Error() != expected {
+			t.Errorf("Expected error `%s',\n\tgot: `%s'", expected, err)
 		}
 	})
 }
@@ -658,12 +666,12 @@ func TestCreateProxyPortConflict(t *testing.T) {
 			t.Fatal("Unable to create proxy:", err)
 		}
 
+		expected := "Create: HTTP 500: listen tcp 127.0.0.1:3310: bind: address already in use"
 		_, err = client.CreateProxy("test", "localhost:3310", "localhost:20001")
 		if err == nil {
-			t.Fatal("Proxy did not result in conflict.")
-		} else if err.Error() !=
-			"Create: HTTP 500: listen tcp 127.0.0.1:3310: bind: address already in use" {
-			t.Fatal("Incorrect error adding proxy:", err)
+			t.Error("Proxy did not result in conflict.")
+		} else if err.Error() != expected {
+			t.Errorf("Expected error `%s',\n\tgot: `%s'", expected, err)
 		}
 
 		err = testProxy.Delete()
@@ -684,11 +692,12 @@ func TestCreateProxyNameConflict(t *testing.T) {
 			t.Fatal("Unable to create proxy:", err)
 		}
 
+		expected := "Create: HTTP 409: proxy already exists"
 		_, err = client.CreateProxy("mysql_master", "localhost:3311", "localhost:20001")
 		if err == nil {
 			t.Fatal("Proxy did not result in conflict.")
-		} else if err.Error() != "Create: HTTP 409: proxy already exists" {
-			t.Fatal("Incorrect error adding proxy:", err)
+		} else if err.Error() != expected {
+			t.Fatalf("Expected error `%s',\n\tgot: `%s'", expected, err)
 		}
 
 		err = testProxy.Delete()
@@ -1094,7 +1103,7 @@ func TestVersionEndpointReturnsVersion(t *testing.T) {
 			t.Fatal("Unable to read body from response")
 		}
 
-		if string(body) != toxiproxy.Version {
+		if string(body) != `{"version": "git"}\n` {
 			t.Fatal("Expected to return Version from /version, got:", string(body))
 		}
 	})

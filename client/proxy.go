@@ -7,7 +7,7 @@ package toxiproxy
 import (
 	"bytes"
 	"encoding/json"
-	"net/http"
+	"fmt"
 )
 
 type Proxy struct {
@@ -28,33 +28,25 @@ func (proxy *Proxy) Save() error {
 	if err != nil {
 		return err
 	}
+	data := bytes.NewReader(request)
 
-	path := proxy.client.endpoint + "/proxies"
-	contenttype := "application/json"
+	var resp []byte
 	if proxy.created {
-		path += "/" + proxy.Name
-		contenttype = "text/plain"
-	}
-
-	resp, err := http.Post(path, contenttype, bytes.NewReader(request))
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if proxy.created {
-		err = checkError(resp, http.StatusOK, "Save")
+		// TODO: Release PATCH only for v3.0
+		// resp, err = proxy.client.patch("/proxies/"+proxy.Name, data)
+		resp, err = proxy.client.post("/proxies/"+proxy.Name, data)
 	} else {
-		err = checkError(resp, http.StatusCreated, "Create")
+		resp, err = proxy.client.post("/proxies", data)
 	}
 	if err != nil {
 		return err
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(proxy)
+	err = json.Unmarshal(resp, proxy)
 	if err != nil {
 		return err
 	}
+
 	proxy.created = true
 
 	return nil
@@ -76,34 +68,22 @@ func (proxy *Proxy) Disable() error {
 // the proxy such as listen port and active toxics will be deleted as well. If you just wish to
 // stop and later enable a proxy, use `Enable()` and `Disable()`.
 func (proxy *Proxy) Delete() error {
-	httpClient := &http.Client{}
-	req, err := http.NewRequest("DELETE", proxy.client.endpoint+"/proxies/"+proxy.Name, nil)
+	err := proxy.client.delete("/proxies/" + proxy.Name)
 	if err != nil {
-		return err
+		return fmt.Errorf("Delete: %w", err)
 	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	return checkError(resp, http.StatusNoContent, "Delete")
+	return nil
 }
 
 // Toxics returns a map of all the active toxics and their attributes.
 func (proxy *Proxy) Toxics() (Toxics, error) {
-	resp, err := http.Get(proxy.client.endpoint + "/proxies/" + proxy.Name + "/toxics")
-	if err != nil {
-		return nil, err
-	}
-
-	err = checkError(resp, http.StatusOK, "Toxics")
+	resp, err := proxy.client.get("/proxies/" + proxy.Name + "/toxics")
 	if err != nil {
 		return nil, err
 	}
 
 	toxics := make(Toxics, 0)
-	err = json.NewDecoder(resp.Body).Decode(&toxics)
+	err = json.Unmarshal(resp, &toxics)
 	if err != nil {
 		return nil, err
 	}
@@ -130,22 +110,16 @@ func (proxy *Proxy) AddToxic(
 		return nil, err
 	}
 
-	resp, err := http.Post(
-		proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics",
-		"application/json",
+	resp, err := proxy.client.post(
+		"/proxies/"+proxy.Name+"/toxics",
 		bytes.NewReader(request),
 	)
 	if err != nil {
-		return nil, err
-	}
-
-	err = checkError(resp, http.StatusOK, "AddToxic")
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("AddToxic: %w", err)
 	}
 
 	result := &Toxic{}
-	err = json.NewDecoder(resp.Body).Decode(result)
+	err = json.Unmarshal(resp, result)
 	if err != nil {
 		return nil, err
 	}
@@ -167,22 +141,16 @@ func (proxy *Proxy) UpdateToxic(name string, toxicity float32, attrs Attributes)
 		return nil, err
 	}
 
-	resp, err := http.Post(
-		proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics/"+name,
-		"application/json",
+	resp, err := proxy.client.patch(
+		"/proxies/"+proxy.Name+"/toxics/"+name,
 		bytes.NewReader(request),
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	err = checkError(resp, http.StatusOK, "UpdateToxic")
-	if err != nil {
-		return nil, err
-	}
-
 	result := &Toxic{}
-	err = json.NewDecoder(resp.Body).Decode(result)
+	err = json.Unmarshal(resp, result)
 	if err != nil {
 		return nil, err
 	}
@@ -192,20 +160,5 @@ func (proxy *Proxy) UpdateToxic(name string, toxicity float32, attrs Attributes)
 
 // RemoveToxic renives the toxic with the given name.
 func (proxy *Proxy) RemoveToxic(name string) error {
-	httpClient := &http.Client{}
-	req, err := http.NewRequest(
-		"DELETE",
-		proxy.client.endpoint+"/proxies/"+proxy.Name+"/toxics/"+name,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	return checkError(resp, http.StatusNoContent, "RemoveToxic")
+	return proxy.client.delete("/proxies/" + proxy.Name + "/toxics/" + name)
 }

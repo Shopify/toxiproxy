@@ -243,10 +243,13 @@ func (server *ApiServer) ProxyCreate(response http.ResponseWriter, request *http
 
 func (server *ApiServer) Populate(response http.ResponseWriter, request *http.Request) {
 	proxies, err := server.Collection.PopulateJson(server, request.Body)
+	log := zerolog.Ctx(request.Context())
+	if err != nil {
+		log.Warn().Err(err).Msg("Populate errors")
+	}
 
 	apiErr, ok := err.(*ApiError)
 	if !ok && err != nil {
-		log := zerolog.Ctx(request.Context())
 		log.Warn().Err(err).Msg("Error did not include status code")
 		apiErr = &ApiError{err.Error(), http.StatusInternalServerError}
 	}
@@ -268,7 +271,6 @@ func (server *ApiServer) Populate(response http.ResponseWriter, request *http.Re
 	response.WriteHeader(responseCode)
 	_, err = response.Write(data)
 	if err != nil {
-		log := zerolog.Ctx(request.Context())
 		log.Warn().Err(err).Msg("Populate: Failed to write response to client")
 	}
 }
@@ -474,10 +476,12 @@ func (server *ApiServer) ToxicDelete(response http.ResponseWriter, request *http
 }
 
 func (server *ApiServer) Version(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "text/plain;charset=utf-8")
-	_, err := response.Write([]byte(Version))
+	log := zerolog.Ctx(request.Context())
+
+	response.Header().Set("Content-Type", "application/json;charset=utf-8")
+	version := fmt.Sprintf(`{"version": "%s"}\n`, Version)
+	_, err := response.Write([]byte(version))
 	if err != nil {
-		log := zerolog.Ctx(request.Context())
 		log.Warn().Err(err).Msg("Version: Failed to write response to client")
 	}
 }
