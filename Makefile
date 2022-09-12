@@ -19,7 +19,7 @@ test-e2e: build container.build
 	timeout -v --foreground 20m scripts/test-e2e-hazelcast toxiproxy
 
 .PHONY: test-release
-test-release: test bench test-e2e release-dry
+test-release: lint fmt test bench test-e2e release-dry
 	scripts/test-release
 
 .PHONY: bench

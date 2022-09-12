@@ -7,7 +7,6 @@ set -ueo pipefail
 
 cd "$(dirname "$0")"
 
-toxiproxy="../dist/toxiproxy-cli"
 state="started"
 
 cli() {
