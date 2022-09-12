@@ -6,7 +6,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/prometheus/client_golang v1.13.0
 	github.com/rs/zerolog v1.28.0
-	github.com/urfave/cli/v2 v2.16.0
+	github.com/urfave/cli/v2 v2.16.2
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 )
