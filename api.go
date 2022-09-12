@@ -101,6 +101,7 @@ func (server *ApiServer) Routes() *mux.Router {
 			Str("client", r.RemoteAddr).
 			Str("method", r.Method).
 			Stringer("url", r.URL).
+			Str("user_agent", r.Header.Get("User-Agent")).
 			Int("status", status).
 			Int("size", size).
 			Dur("duration", duration).
