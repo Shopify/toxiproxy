@@ -2,8 +2,10 @@ package toxiproxy_test
 
 import (
 	"bytes"
+	"flag"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -19,12 +21,17 @@ var testServer *toxiproxy.ApiServer
 var client = tclient.NewClient("http://127.0.0.1:8475")
 
 func WithServer(t *testing.T, f func(string)) {
+	log := zerolog.Nop()
+	if flag.Lookup("test.v").DefValue == "true" {
+		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+	}
+
 	// Make sure only one server is running at a time. Apparently there's no clean
 	// way to shut it down between each test run.
 	if testServer == nil {
 		testServer = toxiproxy.NewServer(
 			toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
-			zerolog.Nop(),
+			log,
 		)
 
 		go testServer.Listen("localhost", "8475")

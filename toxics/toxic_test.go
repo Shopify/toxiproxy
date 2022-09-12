@@ -6,8 +6,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"flag"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -23,9 +25,13 @@ import (
 )
 
 func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
+	log := zerolog.Nop()
+	if flag.Lookup("test.v").DefValue == "true" {
+		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+	}
 	srv := toxiproxy.NewServer(
 		toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
-		zerolog.Nop(),
+		log,
 	)
 	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
 	proxy := toxiproxy.NewProxy(srv, name, "localhost:0", upstream)

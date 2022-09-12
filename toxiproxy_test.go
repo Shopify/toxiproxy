@@ -1,7 +1,9 @@
 package toxiproxy_test
 
 import (
+	"flag"
 	"net"
+	"os"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -13,9 +15,13 @@ import (
 )
 
 func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
+	log := zerolog.Nop()
+	if flag.Lookup("test.v").DefValue == "true" {
+		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+	}
 	srv := toxiproxy.NewServer(
 		toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
-		zerolog.Nop(),
+		log,
 	)
 	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
 	proxy := toxiproxy.NewProxy(srv, name, "localhost:0", upstream)
