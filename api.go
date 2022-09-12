@@ -120,7 +120,7 @@ func (server *ApiServer) Routes() *mux.Router {
 		Name("Populate")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyShow).Methods("GET").
 		Name("ProxyShow")
-	r.HandleFunc("/proxies/{proxy}", server.ProxyUpdate).Methods("POST").
+	r.HandleFunc("/proxies/{proxy}", server.ProxyUpdate).Methods("POST", "PATCH").
 		Name("ProxyUpdate")
 	r.HandleFunc("/proxies/{proxy}", server.ProxyDelete).Methods("DELETE").
 		Name("ProxyDelete")
@@ -130,7 +130,7 @@ func (server *ApiServer) Routes() *mux.Router {
 		Name("ToxicCreate")
 	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicShow).Methods("GET").
 		Name("ToxicShow")
-	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicUpdate).Methods("POST").
+	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicUpdate).Methods("POST", "PATCH").
 		Name("ToxicUpdate")
 	r.HandleFunc("/proxies/{proxy}/toxics/{toxic}", server.ToxicDelete).Methods("DELETE").
 		Name("ToxicDelete")
@@ -293,6 +293,11 @@ func (server *ApiServer) ProxyShow(response http.ResponseWriter, request *http.R
 }
 
 func (server *ApiServer) ProxyUpdate(response http.ResponseWriter, request *http.Request) {
+	log := zerolog.Ctx(request.Context())
+	if request.Method == "POST" {
+		log.Warn().Msg("ProxyUpdate: HTTP method POST is depercated. Use HTTP PATCH instead.")
+	}
+
 	vars := mux.Vars(request)
 
 	proxy, err := server.Collection.Get(vars["proxy"])
@@ -320,7 +325,6 @@ func (server *ApiServer) ProxyUpdate(response http.ResponseWriter, request *http
 	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
-		log := zerolog.Ctx(request.Context())
 		log.Warn().Err(err).Msg("ProxyUpdate: Failed to write response to client")
 	}
 }
@@ -417,6 +421,11 @@ func (server *ApiServer) ToxicShow(response http.ResponseWriter, request *http.R
 }
 
 func (server *ApiServer) ToxicUpdate(response http.ResponseWriter, request *http.Request) {
+	log := zerolog.Ctx(request.Context())
+	if request.Method == "POST" {
+		log.Warn().Msg("ToxicUpdate: HTTP method POST is depercated. Use HTTP PATCH instead.")
+	}
+
 	vars := mux.Vars(request)
 
 	proxy, err := server.Collection.Get(vars["proxy"])
@@ -437,7 +446,6 @@ func (server *ApiServer) ToxicUpdate(response http.ResponseWriter, request *http
 	response.Header().Set("Content-Type", "application/json")
 	_, err = response.Write(data)
 	if err != nil {
-		log := zerolog.Ctx(request.Context())
 		log.Warn().Err(err).Msg("ToxicUpdate: Failed to write response to client")
 	}
 }

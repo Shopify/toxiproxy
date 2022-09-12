@@ -1,6 +1,9 @@
 # [Unreleased]
 
 * Gracefull shutdown of HTTP server. (#439, @miry)
+* Support PATCH HTTP method for Proxy update(`PATCH /proxies/{proxy}`) and
+  Toxic update(`PATCH /proxies/{proxy}/toxics/{toxic}`) endpoints.
+  Deprecat POST HTTP method for those endpoints. (@miry)
 
 # [2.5.0] - 2022-09-10
 
