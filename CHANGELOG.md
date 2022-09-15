@@ -9,6 +9,7 @@
 * Client specifies `User-Agent` HTTP header for all requests as
   "toxiproxy-cli/<version> <os>/<runtime>".
   Specifies client request content type as `application/json`. (#441, @miry)
+* Replace Api.Listen parameters `host` and `port` with single `addr`. (#445, @miry)
 
 # [2.5.0] - 2022-09-10
 

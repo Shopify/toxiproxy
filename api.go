@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -51,8 +50,7 @@ func NewServer(m *metricsContainer, logger zerolog.Logger) *ApiServer {
 	}
 }
 
-func (server *ApiServer) Listen(host string, port string) error {
-	addr := net.JoinHostPort(host, port)
+func (server *ApiServer) Listen(addr string) error {
 	server.Logger.
 		Info().
 		Str("address", addr).

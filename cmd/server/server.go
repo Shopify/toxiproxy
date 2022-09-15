@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"net"
 	"os"
 	"os/signal"
 	"strconv"
@@ -89,12 +90,13 @@ func run() error {
 		server.PopulateConfig(cli.config)
 	}
 
-	go func(server *toxiproxy.ApiServer, host, port string) {
-		err := server.Listen(host, port)
+	addr := net.JoinHostPort(cli.host, cli.port)
+	go func(server *toxiproxy.ApiServer, addr string) {
+		err := server.Listen(addr)
 		if err != nil {
 			server.Logger.Err(err).Msg("Server finished with error")
 		}
-	}(server, cli.host, cli.port)
+	}(server, addr)
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
