@@ -264,7 +264,7 @@ library supports the same version. You can check which version of Toxiproxy you 
 looking at the `/version` endpoint.
 
 See the documentation for your client library for specific library changes. Detailed changes
-for the Toxiproxy server can been found in [CHANGELOG.md](https://github.com/Shopify/toxiproxy/blob/master/CHANGELOG.md).
+for the Toxiproxy server can been found in [CHANGELOG.md](./CHANGELOG.md).
 
 ### 2. Populating Toxiproxy
 
@@ -377,7 +377,7 @@ Toxics manipulate the pipe between the client and upstream. They can be added
 and removed from proxies using the [HTTP api](#http-api). Each toxic has its own parameters
 to change how it affects the proxy links.
 
-For documentation on implementing custom toxics, see [CREATING_TOXICS.md](https://github.com/Shopify/toxiproxy/blob/master/CREATING_TOXICS.md)
+For documentation on implementing custom toxics, see [CREATING_TOXICS.md](./CREATING_TOXICS.md)
 
 #### latency
 

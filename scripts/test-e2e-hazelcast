@@ -44,13 +44,12 @@ echo "=== Starting Toxiproxy"
 docker rm -f member-proxy member0 member1 member2 &>/dev/null
 docker network rm toxiproxy-e2e &>/dev/null || true
 
-docker network create --subnet 172.18.5.0/24 toxiproxy-e2e
+docker network create toxiproxy-e2e
 
 docker run --rm -t "${IMAGE_TOXIPROXY}" --version
 docker run -d \
         --name member-proxy \
         --network toxiproxy-e2e \
-        --ip 172.18.5.2 \
         -p 8474:8474 \
         -e LOG_LEVEL=trace \
         "$IMAGE_TOXIPROXY"
@@ -73,7 +72,6 @@ for i in {0..2}; do
   docker run -d --rm \
             --name "member${i}" \
             --network toxiproxy-e2e \
-            --ip "172.18.5.1${i}" \
             --volume "${PWD}/hazelcast.xml:/opt/hazelcast/config/hazelcast-docker.xml" \
             --env HZ_PHONE_HOME_ENABLED=false \
             --env JAVA_OPTS="-DproxyPort=600${i} -DproxyPort0=6000 -DproxyPort1=6001 -DproxyPort2=6002" \
