@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 
 	"github.com/Shopify/toxiproxy/v2/collectors"
@@ -18,7 +17,7 @@ import (
 )
 
 func TestProxyMetricsReceivedSentBytes(t *testing.T) {
-	srv := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop())
+	srv := NewServer(collectors.NewMetricsContainer(), zerolog.Nop())
 	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
 
 	proxy := NewProxy(srv, "test_proxy_metrics_received_sent_bytes", "localhost:0", "upstream")
@@ -55,7 +54,7 @@ func TestProxyMetricsReceivedSentBytes(t *testing.T) {
 }
 
 func TestRuntimeMetricsBuildInfo(t *testing.T) {
-	srv := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop())
+	srv := NewServer(collectors.NewMetricsContainer(), zerolog.Nop())
 	srv.Metrics.RuntimeMetrics = collectors.NewRuntimeMetricCollectors()
 
 	expected := `go_build_info{checksum="[^"]*",path="[^"]*",version="[^"]*"} 1`
@@ -90,7 +89,7 @@ func (t *testWriteCloser) Close() error {
 func prometheusOutput(t *testing.T, apiServer *ApiServer, prefix string) []string {
 	t.Helper()
 
-	testServer := httptest.NewServer(apiServer.Metrics.handler())
+	testServer := httptest.NewServer(apiServer.Metrics.Handler())
 	defer testServer.Close()
 
 	resp, err := http.Get(testServer.URL)

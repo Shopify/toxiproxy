@@ -4,11 +4,14 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog"
+
+	"github.com/Shopify/toxiproxy/v2/collectors"
 )
 
 // App is used for keep central location of configuration and resources.
 type App struct {
 	Logger zerolog.Logger
+	Metrics *collectors.MetricsContainer
 }
 
 // NewApp initialize App instance.

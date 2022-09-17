@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 
 	"github.com/Shopify/toxiproxy/v2/toxics"
+	"github.com/Shopify/toxiproxy/v2/collectors"
 )
 
 func stopBrowsersMiddleware(next http.Handler) http.Handler {
@@ -32,7 +33,7 @@ func timeoutMiddleware(next http.Handler) http.Handler {
 
 type ApiServer struct {
 	Collection *ProxyCollection
-	Metrics    *metricsContainer
+	Metrics    *collectors.MetricsContainer
 	Logger     *zerolog.Logger
 	http       *http.Server
 }
@@ -42,7 +43,7 @@ const (
 	read_timeout = 15 * time.Second
 )
 
-func NewServer(m *metricsContainer, logger zerolog.Logger) *ApiServer {
+func NewServer(m *collectors.MetricsContainer, logger zerolog.Logger) *ApiServer {
 	return &ApiServer{
 		Collection: NewProxyCollection(),
 		Metrics:    m,
@@ -136,8 +137,8 @@ func (server *ApiServer) Routes() *mux.Router {
 
 	r.HandleFunc("/version", server.Version).Methods("GET").Name("Version")
 
-	if server.Metrics.anyMetricsEnabled() {
-		r.Handle("/metrics", server.Metrics.handler()).Name("Metrics")
+	if server.Metrics.AnyMetricsEnabled() {
+		r.Handle("/metrics", server.Metrics.Handler()).Name("Metrics")
 	}
 
 	return r

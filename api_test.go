@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 
 	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/collectors"
 	tclient "github.com/Shopify/toxiproxy/v2/client"
 )
 
@@ -30,7 +30,7 @@ func WithServer(t *testing.T, f func(string)) {
 	// way to shut it down between each test run.
 	if testServer == nil {
 		testServer = toxiproxy.NewServer(
-			toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
+			collectors.NewMetricsContainer(),
 			log,
 		)
 

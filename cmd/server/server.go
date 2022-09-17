@@ -10,8 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/Shopify/toxiproxy/v2"
 	"github.com/Shopify/toxiproxy/v2/app"
 	"github.com/Shopify/toxiproxy/v2/collectors"
@@ -76,8 +74,7 @@ func run() error {
 		Str("version", toxiproxy.Version).
 		Msg("Starting Toxiproxy")
 
-	metrics := toxiproxy.NewMetricsContainer(prometheus.NewRegistry())
-	server := toxiproxy.NewServer(metrics, logger)
+	server := toxiproxy.NewServer(app.Metrics, app.Logger)
 	if cli.proxyMetrics {
 		server.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
 	}

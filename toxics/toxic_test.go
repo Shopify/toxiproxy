@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 	tomb "gopkg.in/tomb.v1"
 
@@ -30,7 +29,7 @@ func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
 		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
 	}
 	srv := toxiproxy.NewServer(
-		toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
+		collectors.NewMetricsContainer(),
 		log,
 	)
 	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()

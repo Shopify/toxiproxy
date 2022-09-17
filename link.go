@@ -126,7 +126,7 @@ func (link *ToxicLink) read(
 			Err(err).
 			Msg("Source terminated")
 	}
-	if server.Metrics.proxyMetricsEnabled() {
+	if server.Metrics.ProxyMetricsEnabled() {
 		server.Metrics.ProxyMetrics.ReceivedBytesTotal.
 			WithLabelValues(metricLabels...).Add(float64(bytes))
 	}
@@ -155,7 +155,7 @@ func (link *ToxicLink) write(
 			Int64("bytes", bytes).
 			Err(err).
 			Msg("Could not write to destination")
-	} else if server.Metrics.proxyMetricsEnabled() {
+	} else if server.Metrics.ProxyMetricsEnabled() {
 		server.Metrics.ProxyMetrics.SentBytesTotal.
 			WithLabelValues(metricLabels...).Add(float64(bytes))
 	}
