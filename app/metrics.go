@@ -5,6 +5,13 @@ import (
 )
 
 func (a *App) setMetrics() error {
-	a.Metrics = collectors.NewMetricsContainer()
+	metrics := collectors.NewMetricsContainer()
+	if a.EnabledProxyMetrics {
+		metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
+	}
+	if a.EnabledRuntimeMetrics {
+		metrics.RuntimeMetrics = collectors.NewRuntimeMetricCollectors()
+	}
+	a.Metrics = metrics
 	return nil
 }

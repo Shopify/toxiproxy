@@ -13,8 +13,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 
-	"github.com/Shopify/toxiproxy/v2/toxics"
+	"github.com/Shopify/toxiproxy/v2/app"
 	"github.com/Shopify/toxiproxy/v2/collectors"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
 func stopBrowsersMiddleware(next http.Handler) http.Handler {
@@ -32,6 +33,7 @@ func timeoutMiddleware(next http.Handler) http.Handler {
 }
 
 type ApiServer struct {
+	app        *app.App
 	Collection *ProxyCollection
 	Metrics    *collectors.MetricsContainer
 	Logger     *zerolog.Logger
@@ -43,22 +45,29 @@ const (
 	read_timeout = 15 * time.Second
 )
 
-func NewServer(m *collectors.MetricsContainer, logger zerolog.Logger) *ApiServer {
-	return &ApiServer{
+func NewServer(app *app.App) *ApiServer {
+	server := ApiServer{
+		app:        app,
 		Collection: NewProxyCollection(),
-		Metrics:    m,
-		Logger:     &logger,
+		Metrics:    app.Metrics,
+		Logger:     app.Logger,
 	}
+
+	if len(app.Config) > 0 {
+		server.PopulateConfig(app.Config)
+	}
+
+	return &server
 }
 
-func (server *ApiServer) Listen(addr string) error {
+func (server *ApiServer) Listen() error {
 	server.Logger.
 		Info().
-		Str("address", addr).
+		Str("address", server.app.Addr).
 		Msg("Starting Toxiproxy HTTP server")
 
 	server.http = &http.Server{
-		Addr:         addr,
+		Addr:         server.app.Addr,
 		Handler:      server.Routes(),
 		WriteTimeout: wait_timeout,
 		ReadTimeout:  read_timeout,
@@ -74,6 +83,10 @@ func (server *ApiServer) Listen(addr string) error {
 }
 
 func (server *ApiServer) Shutdown() error {
+	server.Logger.
+		Info().
+		Msg("Shutdown started")
+
 	if server.http == nil {
 		return nil
 	}

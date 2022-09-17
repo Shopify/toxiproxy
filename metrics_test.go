@@ -10,16 +10,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rs/zerolog"
-
-	"github.com/Shopify/toxiproxy/v2/collectors"
+	"github.com/Shopify/toxiproxy/v2/app"
 	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
 func TestProxyMetricsReceivedSentBytes(t *testing.T) {
-	srv := NewServer(collectors.NewMetricsContainer(), zerolog.Nop())
-	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
-
+	a, _ := app.NewApp(app.ServerOptions{ProxyMetrics: true})
+	srv := NewServer(a)
 	proxy := NewProxy(srv, "test_proxy_metrics_received_sent_bytes", "localhost:0", "upstream")
 
 	r := bufio.NewReader(bytes.NewBufferString("hello"))
@@ -54,8 +51,8 @@ func TestProxyMetricsReceivedSentBytes(t *testing.T) {
 }
 
 func TestRuntimeMetricsBuildInfo(t *testing.T) {
-	srv := NewServer(collectors.NewMetricsContainer(), zerolog.Nop())
-	srv.Metrics.RuntimeMetrics = collectors.NewRuntimeMetricCollectors()
+	a, _ := app.NewApp(app.ServerOptions{RuntimeMetrics: true})
+	srv := NewServer(a)
 
 	expected := `go_build_info{checksum="[^"]*",path="[^"]*",version="[^"]*"} 1`
 

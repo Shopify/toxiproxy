@@ -2,21 +2,44 @@ package app
 
 import (
 	"fmt"
+	"math/rand"
+	"net"
 
 	"github.com/rs/zerolog"
 
 	"github.com/Shopify/toxiproxy/v2/collectors"
 )
 
+type ServerOptions struct {
+	Host           string
+	Port           string
+	Config         string
+	Seed           int64
+	PrintVersion   bool
+	ProxyMetrics   bool
+	RuntimeMetrics bool
+}
+
 // App is used for keep central location of configuration and resources.
 type App struct {
-	Logger zerolog.Logger
-	Metrics *collectors.MetricsContainer
+	Addr                  string
+	Logger                *zerolog.Logger
+	Metrics               *collectors.MetricsContainer
+	Config                string
+	EnabledProxyMetrics   bool
+	EnabledRuntimeMetrics bool
 }
 
 // NewApp initialize App instance.
-func NewApp() (*App, error) {
-	app := &App{}
+func NewApp(options ServerOptions) (*App, error) {
+	rand.Seed(options.Seed)
+
+	app := &App{
+		Addr:                  net.JoinHostPort(options.Host, options.Port),
+		Config:                options.Config,
+		EnabledProxyMetrics:   options.ProxyMetrics,
+		EnabledRuntimeMetrics: options.RuntimeMetrics,
+	}
 
 	start([]unit{
 		{"Logger", app.setLogger},

@@ -6,33 +6,32 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"flag"
 	"io"
 	"net"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog"
 	tomb "gopkg.in/tomb.v1"
 
 	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/app"
 	"github.com/Shopify/toxiproxy/v2/collectors"
 	"github.com/Shopify/toxiproxy/v2/stream"
 	"github.com/Shopify/toxiproxy/v2/toxics"
+	"github.com/rs/zerolog"
 )
 
 func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
 	log := zerolog.Nop()
-	if flag.Lookup("test.v").DefValue == "true" {
-		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+	a := app.App{
+		Metrics: &collectors.MetricsContainer{
+			ProxyMetrics: collectors.NewProxyMetricCollectors(),
+		},
+		Logger: &log,
 	}
-	srv := toxiproxy.NewServer(
-		collectors.NewMetricsContainer(),
-		log,
-	)
-	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
+
+	srv := toxiproxy.NewServer(&a)
 	proxy := toxiproxy.NewProxy(srv, name, "localhost:0", upstream)
 
 	return proxy

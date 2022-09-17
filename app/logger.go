@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	// "github.com/rs/zerolog/log".
 )
 
-func (a *App) setLogger() error {
+func init() {
 	zerolog.TimestampFunc = func() time.Time {
 		return time.Now().UTC()
 	}
@@ -25,11 +25,13 @@ func (a *App) setLogger() error {
 		file = short
 		return file + ":" + strconv.Itoa(line)
 	}
+}
 
+func (a *App) setLogger() error {
 	logger := zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
 	defer func(a *App, logger zerolog.Logger) {
-		a.Logger = logger
-		log.Logger = logger
+		a.Logger = &logger
+		// log.Logger = logger
 	}(a, logger)
 
 	val, ok := os.LookupEnv("LOG_LEVEL")
@@ -39,7 +41,7 @@ func (a *App) setLogger() error {
 
 	lvl, err := zerolog.ParseLevel(val)
 	if err == nil {
-		a.Logger = a.Logger.Level(lvl)
+		logger = logger.Level(lvl)
 	} else {
 		l := &logger
 		l.Err(err).Msgf("unknown LOG_LEVEL value: \"%s\"", val)
