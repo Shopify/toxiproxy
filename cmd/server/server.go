@@ -7,15 +7,13 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/app"
 	"github.com/Shopify/toxiproxy/v2/collectors"
 )
 
@@ -61,7 +59,6 @@ func main() {
 
 func run() error {
 	cli := parseArguments()
-
 	if cli.printVersion {
 		fmt.Printf("toxiproxy-server version %s\n", toxiproxy.Version)
 		return nil
@@ -69,9 +66,11 @@ func run() error {
 
 	rand.Seed(cli.seed)
 
-	logger := setupLogger()
-	log.Logger = logger
-
+	app, err := app.NewApp()
+	if err != nil {
+		return err
+	}
+	logger := app.Logger
 	logger.
 		Info().
 		Str("version", toxiproxy.Version).
@@ -102,44 +101,9 @@ func run() error {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	<-signals
 	server.Logger.Info().Msg("Shutdown started")
-	err := server.Shutdown()
+	err = server.Shutdown()
 	if err != nil {
 		logger.Err(err).Msg("Shutdown finished with error")
 	}
 	return nil
-}
-
-func setupLogger() zerolog.Logger {
-	zerolog.TimestampFunc = func() time.Time {
-		return time.Now().UTC()
-	}
-
-	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
-		short := file
-		for i := len(file) - 1; i > 0; i-- {
-			if file[i] == '/' {
-				short = file[i+1:]
-				break
-			}
-		}
-		file = short
-		return file + ":" + strconv.Itoa(line)
-	}
-
-	logger := zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
-
-	val, ok := os.LookupEnv("LOG_LEVEL")
-	if !ok {
-		return logger
-	}
-
-	lvl, err := zerolog.ParseLevel(val)
-	if err == nil {
-		logger = logger.Level(lvl)
-	} else {
-		l := &logger
-		l.Err(err).Msgf("unknown LOG_LEVEL value: \"%s\"", val)
-	}
-
-	return logger
 }
