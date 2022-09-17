@@ -361,7 +361,8 @@ func BenchmarkProxyBandwidth(b *testing.B) {
 func TestToxicStub_WriteOutput(t *testing.T) {
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk)
-	stub := toxics.NewToxicStub(input, output)
+	logger := zerolog.Nop()
+	stub := toxics.NewToxicStub(input, output, &logger)
 
 	buf := make([]byte, 42)
 	rand.Read(buf)

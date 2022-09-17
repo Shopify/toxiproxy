@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/Shopify/toxiproxy/v2/collectors"
 	"github.com/Shopify/toxiproxy/v2/stream"
 	"github.com/Shopify/toxiproxy/v2/toxics"
 )
@@ -59,7 +60,7 @@ func NewToxicLink(
 			next = make(chan *stream.StreamChunk)
 		}
 
-		link.stubs[i] = toxics.NewToxicStub(last, next)
+		link.stubs[i] = toxics.NewToxicStub(last, next, &logger)
 		last = next
 	}
 	link.output = stream.NewChanReader(last)
@@ -109,7 +110,7 @@ func (link *ToxicLink) Start(
 		go link.stubs[i].Run(toxic)
 	}
 
-	go link.write(labels, name, server, dest)
+	go link.write(labels, name, server.Metrics, dest)
 }
 
 // read copies bytes from a source to the link's input channel.
@@ -137,7 +138,7 @@ func (link *ToxicLink) read(
 func (link *ToxicLink) write(
 	metricLabels []string,
 	name string,
-	server *ApiServer, // TODO: Replace with AppConfig for Metrics and Logger
+	metrics *collectors.MetricsContainer, // TODO: Replace with AppConfig for Metrics and Logger
 	dest io.WriteCloser,
 ) {
 	logger := link.Logger.
@@ -155,9 +156,10 @@ func (link *ToxicLink) write(
 			Int64("bytes", bytes).
 			Err(err).
 			Msg("Could not write to destination")
-	} else if server.Metrics.ProxyMetricsEnabled() {
-		server.Metrics.ProxyMetrics.SentBytesTotal.
-			WithLabelValues(metricLabels...).Add(float64(bytes))
+	} else if metrics.ProxyMetricsEnabled() {
+		metrics.ProxyMetrics.SentBytesTotal.
+			WithLabelValues(metricLabels...).
+			Add(float64(bytes))
 	}
 
 	dest.Close()
@@ -172,7 +174,7 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	i := len(link.stubs)
 
 	newin := make(chan *stream.StreamChunk, toxic.BufferSize)
-	link.stubs = append(link.stubs, toxics.NewToxicStub(newin, link.stubs[i-1].Output))
+	link.stubs = append(link.stubs, toxics.NewToxicStub(newin, link.stubs[i-1].Output, link.Logger))
 
 	// Interrupt the last toxic so that we don't have a race when moving channels
 	if link.stubs[i-1].InterruptToxic() {

@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
@@ -16,7 +14,7 @@ type BandwidthToxic struct {
 }
 
 func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
-	logger := log.With().
+	logger := stub.Logger.With().
 		Str("component", "BandwidthToxic").
 		Str("method", "Pipe").
 		Str("toxic_type", "bandwidth").

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	// "github.com/rs/zerolog/log".
 )
 
 func init() {
@@ -31,7 +30,6 @@ func (a *App) setLogger() error {
 	logger := zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
 	defer func(a *App, logger zerolog.Logger) {
 		a.Logger = &logger
-		// log.Logger = logger
 	}(a, logger)
 
 	val, ok := os.LookupEnv("LOG_LEVEL")

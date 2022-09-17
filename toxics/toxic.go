@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
@@ -59,6 +61,7 @@ type ToxicWrapper struct {
 }
 
 type ToxicStub struct {
+	Logger    *zerolog.Logger
 	Input     <-chan *stream.StreamChunk
 	Output    chan<- *stream.StreamChunk
 	State     interface{}
@@ -67,8 +70,13 @@ type ToxicStub struct {
 	closed    chan struct{}
 }
 
-func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.StreamChunk) *ToxicStub {
+func NewToxicStub(
+	input <-chan *stream.StreamChunk,
+	output chan<- *stream.StreamChunk,
+	logger *zerolog.Logger,
+) *ToxicStub {
 	return &ToxicStub{
+		Logger:    logger,
 		Interrupt: make(chan struct{}),
 		closed:    make(chan struct{}),
 		Input:     input,
