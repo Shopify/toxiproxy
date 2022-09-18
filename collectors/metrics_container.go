@@ -22,7 +22,7 @@ type MetricsContainer struct {
 	registry *prometheus.Registry
 }
 
-func (m *MetricsContainer) runtimeMetricsEnabled() bool {
+func (m *MetricsContainer) RuntimeMetricsEnabled() bool {
 	return m.RuntimeMetrics != nil
 }
 
@@ -32,13 +32,13 @@ func (m *MetricsContainer) ProxyMetricsEnabled() bool {
 
 // AnyMetricsEnabled determines whether we have any prometheus metrics registered for exporting.
 func (m *MetricsContainer) AnyMetricsEnabled() bool {
-	return m.runtimeMetricsEnabled() || m.ProxyMetricsEnabled()
+	return m.RuntimeMetricsEnabled() || m.ProxyMetricsEnabled()
 }
 
-// handler returns an HTTP handler with the necessary collectors registered
+// Handler returns an HTTP handler with the necessary collectors registered
 // via a global prometheus registry.
 func (m *MetricsContainer) Handler() http.Handler {
-	if m.runtimeMetricsEnabled() {
+	if m.RuntimeMetricsEnabled() {
 		m.registry.MustRegister(m.RuntimeMetrics.Collectors()...)
 	}
 	if m.ProxyMetricsEnabled() {
