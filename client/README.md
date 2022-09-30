@@ -109,6 +109,7 @@ func init() {
         Name:     "redis",
         Listen:   "localhost:26379",
         Upstream: "localhost:6379",
+        // note: you cannot set toxics here via ActiveToxics
     }})
     if err != nil {
         panic(err)
