@@ -1,7 +1,10 @@
 package toxics
 
 import (
+	"io"
 	"math/rand"
+
+	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
 type CorruptToxic struct {
@@ -9,7 +12,7 @@ type CorruptToxic struct {
 	Prob float64 `json:"probability"`
 }
 
-// reference: https://stackoverflow.com/questions/2075912/generate-a-random-binary-number-with-a-variable-proportion-of-1-bits
+// reference: https://stackoverflow.com/a/2076028/2708711
 func generate_mask(num_bytes int, prob float64, gas int) []byte {
 	tol := 0.001
 	x := make([]byte, num_bytes)
@@ -43,18 +46,22 @@ func (t *CorruptToxic) corrupt(data []byte) {
 }
 
 func (t *CorruptToxic) Pipe(stub *ToxicStub) {
+	buf := make([]byte, 32*1024)
+	writer := stream.NewChanWriter(stub.Output)
+	reader := stream.NewChanReader(stub.Input)
+	reader.SetInterrupt(stub.Interrupt)
 	for {
-		select {
-		case <-stub.Interrupt:
+		n, err := reader.Read(buf)
+		if err == stream.ErrInterrupted {
+			t.corrupt(buf[:n])
+			writer.Write(buf[:n])
 			return
-		case c := <-stub.Input:
-			if c == nil {
-				stub.Close()
-				return
-			}
-			t.corrupt(c.Data)
-			stub.Output <- c
+		} else if err == io.EOF {
+			stub.Close()
+			return
 		}
+		t.corrupt(buf[:n])
+		writer.Write(buf[:n])
 	}
 }
 

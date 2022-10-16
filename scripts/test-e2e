@@ -169,6 +169,18 @@ cli toxic delete --toxicName="reset_peer" shopify_http
 
 echo -e "-----------------\n"
 
+echo "=== Corrupt toxic"
+
+cli toxic add --type=corrupt \
+              --toxicName="corrupt" \
+              --attribute="probability=1.0" \
+              --toxicity=1.0 \
+              shopify_http
+cli inspect shopify_http
+cli toxic delete --toxicName="corrupt" shopify_http
+
+echo -e "-----------------\n"
+
 echo "== Metrics test"
 wait_for_url http://localhost:20000/test1
 curl -s http://localhost:8474/metrics | grep -E '^toxiproxy_proxy_sent_bytes_total{direction="downstream",listener="127.0.0.1:20000",proxy="shopify_http",upstream="localhost:20002"} [0-9]+'

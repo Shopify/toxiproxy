@@ -40,3 +40,10 @@ linters-settings:
 
   misspell:
     locale: US
+issues:
+  exclude-rules:
+    - path: toxics/corrupt\.go
+      linters:
+        - gosec
+      # we don't need cryptographically secure RNGs for this
+      text: "G404:"
