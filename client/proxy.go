@@ -18,7 +18,7 @@ type Proxy struct {
 
 	// The toxics active on this proxy. Note: you cannot set this
 	// when passing Proxy into Populate()
-	ActiveToxics Toxics `json:"toxics"` 
+	ActiveToxics Toxics `json:"toxics"`
 
 	client  *Client
 	created bool // True if this proxy exists on the server
