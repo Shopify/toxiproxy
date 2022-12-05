@@ -16,7 +16,9 @@ type Proxy struct {
 	Upstream string `json:"upstream"` // The upstream address to proxy to
 	Enabled  bool   `json:"enabled"`  // Whether the proxy is enabled
 
-	ActiveToxics Toxics `json:"toxics"` // The toxics active on this proxy
+	// The toxics active on this proxy. Note: you cannot set this
+	// when passing Proxy into Populate()
+	ActiveToxics Toxics `json:"toxics"`
 
 	client  *Client
 	created bool // True if this proxy exists on the server
