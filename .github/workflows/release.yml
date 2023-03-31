@@ -68,7 +68,7 @@ jobs:
 
       -
         name: Release
-        uses: goreleaser/goreleaser-action@b508e2e3ef3b19d4e4146d4f8fb3ba9db644a757
+        uses: goreleaser/goreleaser-action@f82d6c1c344bcacabba2c841718984797f664a6b
         with:
           distribution: goreleaser
           version: v1.10.3
