@@ -44,6 +44,7 @@ make test-release
 ```
 
 - Push to Main Branch
+
 ```shell
 git push origin main --follow-tags
 ```
@@ -70,8 +71,10 @@ git push origin "v$RELEASE_VERSION"
 
 - Do a manual check of installing toxiproxy via brew
   1. While in the homebrew-shopify directory...
+
   ```shell
   brew install ./toxiproxy.rb --debug
   ```
+
   Note: it's normal to get some errors when homebrew attempts to load the file as a Cask instead of a formula, just make sure that it still gets installed.
 - PR the version update change and merge
