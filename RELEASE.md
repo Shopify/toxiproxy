@@ -20,8 +20,8 @@ Ensure your local workstation is configured to be able to [Sign commits](https:/
 ### Checkout latest code
 
 ```shell
-git checkout master
-git pull origin master
+git checkout main
+git pull origin main
 ```
 
 ### Update the [CHANGELOG.md](CHANGELOG.md)
@@ -43,9 +43,10 @@ git tag -s "v$RELEASE_VERSION" # When prompted for a commit message, enter the '
 make test-release
 ```
 
-- Push to Master Branch
+- Push to Main Branch
+
 ```shell
-git push origin master --follow-tags
+git push origin main --follow-tags
 ```
 
 ## Push Release Tag
@@ -70,8 +71,10 @@ git push origin "v$RELEASE_VERSION"
 
 - Do a manual check of installing toxiproxy via brew
   1. While in the homebrew-shopify directory...
+
   ```shell
   brew install ./toxiproxy.rb --debug
   ```
+
   Note: it's normal to get some errors when homebrew attempts to load the file as a Cask instead of a formula, just make sure that it still gets installed.
 - PR the version update change and merge
