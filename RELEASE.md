@@ -20,8 +20,8 @@ Ensure your local workstation is configured to be able to [Sign commits](https:/
 ### Checkout latest code
 
 ```shell
-git checkout master
-git pull origin master
+git checkout main
+git pull origin main
 ```
 
 ### Update the [CHANGELOG.md](CHANGELOG.md)
@@ -43,9 +43,9 @@ git tag -s "v$RELEASE_VERSION" # When prompted for a commit message, enter the '
 make test-release
 ```
 
-- Push to Master Branch
+- Push to Main Branch
 ```shell
-git push origin master --follow-tags
+git push origin main --follow-tags
 ```
 
 ## Push Release Tag

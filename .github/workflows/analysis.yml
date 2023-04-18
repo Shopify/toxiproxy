@@ -4,9 +4,9 @@ name: Analysis
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
   schedule:
     - cron: 13 7 * * 6
 
@@ -23,7 +23,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@08e2f20817b15149a52b5b3ebe7de50aff2ba8c5
         with:
-          version: v1.49.0
+          version: v1.52.2
 
       - name: shellcheck
         uses: azohra/shell-linter@6bbeaa868df09c34ddc008e6030cfe89c03394a1
