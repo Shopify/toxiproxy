@@ -82,7 +82,7 @@ development and CI environments.
 ## Clients
 
 * [toxiproxy-ruby](https://github.com/Shopify/toxiproxy-ruby)
-* [toxiproxy-go](https://github.com/Shopify/toxiproxy/tree/main/client)
+* [toxiproxy-go](https://github.com/Shopify/toxiproxy/tree/master/client)
 * [toxiproxy-python](https://github.com/douglas/toxiproxy-python)
 * [toxiproxy.net](https://github.com/mdevilliers/Toxiproxy.Net)
 * [toxiproxy-php-client](https://github.com/ihsw/toxiproxy-php-client)
