@@ -5,8 +5,19 @@ import (
 )
 
 // The SlowOpenToxic adds a delay to the first data packet of a new TCP
-// connection, to simulate the delay affecting the TCP handshake (which
-// is not covered by the latency toxic)
+// connection, to simulate the delay experienced by a calling application
+// due to the TCP handshake.
+//
+// For context: the TCP handshake is not covered by LatencyToxic
+// and cannot be, since (in the current Toxiproxy architecture) it is
+// handled by the OS network stack.
+// This means that you cannot accurately simulate a latency occurring
+// during the connect phase and thus test behaviors related to connection
+// timeouts.
+// However, if your goal is to simulate the delays experienced by the
+// caller at the application level, using this toxic in addition to
+// LatencyToxic will model them more accurately than using LatencyToxic
+// alone.
 type SlowOpenToxic struct {
 	// Times in milliseconds
 	Delay int64 `json:"delay"`
