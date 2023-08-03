@@ -30,8 +30,9 @@ type ToxicCollection struct {
 func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 	collection := &ToxicCollection{
 		noop: &toxics.ToxicWrapper{
-			Toxic: new(toxics.NoopToxic),
-			Type:  "noop",
+			Toxic:   new(toxics.NoopToxic),
+			Type:    "noop",
+			Enabled: true,
 		},
 		proxy: proxy,
 		chain: make([][]*toxics.ToxicWrapper, stream.NumDirections),
@@ -107,10 +108,17 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 		wrapper.Name = fmt.Sprintf("%s_%s", wrapper.Type, wrapper.Stream)
 	}
 
+	// Initialize the toxic
 	if toxics.New(wrapper) == nil {
 		return nil, ErrInvalidToxicType
 	}
 
+	// Set the wrapper to be enabled if no condition is specified.
+	if wrapper.Condition == nil {
+		wrapper.Enabled = true
+	}
+
+	// Check if toxic already exists
 	found := c.findToxicByName(wrapper.Name)
 	if found != nil {
 		return nil, ErrToxicAlreadyExists
