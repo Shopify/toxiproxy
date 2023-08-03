@@ -51,7 +51,8 @@ type StatefulToxic interface {
 }
 
 type ToxicCondition struct {
-	MatcherType string `json:"matcherType"`
+	ToxicWrapper *ToxicWrapper `json:"-"`
+	MatcherType  string        `json:"matcherType"`
 
 	// A matcher means this toxic is only enabled when the matcher matches on any data
 	// passing through the link this toxic is attached to.
@@ -125,7 +126,6 @@ func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 	defer close(s.running)
 	//#nosec
 	if toxic.Enabled && rand.Float32() < toxic.Toxicity {
-		println("Piping toxic", toxic)
 		toxic.Pipe(s)
 	} else {
 		new(NoopToxic).Pipe(s)
