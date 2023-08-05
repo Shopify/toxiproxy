@@ -226,11 +226,11 @@ func (c *ToxicCollection) StartLink(
 		// Fire of a goroutine to match all conditions separately.
 		go c.matchAllToxicConditions(streamChan, direction)
 
-		link := NewToxicLink(c.proxy, c, direction, logger)
+		link := NewToxicLink(c.proxy, c, direction, logger, []chan<- *stream.StreamChunk{streamChan})
 		link.Start(server, name, forkedInput, output)
 		c.links[name] = link
 	} else {
-		link := NewToxicLink(c.proxy, c, direction, logger)
+		link := NewToxicLink(c.proxy, c, direction, logger, nil)
 		link.Start(server, name, input, output)
 		c.links[name] = link
 	}
@@ -252,32 +252,36 @@ func (c *ToxicCollection) matchAllToxicConditions(
 		logger = zerolog.Nop()
 	}
 
-	streamChunk := <-streamChan
-
-	// Loop through all conditions and try to match them.
-	// If matched, enable the toxic.
-	for _, condition := range c.toxicConditions[direction] {
-		if condition == nil {
-			continue
+	for {
+		streamChunk, ok := <-streamChan
+		if streamChunk == nil && !ok {
+			logger.Debug().Msg("Stream chunk is nil and not ok, exiting")
+			return
 		}
 
-		matched, err := condition.TryMatch(streamChunk.Data)
-		if err != nil {
-			logger.Warn().Err(err).Msg("Error matching condition")
-			continue
-		}
+		// Loop through all conditions and try to match them.
+		// If matched, enable the toxic.
+		for _, condition := range c.toxicConditions[direction] {
+			if condition == nil {
+				continue
+			}
 
-		if matched {
-			// Get the toxic wrapper from the condition and enable it.
-			newToxicWrapper := condition.ToxicWrapper
-			newToxicWrapper.Enabled = true
+			matched, err := condition.TryMatch(streamChunk.Data)
+			if err != nil {
+				logger.Warn().Err(err).Msg("Error matching condition")
+				continue
+			}
 
-			// TODO: Do I need to call this? Currently fails when uncommented, though.
-			// c.chainUpdateToxic(newToxicWrapper)
+			if matched {
+				// Get the toxic wrapper from the condition and enable it.
+				newToxicWrapper := condition.ToxicWrapper
+				newToxicWrapper.Enabled = true
+
+				// TODO: Do I need to call this? Currently fails when uncommented, though.
+				// c.chainUpdateToxic(newToxicWrapper)
+			}
 		}
 	}
-
-	return
 }
 
 func (c *ToxicCollection) RemoveLink(name string) {

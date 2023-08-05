@@ -25,7 +25,7 @@ type ToxicLink struct {
 	stubs     []*toxics.ToxicStub
 	proxy     *Proxy
 	toxics    *ToxicCollection
-	input     *stream.ChanWriter
+	input     *stream.MultiChanWriter
 	output    *stream.ChanReader
 	direction stream.Direction
 	Logger    *zerolog.Logger
@@ -36,6 +36,7 @@ func NewToxicLink(
 	collection *ToxicCollection,
 	direction stream.Direction,
 	logger zerolog.Logger,
+	additionalStreamChans []chan<- *stream.StreamChunk,
 ) *ToxicLink {
 	link := &ToxicLink{
 		stubs: make(
@@ -50,7 +51,7 @@ func NewToxicLink(
 	}
 	// Initialize the link with ToxicStubs
 	last := make(chan *stream.StreamChunk) // The first toxic is always a noop
-	link.input = stream.NewChanWriter(last)
+	link.input = stream.NewMultiChanWriter(append([]chan<- *stream.StreamChunk{last}, additionalStreamChans...)...)
 	for i := 0; i < len(link.stubs); i++ {
 		var next chan *stream.StreamChunk
 		if i+1 < len(link.stubs) {

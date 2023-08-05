@@ -12,6 +12,34 @@ type StreamChunk struct {
 	Timestamp time.Time
 }
 
+// Implements io.WriteCloser interface for a slice of channel []byte.
+type MultiChanWriter struct {
+	outputs []chan<- *StreamChunk
+}
+
+func NewMultiChanWriter(outputs ...chan<- *StreamChunk) *MultiChanWriter {
+	return &MultiChanWriter{outputs}
+}
+
+// Write `buf` as a StreamChunk to all channels. The full buffer is always written, and error
+// will always be nil. Calling `Write()` after closing the channel will panic.
+func (m *MultiChanWriter) Write(buf []byte) (int, error) {
+	packet := &StreamChunk{make([]byte, len(buf)), time.Now()}
+	copy(packet.Data, buf) // Make a copy before sending it to the channel
+	for _, output := range m.outputs {
+		output <- packet
+	}
+	return len(buf), nil
+}
+
+// Close all output channels.
+func (m *MultiChanWriter) Close() error {
+	for _, output := range m.outputs {
+		close(output)
+	}
+	return nil
+}
+
 // Implements the io.WriteCloser interface for a chan []byte.
 type ChanWriter struct {
 	output chan<- *StreamChunk
