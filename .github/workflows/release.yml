@@ -28,9 +28,10 @@ jobs:
         name: GPG config
         run: |
           mkdir -p ~/.gnupg
-          cat << EOF >> ~/.gnupg/options
-          keyserver keys.openpgp.org
-          keyserver-options auto-key-retrieve
+          cat << EOF >> ~/.gnupg/gpg.conf
+          keyserver hkps://keys.openpgp.org
+          auto-key-import
+          auto-key-retrieve
           EOF
 
       -
