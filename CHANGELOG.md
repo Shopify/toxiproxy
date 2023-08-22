@@ -1,5 +1,7 @@
 # [Unreleased]
 
+* Update minimum supported Go version 1.18. (#525, @abecevello)
+
 # [2.6.0] - 2023-08-22
 
 * Gracefull shutdown of HTTP server. (#439, @miry)
