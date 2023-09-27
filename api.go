@@ -40,6 +40,7 @@ type ApiServer struct {
 const (
 	wait_timeout = 30 * time.Second
 	read_timeout = 15 * time.Second
+	idle_timeout = 60 * time.Second
 )
 
 func NewServer(m *metricsContainer, logger zerolog.Logger) *ApiServer {
@@ -61,7 +62,7 @@ func (server *ApiServer) Listen(addr string) error {
 		Handler:      server.Routes(),
 		WriteTimeout: wait_timeout,
 		ReadTimeout:  read_timeout,
-		IdleTimeout:  60 * time.Second,
+		IdleTimeout:  idle_timeout,
 	}
 
 	err := server.http.ListenAndServe()
