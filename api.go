@@ -26,10 +26,6 @@ func stopBrowsersMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func timeoutMiddleware(next http.Handler) http.Handler {
-	return http.TimeoutHandler(next, 25*time.Second, "")
-}
-
 type ApiServer struct {
 	Collection *ProxyCollection
 	Metrics    *metricsContainer
@@ -42,6 +38,10 @@ const (
 	read_timeout = 15 * time.Second
 	idle_timeout = 60 * time.Second
 )
+
+func timeoutMiddleware(next http.Handler) http.Handler {
+	return http.TimeoutHandler(next, idle_timeout, "Timeout from middleware\n")
+}
 
 func NewServer(m *metricsContainer, logger zerolog.Logger) *ApiServer {
 	return &ApiServer{
