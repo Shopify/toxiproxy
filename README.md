@@ -607,6 +607,12 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 
 ### Development
 
+#### Dependencies
+
+* `golangci-lint` -> https://golangci-lint.run/usage/install/
+* `goimports` -> `go install golang.org/x/tools/cmd/goimports@latest`
+* `shmft` -> `go install mvdan.cc/sh/v3/cmd/shfmt@latest`
+
 * `make`. Build a toxiproxy development binary for the current platform.
 * `make all`. Build Toxiproxy binaries and packages for all platforms. Requires
   to have Go compiled with cross compilation enabled on Linux and Darwin (amd64)
