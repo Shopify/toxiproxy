@@ -1,5 +1,6 @@
 # [Unreleased]
 
+* Fix invalid JSON in /version endpoint response (#538, @whatyouhide)
 * Update minimum supported Go version 1.19. (@abecevello)
 
 # [2.6.0] - 2023-08-22
