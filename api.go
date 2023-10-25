@@ -477,7 +477,7 @@ func (server *ApiServer) Version(response http.ResponseWriter, request *http.Req
 	log := zerolog.Ctx(request.Context())
 
 	response.Header().Set("Content-Type", "application/json;charset=utf-8")
-	version := fmt.Sprintf(`{"version": "%s"}\n`, Version)
+	version := fmt.Sprintf("{\"version\": \"%s\"}\n", Version)
 	_, err := response.Write([]byte(version))
 	if err != nil {
 		log.Warn().Err(err).Msg("Version: Failed to write response to client")

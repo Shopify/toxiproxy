@@ -1103,7 +1103,7 @@ func TestVersionEndpointReturnsVersion(t *testing.T) {
 			t.Fatal("Unable to read body from response")
 		}
 
-		if string(body) != `{"version": "git"}\n` {
+		if string(body) != "{\"version\": \"git\"}\n" {
 			t.Fatal("Expected to return Version from /version, got:", string(body))
 		}
 	})
