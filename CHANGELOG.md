@@ -1,5 +1,7 @@
 # [Unreleased]
 
+# [2.7.0] - 2023-10-25
+
 * Fix invalid JSON in /version endpoint response (#538, @whatyouhide)
 * Update minimum supported Go version 1.19. (@abecevello)
 
@@ -204,7 +206,8 @@
 
 Initial public release.
 
-[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/Shopify/toxiproxy/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/Shopify/toxiproxy/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/Shopify/toxiproxy/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/Shopify/toxiproxy/compare/v2.3.0...v2.4.0
