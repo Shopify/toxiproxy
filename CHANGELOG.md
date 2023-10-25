@@ -1,6 +1,6 @@
 # [Unreleased]
 
-* Update minimum supported Go version 1.18. (#525, @abecevello)
+* Update minimum supported Go version 1.19. (@abecevello)
 
 # [2.6.0] - 2023-08-22
 
