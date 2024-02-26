@@ -619,16 +619,15 @@ type attribute struct {
 
 type attributeList []attribute
 
-func (a attributeList) Len() int           { return len(a) }
-func (a attributeList) Less(i, j int) bool { return a[i].key < a[j].key }
-func (a attributeList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
 func sortedAttributes(attrs toxiproxy.Attributes) attributeList {
 	li := make(attributeList, 0, len(attrs))
 	for k, v := range attrs {
-		li = append(li, attribute{k, v.(float64)})
+		li = append(li, attribute{k, v})
 	}
-	sort.Sort(li)
+	sort.Slice(li, func(i, j int) bool {
+		return li[i].key < li[j].key
+	})
+
 	return li
 }
 
