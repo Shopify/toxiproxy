@@ -21,25 +21,30 @@ import (
 type ToxicCollection struct {
 	sync.Mutex
 
-	noop  *toxics.ToxicWrapper
-	proxy *Proxy
-	chain [][]*toxics.ToxicWrapper
-	links map[string]*ToxicLink
+	noop            *toxics.ToxicWrapper
+	proxy           *Proxy
+	chain           [][]*toxics.ToxicWrapper
+	toxicConditions [][]*toxics.ToxicCondition
+	links           map[string]*ToxicLink
 }
 
 func NewToxicCollection(proxy *Proxy) *ToxicCollection {
 	collection := &ToxicCollection{
 		noop: &toxics.ToxicWrapper{
-			Toxic: new(toxics.NoopToxic),
-			Type:  "noop",
+			Toxic:   new(toxics.NoopToxic),
+			Type:    "noop",
+			Enabled: true,
 		},
-		proxy: proxy,
-		chain: make([][]*toxics.ToxicWrapper, stream.NumDirections),
-		links: make(map[string]*ToxicLink),
+		proxy:           proxy,
+		chain:           make([][]*toxics.ToxicWrapper, stream.NumDirections),
+		toxicConditions: make([][]*toxics.ToxicCondition, stream.NumDirections),
+		links:           make(map[string]*ToxicLink),
 	}
 	for dir := range collection.chain {
 		collection.chain[dir] = make([]*toxics.ToxicWrapper, 1, toxics.Count()+1)
 		collection.chain[dir][0] = collection.noop
+		collection.toxicConditions[dir] = make([]*toxics.ToxicCondition, 1, toxics.Count()+1)
+		collection.toxicConditions[dir][0] = nil
 	}
 	return collection
 }
@@ -107,10 +112,19 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 		wrapper.Name = fmt.Sprintf("%s_%s", wrapper.Type, wrapper.Stream)
 	}
 
+	// Initialize the toxic
 	if toxics.New(wrapper) == nil {
 		return nil, ErrInvalidToxicType
 	}
 
+	// Set the wrapper to be enabled if no condition is specified.
+	if wrapper.Condition == nil {
+		wrapper.Enabled = true
+	} else {
+		wrapper.Condition.ToxicWrapper = wrapper
+	}
+
+	// Check if toxic already exists
 	found := c.findToxicByName(wrapper.Name)
 	if found != nil {
 		return nil, ErrToxicAlreadyExists
@@ -200,9 +214,74 @@ func (c *ToxicCollection) StartLink(
 		logger = zerolog.Nop()
 	}
 
-	link := NewToxicLink(c.proxy, c, direction, logger)
-	link.Start(server, name, input, output)
-	c.links[name] = link
+	// If the direction is upstream, we need to run matchers and update
+	// toxics if matched.
+	if direction == stream.Upstream {
+		// Write input to the matcher writer so that we can match the input
+		// in parallel while piping it through the link.
+		streamChan := make(chan *stream.StreamChunk)
+		streamChanWriter := stream.NewChanWriter(streamChan)
+		forkedInput := io.TeeReader(input, streamChanWriter)
+
+		// Fire of a goroutine to match all conditions separately.
+		go c.matchAllToxicConditions(streamChan, direction)
+
+		link := NewToxicLink(c.proxy, c, direction, logger, []chan<- *stream.StreamChunk{streamChan})
+		link.Start(server, name, forkedInput, output)
+		c.links[name] = link
+	} else {
+		link := NewToxicLink(c.proxy, c, direction, logger, nil)
+		link.Start(server, name, input, output)
+		c.links[name] = link
+	}
+}
+
+// matchAllToxicConditions matches all conditions for a given direction, and updates
+// the toxics if matched.
+func (c *ToxicCollection) matchAllToxicConditions(
+	streamChan chan *stream.StreamChunk,
+	direction stream.Direction,
+) {
+	c.Lock()
+	defer c.Unlock()
+
+	var logger zerolog.Logger
+	if c.proxy.Logger != nil {
+		logger = *c.proxy.Logger
+	} else {
+		logger = zerolog.Nop()
+	}
+
+	for {
+		streamChunk, ok := <-streamChan
+		if streamChunk == nil && !ok {
+			logger.Debug().Msg("Stream chunk is nil and not ok, exiting")
+			return
+		}
+
+		// Loop through all conditions and try to match them.
+		// If matched, enable the toxic.
+		for _, condition := range c.toxicConditions[direction] {
+			if condition == nil {
+				continue
+			}
+
+			matched, err := condition.TryMatch(streamChunk.Data)
+			if err != nil {
+				logger.Warn().Err(err).Msg("Error matching condition")
+				continue
+			}
+
+			if matched {
+				// Get the toxic wrapper from the condition and enable it.
+				newToxicWrapper := condition.ToxicWrapper
+				newToxicWrapper.Enabled = true
+
+				// TODO: Do I need to call this? Currently fails when uncommented, though.
+				// c.chainUpdateToxic(newToxicWrapper)
+			}
+		}
+	}
 }
 
 func (c *ToxicCollection) RemoveLink(name string) {
@@ -228,6 +307,7 @@ func (c *ToxicCollection) chainAddToxic(toxic *toxics.ToxicWrapper) {
 	dir := toxic.Direction
 	toxic.Index = len(c.chain[dir])
 	c.chain[dir] = append(c.chain[dir], toxic)
+	c.toxicConditions[dir] = append(c.toxicConditions[dir], toxic.Condition)
 
 	// Asynchronously add the toxic to each link
 	wg := sync.WaitGroup{}
@@ -245,6 +325,7 @@ func (c *ToxicCollection) chainAddToxic(toxic *toxics.ToxicWrapper) {
 
 func (c *ToxicCollection) chainUpdateToxic(toxic *toxics.ToxicWrapper) {
 	c.chain[toxic.Direction][toxic.Index] = toxic
+	c.toxicConditions[toxic.Direction][toxic.Index] = toxic.Condition
 
 	// Asynchronously update the toxic in each link
 	group := sync.WaitGroup{}
@@ -271,6 +352,7 @@ func (c *ToxicCollection) chainRemoveToxic(ctx context.Context, toxic *toxics.To
 
 	dir := toxic.Direction
 	c.chain[dir] = append(c.chain[dir][:toxic.Index], c.chain[dir][toxic.Index+1:]...)
+	c.toxicConditions[dir] = append(c.toxicConditions[dir][:toxic.Index], c.toxicConditions[dir][toxic.Index+1:]...)
 	for i := toxic.Index; i < len(c.chain[dir]); i++ {
 		c.chain[dir][i].Index = i
 	}

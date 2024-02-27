@@ -1,12 +1,15 @@
 package toxics
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"reflect"
 	"sync"
 	"time"
 
+	"github.com/Shopify/toxiproxy/v2/matchers"
 	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
@@ -47,6 +50,40 @@ type StatefulToxic interface {
 	NewState() interface{}
 }
 
+type ToxicCondition struct {
+	ToxicWrapper *ToxicWrapper `json:"-"`
+	MatcherType  string        `json:"matcherType"`
+
+	// A matcher means this toxic is only enabled when the matcher matches on any data
+	// passing through the link this toxic is attached to.
+	matchers.Matcher
+}
+
+func (t *ToxicCondition) UnmarshalJSON(data []byte) error {
+	reader := bytes.NewReader(data)
+
+	var tmp struct {
+		MatcherType string `json:"matcherType"`
+	}
+	if err := json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+
+	t.MatcherType = tmp.MatcherType
+	t.Matcher = matchers.New(tmp.MatcherType)
+
+	tmp2 := &struct {
+		MatcherParameters interface{} `json:"matcherParameters"`
+	}{
+		t.Matcher,
+	}
+	if err := json.NewDecoder(reader).Decode(&tmp2); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type ToxicWrapper struct {
 	Toxic      `json:"attributes"`
 	Name       string           `json:"name"`
@@ -56,6 +93,12 @@ type ToxicWrapper struct {
 	Direction  stream.Direction `json:"-"`
 	Index      int              `json:"-"`
 	BufferSize int              `json:"-"`
+
+	// A non-nil condition means this toxic is only enabled when the condition is met.
+	Condition *ToxicCondition `json:"condition"`
+
+	// Enabled is true if this toxic is enabled, false otherwise
+	Enabled bool `json:"-"`
 }
 
 type ToxicStub struct {
@@ -82,7 +125,7 @@ func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 	s.running = make(chan struct{})
 	defer close(s.running)
 	//#nosec
-	if rand.Float32() < toxic.Toxicity {
+	if toxic.Enabled && rand.Float32() < toxic.Toxicity {
 		toxic.Pipe(s)
 	} else {
 		new(NoopToxic).Pipe(s)
