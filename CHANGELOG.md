@@ -1,5 +1,9 @@
 # [Unreleased]
 
+# [2.8.0] - 2024-02-27
+
+* toxiproxy-cli - sortedAttributes sort by attribute.key instead attribute.value (#543, @jesseward)
+
 # [2.7.0] - 2023-10-25
 
 * Fix invalid JSON in /version endpoint response (#538, @whatyouhide)
@@ -206,7 +210,8 @@
 
 Initial public release.
 
-[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.7.0...HEAD
+[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/Shopify/toxiproxy/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/Shopify/toxiproxy/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/Shopify/toxiproxy/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/Shopify/toxiproxy/compare/v2.4.0...v2.5.0
