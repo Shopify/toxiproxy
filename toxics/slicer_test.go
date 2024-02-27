@@ -8,6 +8,7 @@ import (
 
 	"github.com/Shopify/toxiproxy/v2/stream"
 	"github.com/Shopify/toxiproxy/v2/toxics"
+	"github.com/rs/zerolog"
 )
 
 func TestSlicerToxic(t *testing.T) {
@@ -16,7 +17,8 @@ func TestSlicerToxic(t *testing.T) {
 
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk)
-	stub := toxics.NewToxicStub(input, output)
+	logger := zerolog.Nop()
+	stub := toxics.NewToxicStub(input, output, &logger)
 
 	done := make(chan bool)
 	go func() {
@@ -64,7 +66,8 @@ func TestSlicerToxicZeroSizeVariation(t *testing.T) {
 
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk)
-	stub := toxics.NewToxicStub(input, output)
+	logger := zerolog.Nop()
+	stub := toxics.NewToxicStub(input, output, &logger)
 
 	done := make(chan bool)
 	go func() {

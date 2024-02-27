@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 
 	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/app"
 	tclient "github.com/Shopify/toxiproxy/v2/client"
+	"github.com/Shopify/toxiproxy/v2/collectors"
 )
 
 var testServer *toxiproxy.ApiServer
@@ -21,20 +22,22 @@ var testServer *toxiproxy.ApiServer
 var client = tclient.NewClient("http://127.0.0.1:8475")
 
 func WithServer(t *testing.T, f func(string)) {
-	log := zerolog.Nop()
-	if flag.Lookup("test.v").DefValue == "true" {
-		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
-	}
-
 	// Make sure only one server is running at a time. Apparently there's no clean
 	// way to shut it down between each test run.
 	if testServer == nil {
-		testServer = toxiproxy.NewServer(
-			toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
-			log,
-		)
+		log := zerolog.Nop()
+		if flag.Lookup("test.v").DefValue == "true" {
+			log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+		}
 
-		go testServer.Listen("localhost:8475")
+		a := app.App{
+			Addr:    "localhost:8475",
+			Logger:  &log,
+			Metrics: &collectors.MetricsContainer{},
+		}
+		testServer = toxiproxy.NewServer(&a)
+
+		go testServer.Listen()
 
 		// Allow server to start. There's no clean way to know when it listens.
 		time.Sleep(50 * time.Millisecond)

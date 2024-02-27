@@ -6,34 +6,32 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"flag"
 	"io"
 	"net"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rs/zerolog"
 	tomb "gopkg.in/tomb.v1"
 
 	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/app"
 	"github.com/Shopify/toxiproxy/v2/collectors"
 	"github.com/Shopify/toxiproxy/v2/stream"
 	"github.com/Shopify/toxiproxy/v2/toxics"
+	"github.com/rs/zerolog"
 )
 
 func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
 	log := zerolog.Nop()
-	if flag.Lookup("test.v").DefValue == "true" {
-		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+	a := app.App{
+		Metrics: &collectors.MetricsContainer{
+			ProxyMetrics: collectors.NewProxyMetricCollectors(),
+		},
+		Logger: &log,
 	}
-	srv := toxiproxy.NewServer(
-		toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
-		log,
-	)
-	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
+
+	srv := toxiproxy.NewServer(&a)
 	proxy := toxiproxy.NewProxy(srv, name, "localhost:0", upstream)
 
 	return proxy
@@ -363,7 +361,8 @@ func BenchmarkProxyBandwidth(b *testing.B) {
 func TestToxicStub_WriteOutput(t *testing.T) {
 	input := make(chan *stream.StreamChunk)
 	output := make(chan *stream.StreamChunk)
-	stub := toxics.NewToxicStub(input, output)
+	logger := zerolog.Nop()
+	stub := toxics.NewToxicStub(input, output, &logger)
 
 	buf := make([]byte, 42)
 	rand.Read(buf)
