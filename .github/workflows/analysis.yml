@@ -49,9 +49,9 @@ jobs:
           fetch-depth: 0
 
       - name: initialize
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: go
 
       - name: codeql analyze
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
