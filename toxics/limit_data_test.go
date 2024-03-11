@@ -11,6 +11,7 @@ import (
 
 func buffer(size int) []byte {
 	buf := make([]byte, size)
+	// #nosec G404 -- used only in tests
 	rand.Read(buf)
 
 	return buf
