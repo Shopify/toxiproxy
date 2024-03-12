@@ -3,7 +3,7 @@ package toxiproxy_test
 import (
 	"bytes"
 	"flag"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"testing"
@@ -197,7 +197,7 @@ func TestPopulateDefaultEnabled(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusCreated {
-			message, _ := ioutil.ReadAll(resp.Body)
+			message, _ := io.ReadAll(resp.Body)
 			t.Fatalf("Failed to populate proxy list: HTTP %s\n%s", resp.Status, string(message))
 		}
 
@@ -1098,7 +1098,7 @@ func TestVersionEndpointReturnsVersion(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatal("Unable to read body from response")
 		}

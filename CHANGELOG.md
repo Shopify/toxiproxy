@@ -1,4 +1,6 @@
 # [Unreleased]
+* Updated go version to 1.22.1 to fix  3 CVEs
+* Updated the version of golangci to 1.56.2 and disabled depguard rule in golangci
 
 # [2.8.0] - 2024-02-27
 
