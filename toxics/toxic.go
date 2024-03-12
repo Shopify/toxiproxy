@@ -81,8 +81,8 @@ func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.Stream
 func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 	s.running = make(chan struct{})
 	defer close(s.running)
-	//#nosec
-	if rand.Float32() < toxic.Toxicity {
+	randomToxicity := rand.Float32() // #nosec G404 -- was ignored before too
+	if randomToxicity < toxic.Toxicity {
 		toxic.Pipe(s)
 	} else {
 		new(NoopToxic).Pipe(s)

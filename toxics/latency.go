@@ -21,7 +21,7 @@ func (t *LatencyToxic) delay() time.Duration {
 	delay := t.Latency
 	jitter := t.Jitter
 	if jitter > 0 {
-		//#nosec
+		// #nosec G404 -- was ignored before too
 		delay += rand.Int63n(jitter*2) - jitter
 	}
 	return time.Duration(delay) * time.Millisecond
