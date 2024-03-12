@@ -1,7 +1,7 @@
 package testhelper
 
 import (
-	"io/ioutil"
+	"io"
 	"net"
 	"testing"
 )
@@ -40,7 +40,7 @@ func (server *TCPServer) handle_connection() (err error) {
 	}
 	defer conn.Close()
 
-	val, err := ioutil.ReadAll(conn)
+	val, err := io.ReadAll(conn)
 	if err != nil {
 		return
 	}

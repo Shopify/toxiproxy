@@ -1,11 +1,12 @@
 ---
 run:
-  go: "1.15"
+  go: "1.22"
 linters:
   disable-all: true
   enable:
     - bodyclose
-    - depguard
+    # https://github.com/atc0005/go-ci/issues/1024
+    # - depguard
     - dogsled
     - exhaustive
     - funlen

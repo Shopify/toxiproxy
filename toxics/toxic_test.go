@@ -366,6 +366,7 @@ func TestToxicStub_WriteOutput(t *testing.T) {
 	stub := toxics.NewToxicStub(input, output)
 
 	buf := make([]byte, 42)
+	// #nosec G404 -- used only in tests
 	rand.Read(buf)
 
 	t.Run("when no read in 1 second", func(t *testing.T) {

@@ -67,7 +67,7 @@ func run() error {
 		return nil
 	}
 
-	rand.Seed(cli.seed)
+	rand.New(rand.NewSource(cli.seed)) // #nosec G404 -- ignoring this rule
 
 	logger := setupLogger()
 	log.Logger = logger
