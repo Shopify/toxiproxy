@@ -1,5 +1,7 @@
 # [Unreleased]
 
+# [2.9.0] - 2024-03-12
+
 - Updated go version to 1.22.1 to fix 3 CVEs (#559, @dianadevasia)
 - Updated the version of golangci to 1.56.2 and disabled depguard rule in golangci (#559, @dianadevasia)
 
@@ -213,7 +215,8 @@
 
 Initial public release.
 
-[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.8.0...HEAD
+[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.9.0...HEAD
+[2.9.0]: https://github.com/Shopify/toxiproxy/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/Shopify/toxiproxy/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/Shopify/toxiproxy/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/Shopify/toxiproxy/compare/v2.5.0...v2.6.0
