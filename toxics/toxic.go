@@ -10,7 +10,7 @@ import (
 	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
-// A Toxic is something that can be attatched to a link to modify the way
+// A Toxic is something that can be attached to a link to modify the way
 // data can be passed through (for example, by adding latency)
 //
 //              Toxic
