@@ -235,7 +235,7 @@ Toxiproxy for Windows is available for download at https://github.com/Shopify/to
 **Docker**
 
 Toxiproxy is available on [Github container registry](https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy).
-Old versions `<= 2.1.4` are available on on [Docker Hub](https://hub.docker.com/r/shopify/toxiproxy/).
+Old versions `<= 2.1.4` are available on [Docker Hub](https://hub.docker.com/r/shopify/toxiproxy/).
 
 ```bash
 $ docker pull ghcr.io/shopify/toxiproxy
