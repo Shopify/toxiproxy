@@ -1,5 +1,7 @@
 # [Unreleased]
 
+# [2.10.0] - 2024-10-08
+
 - Update various go packages
 - Update go version to 1.22.8 (#594, @abecevello)
 
@@ -218,7 +220,8 @@
 
 Initial public release.
 
-[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.9.0...HEAD
+[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.10.0...HEAD
+[2.10.0]: https://github.com/Shopify/toxiproxy/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/Shopify/toxiproxy/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/Shopify/toxiproxy/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/Shopify/toxiproxy/compare/v2.6.0...v2.7.0
