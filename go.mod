@@ -5,7 +5,7 @@ go 1.22.1
 require (
 	github.com/gorilla/mux v1.8.1
 	github.com/prometheus/client_golang v1.20.2
-	github.com/rs/zerolog v1.32.0
+	github.com/rs/zerolog v1.33.0
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/term v0.13.0
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
