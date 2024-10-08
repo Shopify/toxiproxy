@@ -4,7 +4,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-request-limit: 100
     registries: "*"
 
   - package-ecosystem: github-actions
