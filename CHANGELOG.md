@@ -1,5 +1,8 @@
 # [Unreleased]
 
+- Update various go packages
+- Update go version to 1.22.8 (#594, @abecevello)
+
 # [2.9.0] - 2024-03-12
 
 - Updated go version to 1.22.1 to fix 3 CVEs (#559, @dianadevasia)
