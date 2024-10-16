@@ -1,5 +1,9 @@
 # [Unreleased]
 
+# [2.11.0] - 2024-10-16
+
+- Do not pin minimum patch version in module (#595, @jaimem88)
+
 # [2.10.0] - 2024-10-08
 
 - Update various go packages
@@ -220,7 +224,8 @@
 
 Initial public release.
 
-[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.10.0...HEAD
+[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.11.0...HEAD
+[2.11.0]: https://github.com/Shopify/toxiproxy/compare/v2.10.0...v2.11.0
 [2.10.0]: https://github.com/Shopify/toxiproxy/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/Shopify/toxiproxy/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/Shopify/toxiproxy/compare/v2.7.0...v2.8.0
