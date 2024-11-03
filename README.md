@@ -413,7 +413,7 @@ Attributes:
 #### timeout
 
 Stops all data from getting through, and closes the connection after `timeout`. If
-`timeout` is 0, the connection won't close, and data will be delayed until the
+`timeout` is 0, the connection won't close, and data will be dropped until the
 toxic is removed.
 
 Attributes:
