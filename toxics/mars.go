@@ -1,8 +1,12 @@
 package toxics
 
 import (
+	"fmt"
 	"math"
 	"time"
+
+	"github.com/rs/zerolog/log"
+	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
 // The MarsToxic simulates the communication delay to Mars based on current orbital positions.
@@ -11,13 +15,19 @@ import (
 // Further possibilities here:
 //   * drop packets entirely during solar conjunction
 //   * corrupt frames in the liminal period before/after conjunction
+//   * buffering through the disk (maybe a FIFO, idk) would model data in flight better
 //
 // We could to the hard block but we're kind of at the wrong layer to do corruption.
 type MarsToxic struct {
 	// Optional additional latency in milliseconds
 	ExtraLatency int64 `json:"extra_latency"`
+	// Rate in KB/s (0 means unlimited)
+	Rate int64 `json:"rate"`
 	// Reference time for testing, if zero current time is used
 	ReferenceTime time.Time `json:"-"`
+	// Speed of light in km/s (defaults to 299792.458 if 0) It's (probably?)
+	// obvious you won't want to change this. It's useful for testing.
+	SpeedOfLight float64 `json:"speed_of_light"`
 }
 
 // Since we're buffering for several minutes, we need a large buffer.
@@ -56,8 +66,11 @@ func (t *MarsToxic) Delay() time.Duration {
 	// Calculate current distance in kilometers
 	distanceKm := meanDistance - amplitude*math.Cos(phase)
 	
-	// Speed of light is exactly 299,792.458 km/s
-	speedOfLight := 299792.458 // km/s
+	// Speed of light is exactly 299,792.458 km/s by default
+	speedOfLight := t.SpeedOfLight
+	if speedOfLight <= 0 {
+		speedOfLight = 299792.458 // km/s
+	}
 	
 	// One-way time = distance / speed of light
 	// Convert to milliseconds
@@ -70,23 +83,94 @@ func (t *MarsToxic) Delay() time.Duration {
 }
 
 func (t *MarsToxic) Pipe(stub *ToxicStub) {
+	logger := log.With().
+		Str("component", "MarsToxic").
+		Str("method", "Pipe").
+		Str("toxic_type", "mars").
+		Str("addr", fmt.Sprintf("%p", t)).
+		Logger()
+
+	var sleep time.Duration = 0
 	for {
 		select {
 		case <-stub.Interrupt:
+			logger.Trace().Msg("MarsToxic was interrupted")
 			return
 		case c := <-stub.Input:
 			if c == nil {
 				stub.Close()
 				return
 			}
-			sleep := t.Delay() - time.Since(c.Timestamp)
+
+			// Set timestamp when we receive the chunk
+			if c.Timestamp.IsZero() {
+				c.Timestamp = time.Now()
+			}
+
+			// Calculate Mars delay once for this chunk
+			marsDelay := t.Delay()
+
+			// Calculate bandwidth delay if rate is set
+			if t.Rate > 0 {
+				bytesPerSecond := t.Rate * 1024
+				
+				// If chunk is too large, split it
+				if int64(len(c.Data)) > bytesPerSecond/10 { // 100ms worth of data
+					bytesPerInterval := bytesPerSecond/10 // bytes per 100ms
+					remainingData := c.Data
+					chunkStart := c.Timestamp
+					
+					// First, wait for Mars delay
+					select {
+					case <-time.After(marsDelay):
+					case <-stub.Interrupt:
+						return
+					}
+					
+					for len(remainingData) > 0 {
+						chunkSize := int(bytesPerInterval)
+						if chunkSize > len(remainingData) {
+								chunkSize = len(remainingData)
+						}
+						
+						chunk := &stream.StreamChunk{
+								Data:      remainingData[:chunkSize],
+								Timestamp: chunkStart,
+						}
+						
+						select {
+						case <-time.After(100 * time.Millisecond):
+							chunkStart = chunkStart.Add(100 * time.Millisecond)
+							stub.Output <- chunk
+							remainingData = remainingData[chunkSize:]
+						case <-stub.Interrupt:
+							logger.Trace().Msg("MarsToxic was interrupted during writing data")
+							return
+						}
+					}
+					continue
+				}
+				
+				// For small chunks, calculate bandwidth delay
+				sleep = time.Duration(float64(len(c.Data)) / float64(bytesPerSecond) * float64(time.Second))
+			}
+
+			// Apply both Mars delay and bandwidth delay
+			totalDelay := marsDelay
+			if sleep > 0 {
+				totalDelay += sleep
+			}
+
 			select {
-			case <-time.After(sleep):
-				c.Timestamp = c.Timestamp.Add(sleep)
-					stub.Output <- c
+			case <-time.After(totalDelay):
+				c.Timestamp = c.Timestamp.Add(totalDelay)
+				stub.Output <- c
 			case <-stub.Interrupt:
-				// Exit fast without applying latency.
-				stub.Output <- c // Don't drop any data on the floor
+				logger.Trace().Msg("MarsToxic was interrupted during writing data")
+				err := stub.WriteOutput(c, 5*time.Second)
+				if err != nil {
+					logger.Warn().Err(err).Msg("Could not write last packets after interrupt")
+				}
 				return
 			}
 		}
