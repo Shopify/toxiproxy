@@ -21,9 +21,9 @@ jobs:
           fetch-depth: 0
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8
+        uses: golangci/golangci-lint-action@eab1d2f3d76f26c09e2ab8c957fe5bb64bf46b89
         with:
-          version: v1.56.2
+          version: v1.62.2
 
       - name: shellcheck
         uses: azohra/shell-linter@6bbeaa868df09c34ddc008e6030cfe89c03394a1
