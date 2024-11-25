@@ -157,9 +157,9 @@ func TestNoDataDropped(t *testing.T) {
 	done := make(chan struct{})
 	defer close(done)
 	go func() {
-		for i := 0; i < 64*1024; i++ {
+		for i := uint16(0); i < 65535; i++ {
 			buf := make([]byte, 2)
-			binary.BigEndian.PutUint16(buf, uint16(i))
+			binary.BigEndian.PutUint16(buf, i)
 			link.input.Write(buf)
 		}
 		link.input.Close()
@@ -177,13 +177,13 @@ func TestNoDataDropped(t *testing.T) {
 	}(ctx)
 
 	buf := make([]byte, 2)
-	for i := 0; i < 64*1024; i++ {
+	for i := uint16(0); i < 65535; i++ {
 		n, err := link.output.Read(buf)
 		if n != 2 || err != nil {
 			t.Fatalf("Read failed: %d %v", n, err)
 		} else {
 			val := binary.BigEndian.Uint16(buf)
-			if val != uint16(i) {
+			if val != i {
 				t.Fatalf("Read incorrect bytes: %v != %d", val, i)
 			}
 		}
