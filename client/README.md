@@ -96,7 +96,7 @@ import (
     "time"
 
     toxiproxy "github.com/Shopify/toxiproxy/v2/client"
-    "github.com/garyburd/redigo/redis"
+    "github.com/gomodule/redigo/redis"
 )
 
 var toxiClient *toxiproxy.Client
@@ -114,6 +114,10 @@ func init() {
     if err != nil {
         panic(err)
     }
+   	proxies, err = toxiClient.Proxies()
+   	if err != nil {
+        panic(err)
+   	}
     // Alternatively, create the proxies manually with
     // toxiClient.CreateProxy("redis", "localhost:26379", "localhost:6379")
 }
