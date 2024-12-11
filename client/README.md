@@ -96,16 +96,15 @@ import (
     "time"
 
     toxiproxy "github.com/Shopify/toxiproxy/v2/client"
-    "github.com/garyburd/redigo/redis"
+    "github.com/gomodule/redigo/redis"
 )
 
 var toxiClient *toxiproxy.Client
-var proxies map[string]*toxiproxy.Proxy
 
 func init() {
     var err error
     toxiClient = toxiproxy.NewClient("localhost:8474")
-    proxies, err = toxiClient.Populate([]toxiproxy.Proxy{{
+    _, err = toxiClient.Populate([]toxiproxy.Proxy{{
         Name:     "redis",
         Listen:   "localhost:26379",
         Upstream: "localhost:6379",
@@ -119,8 +118,9 @@ func init() {
 }
 
 func TestRedisBackendDown(t *testing.T) {
-    proxies["redis"].Disable()
-    defer proxies["redis"].Enable()
+    var proxy, _ = toxiClient.Proxy("redis")
+    proxy.Disable()
+    defer proxy.Enable()
 
     // Test that redis is down
     _, err := redis.Dial("tcp", ":26379")
@@ -130,10 +130,11 @@ func TestRedisBackendDown(t *testing.T) {
 }
 
 func TestRedisBackendSlow(t *testing.T) {
-    proxies["redis"].AddToxic("", "latency", "", 1, toxiproxy.Attributes{
+    var proxy, _ = toxiClient.Proxy("redis")
+    proxy.AddToxic("", "latency", "", 1, toxiproxy.Attributes{
         "latency": 1000,
     })
-    defer proxies["redis"].RemoveToxic("latency_downstream")
+    defer proxy.RemoveToxic("latency_downstream")
 
     // Test that redis is slow
     start := time.Now()
@@ -147,19 +148,6 @@ func TestRedisBackendSlow(t *testing.T) {
         t.Fatal("Redis command failed", err)
     } else if time.Since(start) < 900*time.Millisecond {
         t.Fatal("Redis command did not take long enough:", time.Since(start))
-    }
-}
-
-func TestEphemeralProxy(t *testing.T) {
-    proxy, _ := toxiClient.CreateProxy("test", "", "google.com:80")
-    defer proxy.Delete()
-
-    // Test connection through proxy.Listen
-    resp, err := http.Get("http://" + proxy.Listen)
-    if err != nil {
-        t.Fatal(err)
-    } else if resp.StatusCode != 200 {
-        t.Fatal("Proxy to google failed:", resp.StatusCode)
     }
 }
 ```
