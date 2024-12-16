@@ -20,7 +20,7 @@ client api has changed:
     down a proxy.
  - `proxy.ToxicsUpstream` and `proxy.ToxicsDownstream` have been merged into a
     single `ActiveToxics` list.
- - `proxy.Toxics()`` no longer requires a direction to be specified, and will
+ - `proxy.Toxics()` no longer requires a direction to be specified, and will
     return toxics for both directions.
  - `proxy.SetToxic()` has been replaced by `proxy.AddToxic()`,
    `proxy.UpdateToxic()`, and `proxy.RemoveToxic()`.
@@ -91,7 +91,6 @@ proxy.Delete()
 
 ```go
 import (
-    "net/http"
     "testing"
     "time"
 
