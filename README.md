@@ -1,6 +1,6 @@
 # Toxiproxy
 [![GitHub release](https://img.shields.io/github/release/Shopify/toxiproxy.svg)](https://github.com/Shopify/toxiproxy/releases/latest)
-![Build Status](https://github.com/Shopify/toxiproxy/actions/workflows/test.yml/badge.svg)
+[![Build Status](https://github.com/Shopify/toxiproxy/actions/workflows/test.yml/badge.svg)](https://github.com/Shopify/toxiproxy/actions/workflows/test.yml)
 
 ![](http://i.imgur.com/sOaNw0o.png)
 
