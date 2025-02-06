@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
@@ -18,7 +19,7 @@ import (
 )
 
 func TestProxyMetricsReceivedSentBytes(t *testing.T) {
-	srv := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop())
+	srv := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop(), time.Now().UnixNano()) //nolint:lll
 	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
 
 	proxy := NewProxy(srv, "test_proxy_metrics_received_sent_bytes", "localhost:0", "upstream")
@@ -55,7 +56,7 @@ func TestProxyMetricsReceivedSentBytes(t *testing.T) {
 }
 
 func TestRuntimeMetricsBuildInfo(t *testing.T) {
-	srv := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop())
+	srv := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop(), time.Now().UnixNano()) //nolint:lll
 	srv.Metrics.RuntimeMetrics = collectors.NewRuntimeMetricCollectors()
 
 	expected := `go_build_info{checksum="[^"]*",path="[^"]*",version="[^"]*"} 1`
