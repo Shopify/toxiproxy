@@ -26,7 +26,7 @@ jobs:
           version: v1.62.2
 
       - name: shellcheck
-        uses: azohra/shell-linter@6bbeaa868df09c34ddc008e6030cfe89c03394a1
+        uses: azohra/shell-linter@30a9cf3f6cf25c08fc98f10d7dc4167f7b5c0c00
         with:
           path: scripts/test-*
           severity: error
