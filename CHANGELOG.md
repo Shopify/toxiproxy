@@ -1,5 +1,7 @@
 # [Unreleased]
 
+- Update go version to 1.23.0 (#628)
+
 # [2.11.0] - 2024-10-16
 
 - Do not pin minimum patch version in module (#595, @jaimem88)
