@@ -43,13 +43,18 @@ func (collection *ProxyCollection) Add(proxy *Proxy, start bool) error {
 	return nil
 }
 
-func (collection *ProxyCollection) AddOrReplace(proxy *Proxy, start bool) error {
+func (collection *ProxyCollection) AddOrReplace(proxy *Proxy, start bool) (*Proxy, error) {
 	collection.Lock()
 	defer collection.Unlock()
 
 	if existing, exists := collection.proxies[proxy.Name]; exists {
-		if existing.Listen == proxy.Listen && existing.Upstream == proxy.Upstream {
-			return nil
+		differs, err := existing.Differs(proxy)
+		if err != nil {
+			return nil, err
+		}
+
+		if !differs {
+			return existing, nil
 		}
 		existing.Stop()
 	}
@@ -57,13 +62,13 @@ func (collection *ProxyCollection) AddOrReplace(proxy *Proxy, start bool) error 
 	if start {
 		err := proxy.Start()
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	collection.proxies[proxy.Name] = proxy
 
-	return nil
+	return proxy, nil
 }
 
 func (collection *ProxyCollection) PopulateJson(
@@ -98,12 +103,12 @@ func (collection *ProxyCollection) PopulateJson(
 
 	for i := range input {
 		proxy := NewProxy(server, input[i].Name, input[i].Listen, input[i].Upstream)
-		err = collection.AddOrReplace(proxy, *input[i].Enabled)
+		addedOrReplaced, err := collection.AddOrReplace(proxy, *input[i].Enabled)
 		if err != nil {
 			return proxies, err
 		}
 
-		proxies = append(proxies, proxy)
+		proxies = append(proxies, addedOrReplaced)
 	}
 	return proxies, err
 }

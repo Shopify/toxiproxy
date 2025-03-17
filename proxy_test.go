@@ -3,8 +3,10 @@ package toxiproxy_test
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"io"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -177,6 +179,62 @@ func TestProxyUpdate(t *testing.T) {
 	})
 }
 
+func TestProxyUpdateWithHostname(t *testing.T) {
+	testhelper.WithTCPServer(t, func(upstream string, response chan []byte) {
+		proxy := NewTestProxy("test", upstream)
+		err := proxy.Start()
+		if err != nil {
+			t.Error("Proxy failed to start", err)
+		}
+		AssertProxyUp(t, proxy.Listen, true)
+
+		connectionLost := make(chan bool)
+
+		// Start a goroutine to check if connection is maintained
+		go func() {
+			conn, err := net.Dial("tcp", proxy.Listen)
+			if err != nil {
+				t.Error("Failed to connect to proxy", err)
+			}
+			defer conn.Close()
+
+			// Try to read from the connection
+			buf := make([]byte, 1024)
+			conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+			_, err = conn.Read(buf)
+			if err != nil && !errors.Is(err, os.ErrDeadlineExceeded) {
+				connectionLost <- true
+				return
+			}
+
+			connectionLost <- false
+		}()
+
+		_, port, err := net.SplitHostPort(proxy.Listen)
+		if err != nil {
+			t.Error("Failed to split host and port", err)
+		}
+
+		input := &toxiproxy.Proxy{
+			Listen:   net.JoinHostPort("localhost", port),
+			Upstream: proxy.Upstream,
+			Enabled:  true,
+		}
+		err = proxy.Update(input)
+		if err != nil {
+			t.Error("Failed to update proxy", err)
+		}
+
+		// Check if the connection was lost during the update
+		if lost := <-connectionLost; lost {
+			t.Error("Connection was lost during proxy update")
+		}
+
+		// Verify proxy is still up after the update
+		AssertProxyUp(t, proxy.Listen, true)
+	})
+}
+
 func TestRestartFailedToStartProxy(t *testing.T) {
 	testhelper.WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
@@ -205,5 +263,30 @@ func TestRestartFailedToStartProxy(t *testing.T) {
 
 		proxy.Stop()
 		AssertProxyUp(t, proxy.Listen, false)
+	})
+}
+
+func TestProxyDiffers(t *testing.T) {
+	testhelper.WithTCPServer(t, func(upstream string, response chan []byte) {
+		proxy := NewTestProxy("test", upstream)
+		proxy.Start()
+		_, port, err := net.SplitHostPort(proxy.Listen)
+		if err != nil {
+			t.Error("Failed to split host and port", err)
+		}
+		otherProxy := &toxiproxy.Proxy{
+			Name:     "other",
+			Listen:   net.JoinHostPort("localhost", port),
+			Upstream: upstream,
+			Enabled:  true,
+		}
+
+		differs, err := proxy.Differs(otherProxy)
+		if err != nil {
+			t.Error("Failed to check if proxy differs", err)
+		}
+		if differs {
+			t.Error("Proxy should not differ ")
+		}
 	})
 }

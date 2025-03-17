@@ -81,7 +81,12 @@ func (proxy *Proxy) Update(input *Proxy) error {
 	proxy.Lock()
 	defer proxy.Unlock()
 
-	if input.Listen != proxy.Listen || input.Upstream != proxy.Upstream {
+	differs, err := proxy.Differs(input)
+	if err != nil {
+		return err
+	}
+
+	if differs {
 		stop(proxy)
 		proxy.Listen = input.Listen
 		proxy.Upstream = input.Upstream
@@ -129,6 +134,19 @@ func (proxy *Proxy) close() {
 			Err(err).
 			Msg("Attempted to close an already closed proxy server")
 	}
+}
+
+func (proxy *Proxy) Differs(other *Proxy) (bool, error) {
+	newResolvedListen, err := net.ResolveTCPAddr("tcp", other.Listen)
+	if err != nil {
+		return false, err
+	}
+
+	if proxy.Listen != newResolvedListen.String() || proxy.Upstream != other.Upstream {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 // This channel is to kill the blocking Accept() call below by closing the
