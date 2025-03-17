@@ -256,6 +256,7 @@ func TestPopulateExistingProxy(t *testing.T) {
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
 		}
+
 		_, err = client.CreateProxy("two", "localhost:7373", "localhost:7474")
 		if err != nil {
 			t.Fatal("Unable to create proxy:", err)
@@ -270,7 +271,7 @@ func TestPopulateExistingProxy(t *testing.T) {
 		testProxies, err := client.Populate([]tclient.Proxy{
 			{
 				Name:     "one",
-				Listen:   "127.0.0.1:7070",
+				Listen:   "localhost:7070", // intentional: this should be resolved to 127.0.0.1:7070
 				Upstream: "localhost:7171",
 				Enabled:  true,
 			},
