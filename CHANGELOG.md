@@ -3,6 +3,7 @@
 - Update go version to 1.23.0 (#628)
 - Do not restart proxies when using hostnames to specify listen address when updating a proxy
   and populating a collection (#631, @robinbrandt)
+- Update various go packages
 
 # [2.11.0] - 2024-10-16
 
