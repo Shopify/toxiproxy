@@ -54,7 +54,7 @@ jobs:
         run: make test-e2e
 
       - name: Build
-        uses: goreleaser/goreleaser-action@90a3faa9d0182683851fbfa97ca1a2cb983bfca3
+        uses: goreleaser/goreleaser-action@9c156ee8a17a598857849441385a2041ef570552
         with:
           distribution: goreleaser
           version: v1.10.3
