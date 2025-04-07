@@ -7,7 +7,7 @@ require (
 	github.com/prometheus/client_golang v1.21.1
 	github.com/rs/zerolog v1.34.0
 	github.com/urfave/cli/v2 v2.27.6
-	golang.org/x/term v0.30.0
+	golang.org/x/term v0.31.0
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 )
 
@@ -25,6 +25,6 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	google.golang.org/protobuf v1.36.1 // indirect
 )
