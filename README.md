@@ -446,6 +446,12 @@ Closes connection when transmitted data exceeded limit.
 
  - `bytes`: number of bytes it should transmit before connection is closed
 
+#### corrupt
+
+Flips random bits of the input stream, corrupting it.
+
+ - `probability`: probability of any given bit in the input of being flipped
+
 ### HTTP API
 
 All communication with the Toxiproxy daemon from the client happens through the
