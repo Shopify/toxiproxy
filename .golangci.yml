@@ -1,43 +1,55 @@
 ---
+version: "2"
 run:
   go: "1.22"
 linters:
-  disable-all: true
+  default: none
   enable:
     - bodyclose
-    # https://github.com/atc0005/go-ci/issues/1024
-    # - depguard
     - dogsled
     - exhaustive
     - funlen
     - gocritic
     - gocyclo
     - godot
-    - gofmt
-    - goimports
     - gosec
-    - gosimple
     - govet
     - ineffassign
     - lll
     - misspell
     - staticcheck
-    - typecheck
     - unused
     - whitespace
-  fast: false
-linters-settings:
-  gosec:
-    excludes:
-      - G107
-
-  funlen:
-    lines: 80
-    statements: 30
-
-  lll:
-    line-length: 100
-    tab-width: 2
-
-  misspell:
-    locale: US
+  settings:
+    funlen:
+      lines: 80
+      statements: 30
+    gosec:
+      excludes:
+        - G107
+    lll:
+      line-length: 100
+      tab-width: 2
+    misspell:
+      locale: US
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -88,7 +88,7 @@ func (client *Client) CreateProxy(name, listen, upstream string) (*Proxy, error)
 
 	err := proxy.Save()
 	if err != nil {
-		return nil, fmt.Errorf("Create: %w", err)
+		return nil, fmt.Errorf("create: %w", err)
 	}
 
 	return proxy, nil

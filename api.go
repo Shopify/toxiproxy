@@ -19,7 +19,7 @@ import (
 func stopBrowsersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.UserAgent(), "Mozilla/") {
-			http.Error(w, "User agent not allowed", 403)
+			http.Error(w, "User agent not allowed", http.StatusForbidden)
 		} else {
 			next.ServeHTTP(w, r)
 		}

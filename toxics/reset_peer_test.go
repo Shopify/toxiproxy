@@ -55,7 +55,7 @@ func checkConnectionState(t *testing.T, listenAddress string) {
 	defer conn.Close()
 	if opErr, ok := err.(*net.OpError); ok {
 		syscallErr, _ := opErr.Err.(*os.SyscallError)
-		if !(syscallErr.Err == syscall.ECONNRESET) {
+		if syscallErr.Err != syscall.ECONNRESET {
 			t.Error("Expected: connection reset by peer. Got:", err)
 		}
 	} else {
