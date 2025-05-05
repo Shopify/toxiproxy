@@ -129,7 +129,7 @@ func TestCreateProxyBlankName(t *testing.T) {
 	WithServer(t, func(addr string) {
 		_, err := client.CreateProxy("", "", "")
 
-		expected := "Create: HTTP 400: missing required field: name"
+		expected := "create: HTTP 400: missing required field: name"
 		if err == nil {
 			t.Error("Expected error creating proxy, got nil")
 		} else if err.Error() != expected {
@@ -143,7 +143,7 @@ func TestCreateProxyBlankUpstream(t *testing.T) {
 		_, err := client.CreateProxy("test", "", "")
 		if err == nil {
 			t.Error("Expected error creating proxy, got nil")
-		} else if err.Error() != "Create: HTTP 400: missing required field: upstream" {
+		} else if err.Error() != "create: HTTP 400: missing required field: upstream" {
 			t.Error("Expected different error creating proxy:", err)
 		}
 	})
@@ -667,7 +667,7 @@ func TestCreateProxyPortConflict(t *testing.T) {
 			t.Fatal("Unable to create proxy:", err)
 		}
 
-		expected := "Create: HTTP 500: listen tcp 127.0.0.1:3310: bind: address already in use"
+		expected := "create: HTTP 500: listen tcp 127.0.0.1:3310: bind: address already in use"
 		_, err = client.CreateProxy("test", "localhost:3310", "localhost:20001")
 		if err == nil {
 			t.Error("Proxy did not result in conflict.")
@@ -693,7 +693,7 @@ func TestCreateProxyNameConflict(t *testing.T) {
 			t.Fatal("Unable to create proxy:", err)
 		}
 
-		expected := "Create: HTTP 409: proxy already exists"
+		expected := "create: HTTP 409: proxy already exists"
 		_, err = client.CreateProxy("mysql_master", "localhost:3311", "localhost:20001")
 		if err == nil {
 			t.Fatal("Proxy did not result in conflict.")
