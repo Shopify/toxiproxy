@@ -133,7 +133,8 @@ func TestRedisBackendSlow(t *testing.T) {
     proxy.AddToxic("", "latency", "", 1, toxiproxy.Attributes{
         "latency": 1000,
     })
-    defer proxy.RemoveToxic("latency_downstream")
+    proxy.Save()
+    defer removeToxic(proxy, "latency_downstream")
 
     // Test that redis is slow
     start := time.Now()
@@ -148,5 +149,10 @@ func TestRedisBackendSlow(t *testing.T) {
     } else if time.Since(start) < 900*time.Millisecond {
         t.Fatal("Redis command did not take long enough:", time.Since(start))
     }
+}
+
+func removeToxic(p *toxiproxy.Proxy, n string) {
+    p.RemoveToxic(n)
+    p.Save()
 }
 ```
