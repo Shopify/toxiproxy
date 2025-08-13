@@ -86,8 +86,12 @@ func TestStubInitializaationWithToxics(t *testing.T) {
 func TestAddRemoveStubs(t *testing.T) {
 	ctx := context.Background()
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
-	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	dummyProxy := NewProxy(NewServer(nil, zerolog.Nop(), time.Now().UnixNano()),
+		"DummyProxy",
+		"localhost:0",
+		"upstream")
+	link := NewToxicLink(dummyProxy, collection, stream.Downstream, zerolog.Nop())
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0], link.proxy.apiServer.seed)
 	collection.links["test"] = link
 
 	// Add stubs
@@ -140,8 +144,12 @@ func TestAddRemoveStubs(t *testing.T) {
 func TestNoDataDropped(t *testing.T) {
 	ctx := context.Background()
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
-	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	dummyProxy := NewProxy(NewServer(nil, zerolog.Nop(), time.Now().UnixNano()),
+		"DummyProxy",
+		"localhost:0",
+		"upstream")
+	link := NewToxicLink(dummyProxy, collection, stream.Downstream, zerolog.Nop())
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0], link.proxy.apiServer.seed)
 	collection.links["test"] = link
 
 	toxic := &toxics.ToxicWrapper{
@@ -196,8 +204,12 @@ func TestNoDataDropped(t *testing.T) {
 
 func TestToxicity(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
-	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	dummyProxy := NewProxy(NewServer(nil, zerolog.Nop(), time.Now().UnixNano()),
+		"DummyProxy",
+		"localhost:0",
+		"upstream")
+	link := NewToxicLink(dummyProxy, collection, stream.Downstream, zerolog.Nop())
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0], link.proxy.apiServer.seed)
 	collection.links["test"] = link
 
 	toxic := &toxics.ToxicWrapper{
@@ -247,9 +259,10 @@ func TestStateCreated(t *testing.T) {
 	if flag.Lookup("test.v").DefValue == "true" {
 		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
 	}
-
-	link := NewToxicLink(nil, collection, stream.Downstream, log)
-	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	dummyServer := NewServer(nil, log, time.Now().UnixNano())
+	dummyProxy := NewProxy(dummyServer, "DummyProxy", "localhost:0", "upstream")
+	link := NewToxicLink(dummyProxy, collection, stream.Downstream, log)
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0], link.proxy.apiServer.seed)
 	collection.links["test"] = link
 
 	collection.chainAddToxic(&toxics.ToxicWrapper{
@@ -271,10 +284,11 @@ func TestRemoveToxicWithBrokenConnection(t *testing.T) {
 		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
 	}
 	ctx = log.WithContext(ctx)
-
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream, log)
-	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	dummyServer := NewServer(nil, log, time.Now().UnixNano())
+	dummyProxy := NewProxy(dummyServer, "DummyProxy", "localhost:0", "upstream")
+	link := NewToxicLink(dummyProxy, collection, stream.Downstream, log)
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0], link.proxy.apiServer.seed)
 	collection.links["test"] = link
 
 	toxics := [2]*toxics.ToxicWrapper{
@@ -322,4 +336,56 @@ func TestRemoveToxicWithBrokenConnection(t *testing.T) {
 
 	collection.chainRemoveToxic(ctx, toxics[0])
 	collection.chainRemoveToxic(ctx, toxics[1])
+}
+
+func TestStableToxicityWithSeed(t *testing.T) {
+	collection := NewToxicCollection(nil)
+	//for a seed == 1 the random number generated is 0.604(...)
+	dummyProxy := NewProxy(NewServer(nil, zerolog.Nop(), 1),
+		"DummyProxy",
+		"localhost:0",
+		"upstream")
+	link := NewToxicLink(dummyProxy, collection, stream.Downstream, zerolog.Nop())
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0], link.proxy.apiServer.seed)
+	collection.links["test"] = link
+
+	toxic := &toxics.ToxicWrapper{
+		Toxic:     new(toxics.TimeoutToxic),
+		Name:      "timeout1",
+		Type:      "timeout",
+		Direction: stream.Downstream,
+		Toxicity:  0.603,
+	}
+	collection.chainAddToxic(toxic)
+
+	// Toxic should be a Noop because of toxicity
+	n, err := link.input.Write([]byte{42})
+	if n != 1 || err != nil {
+		t.Fatalf("Write failed: %d %v", n, err)
+	}
+	buf := make([]byte, 2)
+	n, err = link.output.Read(buf)
+	if n != 1 || err != nil {
+		t.Fatalf("Read failed: %d %v", n, err)
+	} else if buf[0] != 42 {
+		t.Fatalf("Read wrong byte: %x", buf[0])
+	}
+
+	toxic.Toxicity = 0.605
+	toxic.Toxic.(*toxics.TimeoutToxic).Timeout = 100
+	collection.chainUpdateToxic(toxic)
+
+	err = testhelper.TimeoutAfter(150*time.Millisecond, func() {
+		n, err = link.input.Write([]byte{42})
+		if n != 1 || err != nil {
+			t.Fatalf("Write failed: %d %v", n, err)
+		}
+		n, err = link.output.Read(buf)
+		if n != 0 || err != io.EOF {
+			t.Fatalf("Read did not get EOF: %d %v", n, err)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
