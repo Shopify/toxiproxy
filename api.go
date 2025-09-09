@@ -3,10 +3,12 @@ package toxiproxy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -34,7 +36,9 @@ type ApiServer struct {
 	Collection *ProxyCollection
 	Metrics    *metricsContainer
 	Logger     *zerolog.Logger
-	http       *http.Server
+
+	initOnce sync.Once // guards shutdown
+	shutdown func(ctx context.Context) error
 }
 
 const (
@@ -50,42 +54,45 @@ func NewServer(m *metricsContainer, logger zerolog.Logger) *ApiServer {
 	}
 }
 
+var errServerStarted = errors.New("server already started")
+
 func (server *ApiServer) Listen(addr string) error {
-	server.Logger.
-		Info().
-		Str("address", addr).
-		Msg("Starting Toxiproxy HTTP server")
+	var s *http.Server
+	server.initOnce.Do(func() {
+		server.Logger.
+			Info().
+			Str("address", addr).
+			Msg("Starting Toxiproxy HTTP server")
 
-	server.http = &http.Server{
-		Addr:         addr,
-		Handler:      server.Routes(),
-		WriteTimeout: wait_timeout,
-		ReadTimeout:  read_timeout,
-		IdleTimeout:  60 * time.Second,
+		s = &http.Server{
+			Addr:         addr,
+			Handler:      server.Routes(),
+			WriteTimeout: wait_timeout,
+			ReadTimeout:  read_timeout,
+			IdleTimeout:  60 * time.Second,
+		}
+	})
+	if s == nil {
+		return errServerStarted
 	}
 
-	err := server.http.ListenAndServe()
-	if err == http.ErrServerClosed {
-		err = nil
+	server.shutdown = s.Shutdown
+	err := s.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
 	}
-
 	return err
 }
 
 func (server *ApiServer) Shutdown() error {
-	if server.http == nil {
-		return nil
+	server.initOnce.Do(func() {})
+	if server.shutdown == nil {
+		return nil // in desire state
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), wait_timeout)
 	defer cancel()
-
-	err := server.http.Shutdown(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return server.shutdown(ctx)
 }
 
 func (server *ApiServer) Routes() *mux.Router {
