@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -1122,6 +1123,25 @@ func TestInvalidStream(t *testing.T) {
 			t.Fatal("Error setting toxic:", err)
 		}
 	})
+}
+
+// Issue https://github.com/Shopify/toxiproxy/issues/667
+func TestApiServerShutdownListen(t *testing.T) {
+	s := &toxiproxy.ApiServer{Logger: &zerolog.Logger{}}
+	defer s.Shutdown()
+
+	got := s.Shutdown()
+	if got != nil {
+		t.Fatal("error shutting down unstarted server:", got)
+	}
+
+	got = s.Listen(":0")
+	// Avoid inventing an exported sentinal error just for this test, which is heavy handed
+	// given this error is specific only to starting the server twice, via the Listen method,
+	// and is unlikely to change, we can just do a substring match.
+	if !strings.Contains(got.Error(), "server already started") {
+		t.Fatal("error starting server:", got)
+	}
 }
 
 func AssertToxicExists(
