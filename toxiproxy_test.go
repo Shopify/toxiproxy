@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
@@ -22,6 +23,7 @@ func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
 	srv := toxiproxy.NewServer(
 		toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
 		log,
+		time.Now().UnixNano(),
 	)
 	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
 	proxy := toxiproxy.NewProxy(srv, name, "localhost:0", upstream)
