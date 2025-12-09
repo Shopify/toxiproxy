@@ -296,7 +296,7 @@ func (server *ApiServer) ProxyShow(response http.ResponseWriter, request *http.R
 func (server *ApiServer) ProxyUpdate(response http.ResponseWriter, request *http.Request) {
 	log := zerolog.Ctx(request.Context())
 	if request.Method == "POST" {
-		log.Warn().Msg("ProxyUpdate: HTTP method POST is depercated. Use HTTP PATCH instead.")
+		log.Warn().Msg("ProxyUpdate: HTTP method POST is deprecated. Use HTTP PATCH instead.")
 	}
 
 	vars := mux.Vars(request)
@@ -424,7 +424,7 @@ func (server *ApiServer) ToxicShow(response http.ResponseWriter, request *http.R
 func (server *ApiServer) ToxicUpdate(response http.ResponseWriter, request *http.Request) {
 	log := zerolog.Ctx(request.Context())
 	if request.Method == "POST" {
-		log.Warn().Msg("ToxicUpdate: HTTP method POST is depercated. Use HTTP PATCH instead.")
+		log.Warn().Msg("ToxicUpdate: HTTP method POST is deprecated. Use HTTP PATCH instead.")
 	}
 
 	vars := mux.Vars(request)
