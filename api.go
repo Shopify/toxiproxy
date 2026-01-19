@@ -181,7 +181,36 @@ func (server *ApiServer) ProxyIndex(response http.ResponseWriter, request *http.
 }
 
 func (server *ApiServer) ResetState(response http.ResponseWriter, request *http.Request) {
+	// SECURITY FIX: Add authentication check for this critical administrative endpoint
+	// Require a valid API token via X-Toxiproxy-Token header
 	ctx := request.Context()
+	log := zerolog.Ctx(ctx)
+	
+	// Check for authentication token
+	apiToken := request.Header.Get("X-Toxiproxy-Token")
+	expectedToken := os.Getenv("TOXIPROXY_ADMIN_TOKEN")
+	
+	// If admin token is set, require authentication
+	if expectedToken != "" {
+		if apiToken == "" {
+			log.Warn().Msg("ResetState: Unauthorized access attempt - missing token")
+			http.Error(response, "Unauthorized: Admin token required", http.StatusUnauthorized)
+			return
+		}
+		
+		if apiToken != expectedToken {
+			log.Warn().Msg("ResetState: Unauthorized access attempt - invalid token")
+			http.Error(response, "Unauthorized: Invalid admin token", http.StatusUnauthorized)
+			return
+		}
+	} else {
+		// If no token is configured, deny access for security
+		log.Warn().Msg("ResetState: Access denied - no admin token configured")
+		http.Error(response, "Forbidden: Admin token must be configured to use this endpoint", http.StatusForbidden)
+		return
+	}
+	
+	// Token validated - proceed with reset
 	proxies := server.Collection.Proxies()
 
 	for _, proxy := range proxies {
@@ -196,7 +225,6 @@ func (server *ApiServer) ResetState(response http.ResponseWriter, request *http.
 	response.WriteHeader(http.StatusNoContent)
 	_, err := response.Write(nil)
 	if err != nil {
-		log := zerolog.Ctx(ctx)
 		log.Warn().Err(err).Msg("ResetState: Failed to write headers to client")
 	}
 }
