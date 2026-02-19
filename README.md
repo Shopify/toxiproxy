@@ -56,17 +56,18 @@ stopping you from creating a client in any other language (see
       - [latency](#latency)
       - [down](#down)
       - [bandwidth](#bandwidth)
-      - [slow_close](#slow_close)
+      - [slow\_close](#slow_close)
       - [timeout](#timeout)
-      - [reset_peer](#reset_peer)
+      - [reset\_peer](#reset_peer)
       - [slicer](#slicer)
-      - [limit_data](#limit_data)
+      - [limit\_data](#limit_data)
     - [HTTP API](#http-api)
       - [Proxy fields:](#proxy-fields)
       - [Toxic fields:](#toxic-fields)
       - [Endpoints](#endpoints)
       - [Populating Proxies](#populating-proxies)
     - [CLI Example](#cli-example)
+    - [Deterministic results](#deterministic-results)
     - [Metrics](#metrics)
     - [Frequently Asked Questions](#frequently-asked-questions)
     - [Development](#development)
@@ -570,6 +571,10 @@ Deleted proxy redis
 $ redis-cli -p 26379
 Could not connect to Redis at 127.0.0.1:26379: Connection refused
 ```
+
+### Deterministic results
+
+To achieve deterministic results (for example to replicate the issue observed in some e2e tests) pass `--seed <seed>` to toxiproxy-cli. This will ensure that the random number generator is seeded with the same value, resulting in the same sequence of random numbers being generated.
 
 ### Metrics
 

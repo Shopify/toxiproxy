@@ -78,10 +78,11 @@ func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.Stream
 
 // Begin running a toxic on this stub, can be interrupted.
 // Runs a noop toxic randomly depending on toxicity.
-func (s *ToxicStub) Run(toxic *ToxicWrapper) {
+func (s *ToxicStub) Run(toxic *ToxicWrapper, seed int64) {
 	s.running = make(chan struct{})
 	defer close(s.running)
-	randomToxicity := rand.Float32() // #nosec G404 -- was ignored before too
+	r := rand.New(rand.NewSource(seed)) // #nosec G404 -- was ignored before too
+	randomToxicity := r.Float32()       // #nosec G404 -- was ignored before too
 	if randomToxicity < toxic.Toxicity {
 		toxic.Pipe(s)
 	} else {
