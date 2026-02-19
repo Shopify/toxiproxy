@@ -219,8 +219,16 @@ func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapp
 			cleanup.Cleanup(link.stubs[toxic_index])
 			// Cleanup could have closed the stub.
 			if link.stubs[toxic_index].Closed() {
-				log.Trace().Msg("Cleanup closed toxic and removed toxic")
-				// TODO: Check if cleanup happen would link.stubs recalculated?
+				log.Trace().Msg("Cleanup closed toxic - recalculating stub chain")
+				
+				// Recalculate link.stubs: reconnect the chain bypassing the closed toxic
+				link.stubs[toxic_index-1].Output = link.stubs[toxic_index].Output
+				// Remove the closed stub from the chain
+				link.stubs = append(link.stubs[:toxic_index], link.stubs[toxic_index+1:]...)
+				
+				log.Trace().
+					Int("remaining_stubs", len(link.stubs)).
+					Msg("Stub chain recalculated and toxic removed after cleanup")
 				return
 			}
 		}
@@ -245,7 +253,13 @@ func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapp
 					if !stopped {
 						<-stop
 					}
-					return // TODO: There are some steps after this to clean buffer
+					// TODO: Investigate if buffer cleanup is needed here before return.
+					// The buffer cleanup code below handles the normal interrupt case,
+					// but when tmp==nil (connection closed), we return early.
+					// This might skip cleaning buffered packets, potentially causing data loss.
+					// Need to verify if this is intentional or if we should drain the buffer
+					// before returning, similar to the cleanup loop below.
+					return
 				}
 
 				err := link.stubs[toxic_index].WriteOutput(tmp, 5*time.Second)
