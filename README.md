@@ -504,6 +504,13 @@ All endpoints are JSON.
  - **GET /version** - Returns the server version number
  - **GET /metrics** - Returns Prometheus-compatible metrics
 
+##### Example using the API Endpoints
+
+```bash
+$ curl -X POST -H "Content-Type: application/json" -d '{"enabled": false}' localhost:26913/proxies/shopify_development_memcached                       
+{"name":"shopify_development_memcached","listen":"127.0.0.1:20915","upstream":"localhost:62070","enabled":false,"toxics":[]}%
+```
+
 #### Populating Proxies
 
 Proxies can be added and configured in bulk using the `/populate` endpoint. This is done by
