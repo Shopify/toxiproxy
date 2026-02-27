@@ -157,6 +157,12 @@ func cliCommands() []*cli.Command {
 			Description: toxicDescription,
 			Subcommands: cliToxiSubCommands(),
 		},
+		{
+			Name:    "reset",
+			Usage:   "enable all proxies and remove all active toxics\n\tusage: 'toxiproxy-cli reset'\n",
+			Aliases: []string{"rst"},
+			Action:  withToxi(reset),
+		},
 	}
 }
 
@@ -273,7 +279,7 @@ func withToxi(f toxiAction) func(*cli.Context) error {
 	}
 }
 
-func list(c *cli.Context, t *toxiproxy.Client) error {
+func list(_ *cli.Context, t *toxiproxy.Client) error {
 	proxies, err := t.Proxies()
 	if err != nil {
 		return errorf("Failed to retrieve proxies: %s", err)
@@ -511,6 +517,17 @@ func removeToxic(c *cli.Context, t *toxiproxy.Client) error {
 	}
 
 	fmt.Printf("Removed toxic '%s' on proxy '%s'\n", toxicParams.ToxicName, toxicParams.ProxyName)
+	return nil
+}
+
+func reset(_ *cli.Context, t *toxiproxy.Client) error {
+	err := t.ResetState()
+	if err != nil {
+		return errorf("Failed to reset state: %s", err)
+	}
+
+	fmt.Printf("Enabled all proxies and removed all active toxics\n")
+
 	return nil
 }
 
