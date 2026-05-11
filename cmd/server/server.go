@@ -67,6 +67,7 @@ func run() error {
 		return nil
 	}
 
+	seed := cli.seed
 	rand.New(rand.NewSource(cli.seed)) // #nosec G404 -- ignoring this rule
 
 	logger := setupLogger()
@@ -78,7 +79,7 @@ func run() error {
 		Msg("Starting Toxiproxy")
 
 	metrics := toxiproxy.NewMetricsContainer(prometheus.NewRegistry())
-	server := toxiproxy.NewServer(metrics, logger)
+	server := toxiproxy.NewServer(metrics, logger, seed)
 	if cli.proxyMetrics {
 		server.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
 	}

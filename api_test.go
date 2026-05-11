@@ -32,6 +32,7 @@ func WithServer(t *testing.T, f func(string)) {
 		testServer = toxiproxy.NewServer(
 			toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
 			log,
+			time.Now().UnixNano(),
 		)
 
 		go testServer.Listen("localhost:8475")

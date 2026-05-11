@@ -106,7 +106,7 @@ func (link *ToxicLink) Start(
 			}
 		}
 
-		go link.stubs[i].Run(toxic)
+		go link.stubs[i].Run(toxic, server.seed)
 	}
 
 	go link.write(labels, name, server, dest)
@@ -182,8 +182,8 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 			link.stubs[i].State = stateful.NewState()
 		}
 
-		go link.stubs[i].Run(toxic)
-		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1])
+		go link.stubs[i].Run(toxic, link.proxy.apiServer.seed)
+		go link.stubs[i-1].Run(link.toxics.chain[link.direction][i-1], link.proxy.apiServer.seed)
 	} else {
 		// This link is already closed, make sure the new toxic matches
 		link.stubs[i].Output = newin // The real output is already closed, close this instead
@@ -194,7 +194,7 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 // Update an existing toxic in the chain.
 func (link *ToxicLink) UpdateToxic(toxic *toxics.ToxicWrapper) {
 	if link.stubs[toxic.Index].InterruptToxic() {
-		go link.stubs[toxic.Index].Run(toxic)
+		go link.stubs[toxic.Index].Run(toxic, link.proxy.apiServer.seed)
 	}
 }
 
@@ -273,7 +273,8 @@ func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapp
 		link.stubs[toxic_index-1].Output = link.stubs[toxic_index].Output
 		link.stubs = append(link.stubs[:toxic_index], link.stubs[toxic_index+1:]...)
 
-		go link.stubs[toxic_index-1].Run(link.toxics.chain[link.direction][toxic_index-1])
+		go link.stubs[toxic_index-1].Run(link.toxics.chain[link.direction][toxic_index-1],
+			link.proxy.apiServer.seed)
 	}
 }
 
