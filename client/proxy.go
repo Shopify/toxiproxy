@@ -160,7 +160,7 @@ func (proxy *Proxy) UpdateToxic(name string, toxicity float32, attrs Attributes)
 	return result, nil
 }
 
-// RemoveToxic renives the toxic with the given name.
+// RemoveToxic removes the toxic with the given name.
 func (proxy *Proxy) RemoveToxic(name string) error {
 	return proxy.client.delete("/proxies/" + proxy.Name + "/toxics/" + name)
 }
