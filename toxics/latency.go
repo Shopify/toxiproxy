@@ -6,6 +6,9 @@ import (
 )
 
 // The LatencyToxic passes data through with the a delay of latency +/- jitter added.
+//
+// Note that the initial TCP handshake is not impacted by this toxic. For more details,
+// see the SlowOpenToxic.
 type LatencyToxic struct {
 	// Times in milliseconds
 	Latency int64 `json:"latency"`
