@@ -42,6 +42,18 @@ func (t *SlicerToxic) chunk(start int, end int) []int {
 	if t.SizeVariation > 0 {
 		mid += rand.Intn(t.SizeVariation*2) - t.SizeVariation // #nosec G404 -- was ignored before too
 	}
+	// rand.Intn returns [0, SizeVariation*2), so mid can jitter into
+	// [base-SizeVariation, base+SizeVariation). When SizeVariation is
+	// large relative to (end-start), mid can land before start or
+	// after end, and Pipe later slices c.Data[chunks[i-1]:chunks[i]]
+	// with a reversed range - panicking 'slice bounds out of range
+	// [X:Y]' (#541). Clamp mid to [start, end] so every output chunk
+	// stays in monotonic order.
+	if mid < start {
+		mid = start
+	} else if mid > end {
+		mid = end
+	}
 	left := t.chunk(start, mid)
 	right := t.chunk(mid, end)
 
