@@ -59,7 +59,7 @@ jobs:
         with:
           go-version: 1.22
           check-latest: true
-          cache: true
+          cache: false
       -
         name: Build release changelog
         run: |
