@@ -61,6 +61,7 @@ stopping you from creating a client in any other language (see
       - [reset_peer](#reset_peer)
       - [slicer](#slicer)
       - [limit_data](#limit_data)
+      - [packet_loss](#packet_loss)
     - [HTTP API](#http-api)
       - [Proxy fields:](#proxy-fields)
       - [Toxic fields:](#toxic-fields)
@@ -445,6 +446,15 @@ Attributes:
 Closes connection when transmitted data exceeded limit.
 
  - `bytes`: number of bytes it should transmit before connection is closed
+
+#### packet_loss
+
+Randomly drops chunks flowing through the proxy simulating
+flaky Wi-Fi, mobile, or satellite network conditions.
+
+Attributes:
+ - `loss_rate`: probability [0.0–1.0] that a chunk is dropped (default 0.1)
+ - `correlation`: extra drop probability when the previous chunk was dropped, modeling burst loss (default 0.0)
 
 ### HTTP API
 
