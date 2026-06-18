@@ -35,6 +35,7 @@ type ApiServer struct {
 	Metrics    *metricsContainer
 	Logger     *zerolog.Logger
 	http       *http.Server
+	seed       int64
 }
 
 const (
@@ -42,11 +43,12 @@ const (
 	read_timeout = 15 * time.Second
 )
 
-func NewServer(m *metricsContainer, logger zerolog.Logger) *ApiServer {
+func NewServer(m *metricsContainer, logger zerolog.Logger, seed int64) *ApiServer {
 	return &ApiServer{
 		Collection: NewProxyCollection(),
 		Metrics:    m,
 		Logger:     &logger,
+		seed:       seed,
 	}
 }
 
