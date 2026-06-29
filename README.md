@@ -453,7 +453,7 @@ Randomly drops chunks flowing through the proxy simulating
 flaky Wi-Fi, mobile, or satellite network conditions.
 
 Attributes:
- - `loss_rate`: probability [0.0–1.0] that a chunk is dropped (default 0.1)
+ - `loss_rate`: probability [0.0-1.0] that a chunk is dropped (default 0.0)
  - `correlation`: extra drop probability when the previous chunk was dropped, modeling burst loss (default 0.0)
 
 ### HTTP API

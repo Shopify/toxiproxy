@@ -54,14 +54,9 @@ func TestPacketLossToxicPipeDrains(t *testing.T) {
 
 	input := make(chan *stream.StreamChunk, 1)
 	output := make(chan *stream.StreamChunk, 1)
-	interrupt := make(chan struct{})
 
-	stub := &toxics.ToxicStub{
-		Input:     input,
-		Output:    output,
-		Interrupt: interrupt,
-		State:     toxic.NewState(),
-	}
+	stub := toxics.NewToxicStub(input, output)
+	stub.State = toxic.NewState()
 
 	done := make(chan struct{})
 	go func() {
@@ -69,7 +64,7 @@ func TestPacketLossToxicPipeDrains(t *testing.T) {
 		close(done)
 	}()
 
-	close(interrupt)
+	close(stub.Interrupt)
 
 	select {
 	case <-done:
@@ -97,14 +92,9 @@ func runPipeTestWithStats(t *testing.T, toxic *toxics.PacketLossToxic, n int) (i
 	input := make(chan *stream.StreamChunk, n)
 	// Unbuffered output — drained by a goroutine below.
 	output := make(chan *stream.StreamChunk)
-	interrupt := make(chan struct{})
 
-	stub := &toxics.ToxicStub{
-		Input:     input,
-		Output:    output,
-		Interrupt: interrupt,
-		State:     toxic.NewState(),
-	}
+	stub := toxics.NewToxicStub(input, output)
+	stub.State = toxic.NewState()
 
 	// Fill input before starting Pipe so timing doesn't matter.
 	for i := 0; i < n; i++ {
@@ -125,11 +115,9 @@ func runPipeTestWithStats(t *testing.T, toxic *toxics.PacketLossToxic, n int) (i
 		close(drainDone)
 	}()
 
-	// Run Pipe — exits when input is closed.
+	// Run Pipe; it exits and closes output when input is closed.
 	toxic.Pipe(stub)
 
-	// Pipe has returned, close output so the drain goroutine finishes.
-	close(output)
 	<-drainDone
 
 	dropped := n - passed

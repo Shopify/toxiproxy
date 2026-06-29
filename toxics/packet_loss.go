@@ -1,28 +1,7 @@
 package toxics
- 
-// PacketLossToxic randomly drops StreamChunks passing through the proxy,
-// simulating packet loss / flaky network conditions.
-//
-// Attributes:
-//   - loss_rate : float64  probability [0.0–1.0] that a chunk is dropped
-//                          (default 0.1 -> 10 %)
-//   - correlation : float64  probability [0.0–1.0] that the *next* chunk is
-//                          also dropped when the previous one was (Gilbert-
-//                          Elliott burst model; default 0.0 -> no burstiness)
-//
-// How it fits toxiproxy's pipeline:
-//
-//	Client -> [noop] -> [packet_loss] -> [noop] -> Upstream
-//	                         |
-//	                  dropped chunks
-//	                   are discarded
-//
-// Registration happens automatically via init().
- 
-import (
-	"math/rand"
-)
- 
+
+import "math/rand"
+
 // PacketLossToxicState holds per-connection mutable state so that the
 // main toxic struct (shared across connections) stays read-only.
 type PacketLossToxicState struct {
@@ -33,60 +12,61 @@ type PacketLossToxicState struct {
 	// contend on a shared global rand.
 	rng *rand.Rand
 }
- 
-// PacketLossToxic is the toxic struct. Fields are JSON-tagged to match
-// toxiproxy's HTTP API convention.
+
+// PacketLossToxic randomly drops StreamChunks passing through the proxy,
+// simulating packet loss or flaky network conditions.
 type PacketLossToxic struct {
 	// LossRate is the baseline probability that any individual chunk is
-	// dropped. Range [0.0, 1.0]. Default 0.1 (10 %).
+	// dropped. Range [0.0, 1.0]. The zero value disables packet loss.
 	LossRate float64 `json:"loss_rate"`
- 
+
 	// Correlation is the extra probability that the *next* chunk is dropped
-	// when the current one was dropped, modelling burst packet loss (Gilbert-
+	// when the current one was dropped, modeling burst packet loss (Gilbert-
 	// Elliott model simplified). Range [0.0, 1.0]. Default 0.0.
 	Correlation float64 `json:"correlation"`
 }
- 
+
 // NewState satisfies the StatefulToxic interface. toxiproxy calls this once
 // per new connection so every connection gets its own RNG and drop state.
 func (t *PacketLossToxic) NewState() interface{} {
 	return &PacketLossToxicState{
-		rng: rand.New(rand.NewSource(rand.Int63())),
+		rng: rand.New(rand.NewSource(rand.Int63())), // #nosec G404 -- packet loss simulation does not need cryptographic randomness
 	}
 }
- 
+
 // Pipe satisfies the Toxic interface. It reads chunks from stub.Input,
 // decides whether to forward or drop each one, and writes survivors to
 // stub.Output. It exits when the input channel is closed or an interrupt
 // arrives.
 func (t *PacketLossToxic) Pipe(stub *ToxicStub) {
 	state := stub.State.(*PacketLossToxicState)
- 
+
 	// Clamp configuration to valid ranges once, up front.
 	lossRate := clamp(t.LossRate, 0.0, 1.0)
 	correlation := clamp(t.Correlation, 0.0, 1.0)
- 
+
 	for {
 		select {
 		case <-stub.Interrupt:
 			// toxiproxy is removing or reconfiguring this toxic; drain cleanly.
 			return
- 
-		case chunk, ok := <-stub.Input:
-			if !ok {
+
+		case chunk := <-stub.Input:
+			if chunk == nil {
 				// Upstream closed the connection.
+				stub.Close()
 				return
 			}
- 
+
 			if t.shouldDrop(state, lossRate, correlation) {
 				// Drop: discard the chunk entirely. The byte slice is simply
-				// not forwarded – no close, no RST – mimicking a lost IP packet.
+				// not forwarded, mimicking a lost IP packet.
 				state.wasDropped = true
 				continue
 			}
- 
+
 			state.wasDropped = false
- 
+
 			// Forward the chunk unmodified.
 			select {
 			case stub.Output <- chunk:
@@ -96,7 +76,7 @@ func (t *PacketLossToxic) Pipe(stub *ToxicStub) {
 		}
 	}
 }
- 
+
 // shouldDrop returns true when the current chunk must be discarded.
 // It implements a simplified Gilbert-Elliott two-state model:
 //   - In the "good" state  -> drop with probability lossRate
@@ -112,12 +92,12 @@ func (t *PacketLossToxic) shouldDrop(
 	}
 	return state.rng.Float64() < p
 }
- 
+
 // init registers the toxic with toxiproxy automatically at startup.
 func init() {
 	Register("packet_loss", new(PacketLossToxic))
 }
- 
+
 // clamp constrains v to the range [lo, hi].
 func clamp(v, lo, hi float64) float64 {
 	if v < lo {
