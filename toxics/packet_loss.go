@@ -30,7 +30,7 @@ type PacketLossToxic struct {
 // per new connection so every connection gets its own RNG and drop state.
 func (t *PacketLossToxic) NewState() interface{} {
 	return &PacketLossToxicState{
-		rng: rand.New(rand.NewSource(rand.Int63())), // #nosec G404 -- packet loss simulation does not need cryptographic randomness
+		rng: rand.New(rand.NewSource(rand.Int63())), // #nosec G404 -- packet loss simulation
 	}
 }
 
