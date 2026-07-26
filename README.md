@@ -382,7 +382,12 @@ For documentation on implementing custom toxics, see [CREATING_TOXICS.md](./CREA
 
 #### latency
 
-Add a delay to all data going through the proxy. The delay is equal to `latency` +/- `jitter`.
+Add a delay to data on a single proxy stream. The delay is equal to `latency` +/- `jitter`.
+
+Toxics are directional: by default a latency toxic is attached to the `downstream`
+stream (`server -> client`). It does not delay the opposite direction unless you
+also add a latency toxic with `stream=upstream`. For a symmetric round-trip delay,
+add latency on both streams.
 
 Attributes:
 
