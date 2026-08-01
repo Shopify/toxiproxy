@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Shopify/toxiproxy/v2/stream"
@@ -39,6 +40,15 @@ type BufferedToxic interface {
 	GetBufferSize() int
 }
 
+// ExpectedDelay toxics intentionally add latency to a chunk, so a stub's
+// Timeout can account for it instead of mistaking a slow chain for a dead one.
+type ExpectedDelay interface {
+	ExpectedDelay() time.Duration
+}
+
+// DefaultOutputTimeout is the floor added on top of any ExpectedDelay.
+const DefaultOutputTimeout = 5 * time.Second
+
 // Stateful toxics store a per-connection state object on the ToxicStub.
 // The state is created once when the toxic is added and persists until the
 // toxic is removed or the connection is closed.
@@ -65,15 +75,38 @@ type ToxicStub struct {
 	Interrupt chan struct{}
 	running   chan struct{}
 	closed    chan struct{}
+
+	// timeoutNanos bounds a blocked Output send before treating the consumer
+	// as gone. Accessed via Timeout/SetTimeout: ToxicLink writes it under the
+	// collection's lock, Pipe goroutines read it without that lock.
+	timeoutNanos atomic.Int64
+
+	// OutputDone, when set, closes exactly when the stub reading Output stops
+	// for good. WriteOutput selects on it directly instead of checking it
+	// once before sending, so a send already in flight still unblocks the
+	// instant the consumer goes away. Nil for a chain's last stub.
+	OutputDone <-chan struct{}
 }
 
 func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.StreamChunk) *ToxicStub {
-	return &ToxicStub{
+	s := &ToxicStub{
 		Interrupt: make(chan struct{}),
 		closed:    make(chan struct{}),
 		Input:     input,
 		Output:    output,
 	}
+	s.SetTimeout(DefaultOutputTimeout)
+	return s
+}
+
+// Timeout returns the current send timeout, safe for concurrent use.
+func (s *ToxicStub) Timeout() time.Duration {
+	return time.Duration(s.timeoutNanos.Load())
+}
+
+// SetTimeout updates the send timeout, safe for concurrent use.
+func (s *ToxicStub) SetTimeout(d time.Duration) {
+	s.timeoutNanos.Store(int64(d))
 }
 
 // Begin running a toxic on this stub, can be interrupted.
@@ -93,13 +126,19 @@ func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 // If duration is 0, then wait until other goroutines finish reading from Output.
 func (s *ToxicStub) WriteOutput(p *stream.StreamChunk, d time.Duration) error {
 	if d == 0 {
-		s.Output <- p
-		return nil
+		select {
+		case s.Output <- p:
+			return nil
+		case <-s.OutputDone:
+			return fmt.Errorf("output already closed")
+		}
 	}
 
 	select {
 	case s.Output <- p:
 		return nil
+	case <-s.OutputDone:
+		return fmt.Errorf("output already closed")
 	case <-time.After(d):
 		return fmt.Errorf("timeout: could not write to output in %d seconds", int(d.Seconds()))
 	}
@@ -124,6 +163,11 @@ func (s *ToxicStub) Closed() bool {
 	default:
 		return false
 	}
+}
+
+// Done reports when this stub itself stops; see ToxicStub.OutputDone.
+func (s *ToxicStub) Done() <-chan struct{} {
+	return s.closed
 }
 
 func (s *ToxicStub) Close() {

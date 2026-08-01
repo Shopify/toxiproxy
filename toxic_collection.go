@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 
@@ -241,6 +242,7 @@ func (c *ToxicCollection) chainAddToxic(toxic *toxics.ToxicWrapper) {
 		}
 	}
 	wg.Wait()
+	c.refreshOutputTimeouts(dir)
 }
 
 func (c *ToxicCollection) chainUpdateToxic(toxic *toxics.ToxicWrapper) {
@@ -258,6 +260,34 @@ func (c *ToxicCollection) chainUpdateToxic(toxic *toxics.ToxicWrapper) {
 		}
 	}
 	group.Wait()
+	c.refreshOutputTimeouts(toxic.Direction)
+}
+
+// outputTimeout is DefaultOutputTimeout plus the largest ExpectedDelay among
+// dir's toxics. Assumes the lock is already held.
+func (c *ToxicCollection) outputTimeout(dir stream.Direction) time.Duration {
+	timeout := toxics.DefaultOutputTimeout
+	for _, toxic := range c.chain[dir] {
+		delay, ok := toxic.Toxic.(toxics.ExpectedDelay)
+		if !ok {
+			continue
+		}
+		if d := delay.ExpectedDelay() + toxics.DefaultOutputTimeout; d > timeout {
+			timeout = d
+		}
+	}
+	return timeout
+}
+
+// refreshOutputTimeouts recomputes outputTimeout for dir and applies it to
+// every link's stubs in that direction.
+func (c *ToxicCollection) refreshOutputTimeouts(dir stream.Direction) {
+	timeout := c.outputTimeout(dir)
+	for _, link := range c.links {
+		if link.direction == dir {
+			link.setOutputTimeout(timeout)
+		}
+	}
 }
 
 func (c *ToxicCollection) chainRemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapper) {
@@ -274,6 +304,10 @@ func (c *ToxicCollection) chainRemoveToxic(ctx context.Context, toxic *toxics.To
 	for i := toxic.Index; i < len(c.chain[dir]); i++ {
 		c.chain[dir][i].Index = i
 	}
+	// Unlike chainAddToxic/chainUpdateToxic, refresh before the links run:
+	// their flush loops read Timeout as they go, and the toxic being removed
+	// must no longer count toward it.
+	c.refreshOutputTimeouts(dir)
 
 	// Asynchronously remove the toxic from each link
 	wg := sync.WaitGroup{}
