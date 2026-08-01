@@ -29,6 +29,9 @@ type ToxicLink struct {
 	output    *stream.ChanReader
 	direction stream.Direction
 	Logger    *zerolog.Logger
+
+	// writeDone closes when write stops draining link.output; see ToxicStub.OutputDone.
+	writeDone chan struct{}
 }
 
 func NewToxicLink(
@@ -47,6 +50,7 @@ func NewToxicLink(
 		toxics:    collection,
 		direction: direction,
 		Logger:    &logger,
+		writeDone: make(chan struct{}),
 	}
 	// Initialize the link with ToxicStubs
 	last := make(chan *stream.StreamChunk) // The first toxic is always a noop
@@ -62,8 +66,20 @@ func NewToxicLink(
 		link.stubs[i] = toxics.NewToxicStub(last, next)
 		last = next
 	}
+	for i := 0; i < len(link.stubs)-1; i++ {
+		link.stubs[i].OutputDone = link.stubs[i+1].Done()
+	}
+	link.stubs[len(link.stubs)-1].OutputDone = link.writeDone
 	link.output = stream.NewChanReader(last)
+	link.setOutputTimeout(collection.outputTimeout(direction))
 	return link
+}
+
+// setOutputTimeout updates every stub's send timeout for this link.
+func (link *ToxicLink) setOutputTimeout(d time.Duration) {
+	for _, stub := range link.stubs {
+		stub.SetTimeout(d)
+	}
 }
 
 // Start the link with the specified toxics.
@@ -149,6 +165,8 @@ func (link *ToxicLink) write(
 		Str("link_addr", fmt.Sprintf("%p", link)).
 		Logger()
 
+	defer close(link.writeDone)
+
 	bytes, err := io.Copy(dest, link.output)
 	if err != nil {
 		logger.Warn().
@@ -177,6 +195,8 @@ func (link *ToxicLink) AddToxic(toxic *toxics.ToxicWrapper) {
 	// Interrupt the last toxic so that we don't have a race when moving channels
 	if link.stubs[i-1].InterruptToxic() {
 		link.stubs[i-1].Output = newin
+		link.stubs[i-1].OutputDone = link.stubs[i].Done()
+		link.stubs[i].OutputDone = link.writeDone
 
 		if stateful, ok := toxic.Toxic.(toxics.StatefulToxic); ok {
 			link.stubs[i].State = stateful.NewState()
@@ -233,8 +253,10 @@ func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapp
 
 		// Unblock the previous toxic if it is trying to flush
 		// If the previous toxic is closed, continue flusing until we reach the end.
+		// sinkDead: once one send times out, don't retry the rest item by item.
 		interrupted := false
 		stopped := false
+		sinkDead := false
 		for !interrupted {
 			select {
 			case interrupted = <-stop:
@@ -248,8 +270,12 @@ func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapp
 					return // TODO: There are some steps after this to clean buffer
 				}
 
-				err := link.stubs[toxic_index].WriteOutput(tmp, 5*time.Second)
+				if sinkDead {
+					continue
+				}
+				err := link.stubs[toxic_index].WriteOutput(tmp, link.stubs[toxic_index].Timeout())
 				if err != nil {
+					sinkDead = true
 					log.Err(err).
 						Msg("Could not write last packets after interrupt to Output")
 				}
@@ -257,24 +283,41 @@ func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapp
 		}
 
 		// Empty the toxic's buffer if necessary
-		for len(link.stubs[toxic_index].Input) > 0 {
-			tmp := <-link.stubs[toxic_index].Input
-			if tmp == nil {
-				link.stubs[toxic_index].Close()
-				return
-			}
-			err := link.stubs[toxic_index].WriteOutput(tmp, 5*time.Second)
-			if err != nil {
-				log.Err(err).
-					Msg("Could not write last packets after interrupt to Output")
-			}
+		if !link.drainBufferedInput(log, link.stubs[toxic_index], sinkDead) {
+			return
 		}
 
 		link.stubs[toxic_index-1].Output = link.stubs[toxic_index].Output
+		link.stubs[toxic_index-1].OutputDone = link.stubs[toxic_index].OutputDone
 		link.stubs = append(link.stubs[:toxic_index], link.stubs[toxic_index+1:]...)
 
 		go link.stubs[toxic_index-1].Run(link.toxics.chain[link.direction][toxic_index-1])
 	}
+}
+
+// drainBufferedInput flushes whatever is left in stub's Input queue after an
+// interrupt. Returns false if the stub closed itself while draining, in
+// which case RemoveToxic must not touch the stub any further.
+func (link *ToxicLink) drainBufferedInput(
+	log zerolog.Logger,
+	stub *toxics.ToxicStub,
+	sinkDead bool,
+) bool {
+	for len(stub.Input) > 0 {
+		tmp := <-stub.Input
+		if tmp == nil {
+			stub.Close()
+			return false
+		}
+		if sinkDead {
+			continue
+		}
+		if err := stub.WriteOutput(tmp, stub.Timeout()); err != nil {
+			sinkDead = true
+			log.Err(err).Msg("Could not write last packets after interrupt to Output")
+		}
+	}
+	return true
 }
 
 // Direction returns the direction of the link (upstream or downstream).

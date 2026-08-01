@@ -16,6 +16,10 @@ import (
 	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
+// tightRegressionBound catches a regression back to the multi-second bounded
+// wait; the fix path is normally well under 1s.
+const tightRegressionBound = 2 * time.Second
+
 func TestToxicsAreLoaded(t *testing.T) {
 	if toxics.Count() < 1 {
 		t.Fatal("No toxics loaded!")
@@ -322,4 +326,150 @@ func TestRemoveToxicWithBrokenConnection(t *testing.T) {
 
 	collection.chainRemoveToxic(ctx, toxics[0])
 	collection.chainRemoveToxic(ctx, toxics[1])
+}
+
+// TestRemoveToxicDoesNotHangWhenNextToxicStopsReading: a later toxic
+// (reset_peer) closing itself used to leave the earlier one blocked forever
+// forwarding into it, hanging RemoveToxic.
+func TestRemoveToxicDoesNotHangWhenNextToxicStopsReading(t *testing.T) {
+	ctx := context.Background()
+
+	collection := NewToxicCollection(nil)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	collection.links["test"] = link
+
+	latency := &toxics.ToxicWrapper{
+		Toxic:      new(toxics.LatencyToxic),
+		Type:       "latency",
+		Direction:  stream.Downstream,
+		BufferSize: 1024,
+		Toxicity:   1,
+	}
+	collection.chainAddToxic(latency)
+
+	// reset_peer reads one chunk, then closes for good.
+	reset := &toxics.ToxicWrapper{
+		Toxic:     &toxics.ResetToxic{Timeout: 0},
+		Type:      "reset_peer",
+		Direction: stream.Downstream,
+		Toxicity:  1,
+	}
+	collection.chainAddToxic(reset)
+
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		buf := make([]byte, 2)
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				_, _ = link.input.Write(buf)
+			}
+		}
+	}()
+
+	// Give the load a moment to trip reset_peer first.
+	time.Sleep(100 * time.Millisecond)
+
+	err := testhelper.TimeoutAfter(tightRegressionBound, func() {
+		collection.chainRemoveToxic(ctx, latency)
+	})
+	if err != nil {
+		t.Fatalf(
+			"Removing a toxic must not hang when a later toxic in the chain "+
+				"stopped reading on its own: %v",
+			err,
+		)
+	}
+}
+
+// TestWriteClosesWriteDoneWhenDestinationDies: a single latency toxic, no
+// reset_peer, the real destination died instead. write must close
+// link.writeDone once it stops draining link.output.
+func TestWriteClosesWriteDoneWhenDestinationDies(t *testing.T) {
+	server := NewServer(&metricsContainer{}, zerolog.Nop())
+	proxy := NewProxy(server, "test", "localhost:0", "localhost:0")
+	link := NewToxicLink(proxy, proxy.Toxics, stream.Downstream, zerolog.Nop())
+	go link.stubs[0].Run(proxy.Toxics.chain[stream.Downstream][0])
+
+	// A closed PipeReader makes writes to its paired PipeWriter fail immediately.
+	pr, pw := io.Pipe()
+	pr.Close()
+
+	writeReturned := make(chan struct{})
+	go func() {
+		link.write(nil, "test", server, pw)
+		close(writeReturned)
+	}()
+
+	// io.Copy only calls dest.Write once there are bytes to move.
+	go func() {
+		_, _ = link.input.Write([]byte{1, 2, 3})
+		link.input.Close()
+	}()
+
+	select {
+	case <-writeReturned:
+	case <-time.After(2 * time.Second):
+		t.Fatal("write did not return after its destination failed")
+	}
+
+	select {
+	case <-link.writeDone:
+	default:
+		t.Fatal("writeDone was not closed once write stopped draining link.output")
+	}
+}
+
+// TestRemoveToxicDoesNotHangWhenDestinationDies is the same scenario as
+// TestWriteClosesWriteDoneWhenDestinationDies, through a real removal under load.
+func TestRemoveToxicDoesNotHangWhenDestinationDies(t *testing.T) {
+	ctx := context.Background()
+
+	collection := NewToxicCollection(nil)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	collection.links["test"] = link
+
+	latency := &toxics.ToxicWrapper{
+		Toxic:      new(toxics.LatencyToxic),
+		Type:       "latency",
+		Direction:  stream.Downstream,
+		BufferSize: 1024,
+		Toxicity:   1,
+	}
+	collection.chainAddToxic(latency)
+
+	// Simulate what write would do once the real destination died.
+	close(link.writeDone)
+
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		buf := make([]byte, 2)
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				_, _ = link.input.Write(buf)
+			}
+		}
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	err := testhelper.TimeoutAfter(tightRegressionBound, func() {
+		collection.chainRemoveToxic(ctx, latency)
+	})
+	if err != nil {
+		t.Fatalf(
+			"Removing the last toxic must not hang when the real destination "+
+				"already died: %v",
+			err,
+		)
+	}
 }
