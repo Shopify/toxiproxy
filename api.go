@@ -150,6 +150,7 @@ func (server *ApiServer) PopulateConfig(filename string) {
 		logger.Err(err).Str("config", filename).Msg("Error reading config file")
 		return
 	}
+	defer file.Close()
 
 	proxies, err := server.Collection.PopulateJson(server, file)
 	if err != nil {
