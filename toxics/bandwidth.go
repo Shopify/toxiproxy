@@ -38,8 +38,11 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 			} else {
 				sleep += time.Duration(len(p.Data)) * time.Millisecond / time.Duration(t.Rate)
 			}
-			// If the rate is low enough, split the packet up and send in 100 millisecond intervals
-			for int64(len(p.Data)) > t.Rate*100 {
+			// If the rate is low enough, split the packet up and send in 100 millisecond intervals.
+			// Guard on t.Rate > 0: a non-positive rate disables throttling (see above), and
+			// t.Rate*100 would otherwise be a zero split size (infinite loop emitting empty
+			// chunks) or a negative slice bound (panic).
+			for t.Rate > 0 && int64(len(p.Data)) > t.Rate*100 {
 				select {
 				case <-time.After(100 * time.Millisecond):
 					stub.Output <- &stream.StreamChunk{
