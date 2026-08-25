@@ -13,7 +13,10 @@ func (t *NoopToxic) Pipe(stub *ToxicStub) {
 				stub.Close()
 				return
 			}
-			stub.Output <- c
+			// Bounded: a plain `stub.Output <- c` blocks forever once the next
+			// toxic stops reading on its own (e.g. reset_peer after one
+			// chunk), which freezes removal too.
+			_ = stub.WriteOutput(c, stub.Timeout())
 		}
 	}
 }
