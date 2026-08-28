@@ -64,55 +64,61 @@ func DoLatencyTest(t *testing.T, upLatency, downLatency *toxics.LatencyToxic) {
 			downLatency.Jitter,
 		)
 
-		msg := []byte("hello world " + strings.Repeat("a", 32*1024) + "\n")
-
-		timer := time.Now()
-		_, err := conn.Write(msg)
-		if err != nil {
-			t.Error("Failed writing to TCP server", err)
-		}
-
-		resp := <-response
-		if !bytes.Equal(resp, msg) {
-			t.Error("Server didn't read correct bytes from client:", string(resp))
-		}
-		AssertDeltaTime(t,
-			"Server read",
-			time.Since(timer),
-			time.Duration(upLatency.Latency)*time.Millisecond,
-			time.Duration(upLatency.Jitter+10)*time.Millisecond,
-		)
-		timer2 := time.Now()
-
-		scan := bufio.NewScanner(conn)
-		if scan.Scan() {
-			resp = append(scan.Bytes(), '\n')
-			if !bytes.Equal(resp, msg) {
-				t.Error("Client didn't read correct bytes from server:", string(resp))
-			}
-		}
-		AssertDeltaTime(t,
-			"Client read",
-			time.Since(timer2),
-			time.Duration(downLatency.Latency)*time.Millisecond,
-			time.Duration(downLatency.Jitter+10)*time.Millisecond,
-		)
-		AssertDeltaTime(t,
-			"Round trip",
-			time.Since(timer),
-			time.Duration(upLatency.Latency+downLatency.Latency)*time.Millisecond,
-			time.Duration(upLatency.Jitter+downLatency.Jitter+20)*time.Millisecond,
-		)
+		// Expecting the same latency in both rounds
+		doLatencyRound(t, conn, response, upLatency.Latency, downLatency.Latency, upLatency.Jitter, downLatency.Jitter)
+		doLatencyRound(t, conn, response, upLatency.Latency, downLatency.Latency, upLatency.Jitter, downLatency.Jitter)
 
 		ctx := context.Background()
 		proxy.Toxics.RemoveToxic(ctx, "latency_up")
 		proxy.Toxics.RemoveToxic(ctx, "latency_down")
 
-		err = conn.Close()
+		err := conn.Close()
 		if err != nil {
 			t.Error("Failed to close TCP connection", err)
 		}
 	})
+}
+
+func doLatencyRound(t *testing.T, conn net.Conn, response chan []byte, upLatency, downLatency, upJitter, downJitter int64) {
+	msg := []byte("hello world " + strings.Repeat("a", 32*1024) + "\n")
+
+	timer := time.Now()
+	_, err := conn.Write(msg)
+	if err != nil {
+		t.Error("Failed writing to TCP server", err)
+	}
+
+	resp := <-response
+	if !bytes.Equal(resp, msg) {
+		t.Error("Server didn't read correct bytes from client:", string(resp))
+	}
+	AssertDeltaTime(t,
+		"Server read",
+		time.Since(timer),
+		time.Duration(upLatency)*time.Millisecond,
+		time.Duration(upJitter+10)*time.Millisecond,
+	)
+	timer2 := time.Now()
+
+	scan := bufio.NewScanner(conn)
+	if scan.Scan() {
+		resp = append(scan.Bytes(), '\n')
+		if !bytes.Equal(resp, msg) {
+			t.Error("Client didn't read correct bytes from server:", string(resp))
+		}
+	}
+	AssertDeltaTime(t,
+		"Client read",
+		time.Since(timer2),
+		time.Duration(downLatency)*time.Millisecond,
+		time.Duration(downJitter+10)*time.Millisecond,
+	)
+	AssertDeltaTime(t,
+		"Round trip",
+		time.Since(timer),
+		time.Duration(upLatency+downLatency)*time.Millisecond,
+		time.Duration(upJitter+downJitter+20)*time.Millisecond,
+	)
 }
 
 func TestUpstreamLatency(t *testing.T) {
