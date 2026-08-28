@@ -106,11 +106,11 @@ func TestTimeoutToxicClosesConnectionOnRemove(t *testing.T) {
 			buf := make([]byte, 1)
 			_, err := conn.Read(buf)
 			if err != io.EOF {
-				t.Fatal("expected EOF from closed connetion")
+				t.Fatal("expected EOF from closed connection")
 			}
 			_, err = serverConn.Read(buf)
 			if err != io.EOF {
-				t.Fatal("expected EOF from closed server connetion")
+				t.Fatal("expected EOF from closed server connection")
 			}
 		})
 		if err != nil {

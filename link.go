@@ -232,7 +232,7 @@ func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapp
 		}(link.stubs[toxic_index-1], stop)
 
 		// Unblock the previous toxic if it is trying to flush
-		// If the previous toxic is closed, continue flusing until we reach the end.
+		// If the previous toxic is closed, continue flushing until we reach the end.
 		interrupted := false
 		stopped := false
 		for !interrupted {

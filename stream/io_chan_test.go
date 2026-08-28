@@ -202,7 +202,7 @@ func TestStream_ReadInterrupt(t *testing.T) {
 	}
 
 	if n != 0 {
-		t.Fatalf("Read still returned data after interrput: %d bytes", n)
+		t.Fatalf("Read still returned data after interrupt: %d bytes", n)
 	}
 
 	// Try writing again after the channel was interrupted
