@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"sync"
 )
 
@@ -27,6 +28,10 @@ func (collection *ProxyCollection) Add(proxy *Proxy, start bool) error {
 	collection.Lock()
 	defer collection.Unlock()
 
+	if err := proxy.Validate(); err != nil {
+		return err
+	}
+
 	if _, exists := collection.proxies[proxy.Name]; exists {
 		return ErrProxyAlreadyExists
 	}
@@ -46,6 +51,10 @@ func (collection *ProxyCollection) Add(proxy *Proxy, start bool) error {
 func (collection *ProxyCollection) AddOrReplace(proxy *Proxy, start bool) (*Proxy, error) {
 	collection.Lock()
 	defer collection.Unlock()
+
+	if err := proxy.Validate(); err != nil {
+		return nil, err
+	}
 
 	if existing, exists := collection.proxies[proxy.Name]; exists {
 		differs, err := existing.Differs(proxy)
@@ -71,6 +80,15 @@ func (collection *ProxyCollection) AddOrReplace(proxy *Proxy, start bool) (*Prox
 	return proxy, nil
 }
 
+type populateItem struct {
+	proxy        *Proxy
+	start        bool
+	existing     *Proxy
+	keepExisting bool
+	skipBind     bool
+	listener     net.Listener
+}
+
 func (collection *ProxyCollection) PopulateJson(
 	server *ApiServer,
 	data io.Reader,
@@ -85,8 +103,25 @@ func (collection *ProxyCollection) PopulateJson(
 		return nil, joinError(err, ErrBadRequestBody)
 	}
 
-	// Check for valid input before creating any proxies
-	t := true
+	items, err := preparePopulateItems(server, input)
+	if err != nil {
+		return nil, err
+	}
+
+	collection.Lock()
+	defer collection.Unlock()
+
+	return collection.commitPopulate(items)
+}
+
+func preparePopulateItems(
+	server *ApiServer,
+	input []struct {
+		Proxy
+		Enabled *bool `json:"enabled"`
+	},
+) ([]populateItem, error) {
+	enabledDefault := true
 	for i := range input {
 		if len(input[i].Name) < 1 {
 			return nil, joinError(fmt.Errorf("name at proxy %d", i+1), ErrMissingField)
@@ -95,22 +130,140 @@ func (collection *ProxyCollection) PopulateJson(
 			return nil, joinError(fmt.Errorf("upstream at proxy %d", i+1), ErrMissingField)
 		}
 		if input[i].Enabled == nil {
-			input[i].Enabled = &t
+			input[i].Enabled = &enabledDefault
 		}
 	}
 
-	proxies := make([]*Proxy, 0, len(input))
-
+	items := make([]populateItem, 0, len(input))
+	var errs []error
 	for i := range input {
 		proxy := NewProxy(server, input[i].Name, input[i].Listen, input[i].Upstream)
-		addedOrReplaced, err := collection.AddOrReplace(proxy, *input[i].Enabled)
+		if err := proxy.Validate(); err != nil {
+			errs = append(errs, fmt.Errorf("proxy %q: %w", proxy.Name, err))
+			continue
+		}
+		items = append(items, populateItem{
+			proxy: proxy,
+			start: *input[i].Enabled,
+		})
+	}
+	if len(errs) > 0 {
+		return nil, combineErrors(errs)
+	}
+	return items, nil
+}
+
+func (collection *ProxyCollection) commitPopulate(items []populateItem) ([]*Proxy, error) {
+	for i := range items {
+		existing, exists := collection.proxies[items[i].proxy.Name]
+		if !exists {
+			continue
+		}
+		items[i].existing = existing
+		differs, err := existing.Differs(items[i].proxy)
 		if err != nil {
-			return proxies, err
+			return nil, err
+		}
+		if !differs {
+			items[i].keepExisting = true
+		}
+	}
+
+	reserved := make([]net.Listener, 0)
+	started := make([]*Proxy, 0)
+	skipBindStopped := make([]*Proxy, 0)
+	success := false
+	defer func() {
+		if success {
+			return
+		}
+		for _, proxy := range started {
+			proxy.Stop()
+		}
+		for _, proxy := range skipBindStopped {
+			_ = proxy.Start()
+		}
+		for _, ln := range reserved {
+			if ln != nil {
+				ln.Close()
+			}
+		}
+	}()
+
+	for i := range items {
+		item := &items[i]
+		if item.keepExisting || !item.start {
+			continue
 		}
 
-		proxies = append(proxies, addedOrReplaced)
+		if item.existing != nil && item.existing.Enabled {
+			same, err := sameResolvedListen(item.existing.Listen, item.proxy.Listen)
+			if err != nil {
+				return nil, err
+			}
+			item.skipBind = same
+		}
+		if item.skipBind {
+			continue
+		}
+
+		ln, err := net.Listen("tcp", item.proxy.Listen)
+		if err != nil {
+			return nil, err
+		}
+		item.listener = ln
+		reserved = append(reserved, ln)
 	}
-	return proxies, err
+
+	for i := range items {
+		item := &items[i]
+		if item.keepExisting || !item.start || item.skipBind || item.listener == nil {
+			continue
+		}
+		item.proxy.listener = item.listener
+		for j := range reserved {
+			if reserved[j] == item.listener {
+				reserved[j] = nil
+			}
+		}
+		item.listener = nil
+		if err := item.proxy.Start(); err != nil {
+			return nil, err
+		}
+		started = append(started, item.proxy)
+	}
+
+	for i := range items {
+		item := &items[i]
+		if item.keepExisting || !item.start || !item.skipBind {
+			continue
+		}
+		item.existing.Stop()
+		skipBindStopped = append(skipBindStopped, item.existing)
+		if err := item.proxy.Start(); err != nil {
+			return nil, err
+		}
+		started = append(started, item.proxy)
+	}
+
+	proxies := make([]*Proxy, 0, len(items))
+	for i := range items {
+		item := &items[i]
+		if item.keepExisting {
+			proxies = append(proxies, item.existing)
+			continue
+		}
+
+		if item.existing != nil && !item.skipBind {
+			item.existing.Stop()
+		}
+
+		collection.proxies[item.proxy.Name] = item.proxy
+		proxies = append(proxies, item.proxy)
+	}
+
+	success = true
+	return proxies, nil
 }
 
 func (collection *ProxyCollection) Proxies() map[string]*Proxy {
