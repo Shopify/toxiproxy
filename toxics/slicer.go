@@ -33,7 +33,9 @@ func (t *SlicerToxic) chunk(start int, end int) []int {
 	// If the size is within the random varation, _or already
 	// less than the average size_, just return it.
 	// Otherwise split the chunk in about two, and recurse.
-	if (end-start)-t.AverageSize <= t.SizeVariation {
+	// An average size of zero or less slices nothing, and a piece of
+	// fewer than two bytes cannot be split.
+	if t.AverageSize <= 0 || end-start < 2 || (end-start)-t.AverageSize <= t.SizeVariation {
 		return []int{start, end}
 	}
 
@@ -41,6 +43,12 @@ func (t *SlicerToxic) chunk(start int, end int) []int {
 
 	if t.SizeVariation > 0 {
 		mid += rand.Intn(t.SizeVariation*2) - t.SizeVariation // #nosec G404 -- was ignored before too
+	}
+	// Keep the split inside the piece so both halves are shorter than it.
+	if mid <= start {
+		mid = start + 1
+	} else if mid >= end {
+		mid = end - 1
 	}
 	left := t.chunk(start, mid)
 	right := t.chunk(mid, end)
