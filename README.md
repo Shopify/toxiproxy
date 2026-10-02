@@ -244,6 +244,8 @@ $ docker run --rm -it ghcr.io/shopify/toxiproxy
 ```
 
 If using Toxiproxy from the host rather than other containers, enable host networking with `--net=host`.
+The image binds the API to `0.0.0.0`, so with host networking it is reachable on every host interface;
+pass `-e TOXIPROXY_AUTH_TOKEN=<token>` if other machines can reach the host (see [HTTP API](#http-api)).
 
 ```shell
 $ docker run --rm --entrypoint="/toxiproxy-cli" -it ghcr.io/shopify/toxiproxy list
@@ -462,6 +464,11 @@ All communication with the Toxiproxy daemon from the client happens through the
 HTTP interface, which is described here.
 
 Toxiproxy listens for HTTP on port **8474**.
+
+The API is unauthenticated by default and can create proxies to arbitrary upstreams, so never
+expose it to an untrusted network. To require a token, start the server with `TOXIPROXY_AUTH_TOKEN`
+set; every request must then send `Authorization: Bearer <token>`. `toxiproxy-cli` reads the same
+variable (or `--auth-token`), and the Go client takes it via `Client.AuthToken`.
 
 #### Proxy fields:
 

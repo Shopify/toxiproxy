@@ -6,6 +6,7 @@ import (
 	"flag"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -1144,6 +1145,72 @@ func AssertApiErrorStatus(t *testing.T, err error, status int, name string) {
 	}
 	if apiErr.Status != status {
 		t.Fatalf("%s: expected status %d, got %d: %s", name, status, apiErr.Status, apiErr.Message)
+	}
+}
+
+func TestAuthTokenRequired(t *testing.T) {
+	server := toxiproxy.NewServer(
+		toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
+		zerolog.Nop(),
+	)
+	server.AuthToken = "secret"
+	httpServer := httptest.NewServer(server.Routes())
+	defer httpServer.Close()
+	defer func() {
+		err := server.Collection.Clear()
+		if err != nil {
+			t.Error("Failed to clear collection", err)
+		}
+	}()
+
+	testCases := []struct {
+		name          string
+		authorization string
+	}{
+		{"missing token", ""},
+		{"wrong token", "Bearer wrong"},
+		{"token without bearer scheme", "secret"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			body := `{"name":"relay","listen":"localhost:0","upstream":"localhost:6379"}`
+			url := httpServer.URL + "/proxies"
+			request, err := http.NewRequest("POST", url, bytes.NewBufferString(body))
+			if err != nil {
+				t.Fatal("Failed to build request:", err)
+			}
+			if tc.authorization != "" {
+				request.Header.Set("Authorization", tc.authorization)
+			}
+
+			resp, err := http.DefaultClient.Do(request)
+			if err != nil {
+				t.Fatal("Failed to send request:", err)
+			}
+			resp.Body.Close()
+
+			if resp.StatusCode != http.StatusUnauthorized {
+				t.Fatalf("Expected 401, got %d", resp.StatusCode)
+			}
+			if resp.Header.Get("WWW-Authenticate") != "Bearer" {
+				t.Fatalf("Expected WWW-Authenticate: Bearer, got %q", resp.Header.Get("WWW-Authenticate"))
+			}
+		})
+	}
+
+	if len(server.Collection.Proxies()) != 0 {
+		t.Fatal("Expected no proxies to be created without a valid token")
+	}
+
+	_, err := tclient.NewClient(httpServer.URL).Proxies()
+	AssertApiErrorStatus(t, err, http.StatusUnauthorized, "read without token")
+
+	authorized := tclient.NewClient(httpServer.URL)
+	authorized.AuthToken = "secret"
+	_, err = authorized.CreateProxy("relay", "localhost:0", "localhost:6379")
+	if err != nil {
+		t.Fatal("Expected request with valid token to succeed:", err)
 	}
 }
 

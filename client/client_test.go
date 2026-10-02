@@ -72,3 +72,38 @@ func TestClient_Headers(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_AuthToken(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name     string
+		token    string
+		expected string
+	}{
+		{"without token", "", ""},
+		{"with token", "secret", "Bearer secret"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var authorization string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				authorization = r.Header.Get("Authorization")
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			client := toxiproxy.NewClient(server.URL)
+			client.AuthToken = tc.token
+			_, err := client.Version()
+			if err != nil {
+				t.Fatal("Failed to get version:", err)
+			}
+
+			if authorization != tc.expected {
+				t.Errorf("got Authorization %q; expected %q", authorization, tc.expected)
+			}
+		})
+	}
+}

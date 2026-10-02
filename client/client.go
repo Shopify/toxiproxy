@@ -17,6 +17,7 @@ import (
 // Client holds information about where to connect to Toxiproxy.
 type Client struct {
 	UserAgent string
+	AuthToken string
 	endpoint  string
 	http      *http.Client
 }
@@ -237,6 +238,9 @@ func (c *Client) send(verb, path string, body io.Reader) ([]byte, error) {
 
 	req.Header.Set("User-Agent", c.UserAgent)
 	req.Header.Set("Content-Type", "application/json")
+	if c.AuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
+	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {

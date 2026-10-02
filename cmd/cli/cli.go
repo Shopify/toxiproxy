@@ -74,8 +74,9 @@ var toxicDescription = `
 `
 
 var (
-	hostname string
-	isTTY    bool
+	hostname  string
+	authToken string
+	isTTY     bool
 )
 
 func main() {
@@ -96,6 +97,12 @@ func main() {
 			Usage:       "toxiproxy host to connect to",
 			Destination: &hostname,
 			EnvVars:     []string{"TOXIPROXY_URL"},
+		},
+		&cli.StringFlag{
+			Name:        "auth-token",
+			Usage:       "token to authenticate with the toxiproxy API",
+			Destination: &authToken,
+			EnvVars:     []string{"TOXIPROXY_AUTH_TOKEN"},
 		},
 	}
 
@@ -263,6 +270,7 @@ type toxiAction func(*cli.Context, *toxiproxy.Client) error
 func withToxi(f toxiAction) func(*cli.Context) error {
 	return func(c *cli.Context) error {
 		toxiproxyClient := toxiproxy.NewClient(hostname)
+		toxiproxyClient.AuthToken = authToken
 		toxiproxyClient.UserAgent = fmt.Sprintf(
 			"toxiproxy-cli/%s (%s/%s)",
 			c.App.Version,
