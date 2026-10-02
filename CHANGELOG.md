@@ -1,5 +1,8 @@
 # [Unreleased]
 
+- Reject slicer toxics with `average_size` <= 0 or `size_variation` outside `[0, average_size)`,
+  and stop the slicer from recursing forever on degenerate sizes (@iyaz-shaikh)
+
 # [2.12.0]
 
 - Update go version to 1.23.0 (#628)

@@ -104,3 +104,64 @@ func TestSlicerToxicZeroSizeVariation(t *testing.T) {
 		t.Errorf("Server did not read correct buffer from client!")
 	}
 }
+
+func TestSlicerToxicDegenerateAttributesTerminate(t *testing.T) {
+	data := []byte(strings.Repeat("hello world ", 20))
+
+	testCases := []struct {
+		name   string
+		slicer *toxics.SlicerToxic
+	}{
+		{"zero average size", &toxics.SlicerToxic{}},
+		{"negative size variation", &toxics.SlicerToxic{AverageSize: 4, SizeVariation: -8}},
+		{"size variation above average size", &toxics.SlicerToxic{AverageSize: 1, SizeVariation: 200}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			input := make(chan *stream.StreamChunk)
+			output := make(chan *stream.StreamChunk)
+			stub := toxics.NewToxicStub(input, output)
+
+			go tc.slicer.Pipe(stub)
+			input <- &stream.StreamChunk{Data: data}
+			close(input)
+
+			buf := make([]byte, 0, len(data))
+			for c := range output {
+				buf = append(buf, c.Data...)
+			}
+
+			if !bytes.Equal(buf, data) {
+				t.Errorf("got %q; expected %q", buf, data)
+			}
+		})
+	}
+}
+
+func TestSlicerToxicValidate(t *testing.T) {
+	testCases := []struct {
+		name    string
+		slicer  *toxics.SlicerToxic
+		isValid bool
+	}{
+		{"zero values", &toxics.SlicerToxic{}, false},
+		{"negative average size", &toxics.SlicerToxic{AverageSize: -1}, false},
+		{"negative size variation", &toxics.SlicerToxic{AverageSize: 10, SizeVariation: -1}, false},
+		{"variation equal to average", &toxics.SlicerToxic{AverageSize: 10, SizeVariation: 10}, false},
+		{"zero size variation", &toxics.SlicerToxic{AverageSize: 1}, true},
+		{"variation below average", &toxics.SlicerToxic{AverageSize: 10, SizeVariation: 9}, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.slicer.Validate()
+			if tc.isValid && err != nil {
+				t.Errorf("expected valid, got error: %v", err)
+			}
+			if !tc.isValid && err == nil {
+				t.Error("expected error, got nil")
+			}
+		})
+	}
+}

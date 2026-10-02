@@ -437,8 +437,8 @@ sliced "packet".
 
 Attributes:
 
- - `average_size`: size in bytes of an average packet
- - `size_variation`: variation in bytes of an average packet (should be smaller than average_size)
+ - `average_size`: size in bytes of an average packet (must be greater than 0)
+ - `size_variation`: variation in bytes of an average packet (must be at least 0 and smaller than average_size)
  - `delay`: time in microseconds to delay each packet by
 
 #### limit_data

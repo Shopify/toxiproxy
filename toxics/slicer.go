@@ -1,6 +1,7 @@
 package toxics
 
 import (
+	"errors"
 	"math/rand"
 	"time"
 
@@ -42,10 +43,24 @@ func (t *SlicerToxic) chunk(start int, end int) []int {
 	if t.SizeVariation > 0 {
 		mid += rand.Intn(t.SizeVariation*2) - t.SizeVariation // #nosec G404 -- was ignored before too
 	}
+
+	if mid <= start || mid >= end {
+		return []int{start, end}
+	}
 	left := t.chunk(start, mid)
 	right := t.chunk(mid, end)
 
 	return append(left, right...)
+}
+
+func (t *SlicerToxic) Validate() error {
+	if t.AverageSize <= 0 {
+		return errors.New("average_size must be greater than 0")
+	}
+	if t.SizeVariation < 0 || t.SizeVariation >= t.AverageSize {
+		return errors.New("size_variation must be at least 0 and less than average_size")
+	}
+	return nil
 }
 
 func (t *SlicerToxic) Pipe(stub *ToxicStub) {

@@ -2,6 +2,7 @@ package toxiproxy_test
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"io"
 	"net/http"
@@ -1053,6 +1054,97 @@ func TestUpdateToxics(t *testing.T) {
 			t.Fatal("Toxic was not read back correctly:", toxic)
 		}
 	})
+}
+
+func TestAddSlicerToxicWithInvalidAttributes(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
+		if err != nil {
+			t.Fatal("Unable to create proxy:", err)
+		}
+
+		testCases := []struct {
+			name       string
+			attributes tclient.Attributes
+		}{
+			{"omitted attributes", nil},
+			{"zero average size", tclient.Attributes{"average_size": 0}},
+			{"negative average size", tclient.Attributes{"average_size": -1}},
+			{"negative size variation", tclient.Attributes{"average_size": 10, "size_variation": -1}},
+			{"size variation equal to average size", tclient.Attributes{
+				"average_size":   10,
+				"size_variation": 10,
+			}},
+		}
+
+		for _, tc := range testCases {
+			_, err := testProxy.AddToxic("", "slicer", "downstream", 1, tc.attributes)
+			AssertApiErrorStatus(t, err, http.StatusBadRequest, tc.name)
+		}
+
+		resp, err := http.Post(
+			addr+"/proxies/mysql_master/toxics",
+			"application/json",
+			bytes.NewBufferString(`{"type":"slicer"}`),
+		)
+		if err != nil {
+			t.Fatal("Failed to post toxic:", err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("Expected 400 for slicer without attributes key, got %d", resp.StatusCode)
+		}
+
+		toxics, err := testProxy.Toxics()
+		if err != nil {
+			t.Fatal("Error returning toxics:", err)
+		}
+		AssertToxicExists(t, toxics, "slicer_downstream", "slicer", "downstream", false)
+	})
+}
+
+func TestUpdateSlicerToxicWithInvalidAttributes(t *testing.T) {
+	WithServer(t, func(addr string) {
+		testProxy, err := client.CreateProxy("mysql_master", "localhost:3310", "localhost:20001")
+		if err != nil {
+			t.Fatal("Unable to create proxy:", err)
+		}
+
+		_, err = testProxy.AddToxic("", "slicer", "downstream", 1, tclient.Attributes{
+			"average_size":   10,
+			"size_variation": 5,
+		})
+		if err != nil {
+			t.Fatal("Error setting toxic:", err)
+		}
+
+		_, err = testProxy.UpdateToxic("slicer_downstream", 0.5, tclient.Attributes{
+			"average_size": 0,
+		})
+		AssertApiErrorStatus(t, err, http.StatusBadRequest, "zero average size")
+
+		toxics, err := testProxy.Toxics()
+		if err != nil {
+			t.Fatal("Error returning toxics:", err)
+		}
+		toxic := AssertToxicExists(t, toxics, "slicer_downstream", "slicer", "downstream", true)
+		if toxic.Toxicity != 1.0 || toxic.Attributes["average_size"] != 10.0 ||
+			toxic.Attributes["size_variation"] != 5.0 {
+			t.Fatal("Toxic was modified by a rejected update:", toxic)
+		}
+	})
+}
+
+func AssertApiErrorStatus(t *testing.T, err error, status int, name string) {
+	t.Helper()
+
+	var apiErr *tclient.ApiError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("%s: expected API error, got %v", name, err)
+	}
+	if apiErr.Status != status {
+		t.Fatalf("%s: expected status %d, got %d: %s", name, status, apiErr.Status, apiErr.Message)
+	}
 }
 
 func TestRemoveToxic(t *testing.T) {
