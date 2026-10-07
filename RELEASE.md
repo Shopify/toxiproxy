@@ -9,6 +9,7 @@
     - [Run Pre-Release Tests](#run-pre-release-tests)
   - [Push Release Tag](#push-release-tag)
   - [Verify Github Release](#verify-github-release)
+  - [Update README download links](#update-readme-download-links)
   - [Update Homebrew versions](#update-homebrew-versions)
 
 ## Before You Begin
@@ -61,6 +62,12 @@ git push origin "v$RELEASE_VERSION"
 - Github Actions should kick off a build and release after the tag is pushed.
 - Verify that a [Release gets created in Github](https://github.com/Shopify/toxiproxy/releases) and verify that the release notes look correct
 - Github Actions should also attatch the built binaries to the release (it might take a few mins)
+
+## Update README download links
+
+- After the release assets are available, update the Ubuntu and Windows download examples in [README.md](README.md) to the version just released.
+- Use the published asset URLs and filenames; keep the Ubuntu `wget -O` filename and `dpkg -i` command consistent.
+- Verify both download URLs resolve to the expected release assets, then open and merge a PR for the README update.
 
 ## Update Homebrew versions
 
