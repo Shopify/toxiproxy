@@ -1,10 +1,17 @@
 # [Unreleased]
 
+# [2.13.0] - 2026-10-14
+
 - Reject slicer toxics with `average_size` <= 0 or `size_variation` outside `[0, average_size]`,
   and stop the slicer from recursing forever on degenerate sizes (#774, @iyaz-shaikh)
 - Add optional bearer token auth for the HTTP API via `TOXIPROXY_AUTH_TOKEN`, supported by the Go
   client and `toxiproxy-cli`, and warn when the API is unauthenticated on a non-loopback address
   (#774, @iyaz-shaikh)
+- Fix removing a toxic hanging forever, and freezing the whole HTTP API, when the downstream
+  toxic or connection is already gone (#760, @matheusgb)
+- Fix the bandwidth toxic hanging or panicking when `rate` <= 0 (#764, @jaideeppyne)
+- Update go version to 1.27 (#777, @The-Black-Fox)
+- Update various go packages
 
 # [2.12.0]
 
@@ -237,7 +244,8 @@
 
 Initial public release.
 
-[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.12.0...HEAD
+[Unreleased]: https://github.com/Shopify/toxiproxy/compare/v2.13.0...HEAD
+[2.13.0]: https://github.com/Shopify/toxiproxy/compare/v2.12.0...v2.13.0
 [2.12.0]: https://github.com/Shopify/toxiproxy/compare/v2.11.0...v2.12.0
 [2.11.0]: https://github.com/Shopify/toxiproxy/compare/v2.10.0...v2.11.0
 [2.10.0]: https://github.com/Shopify/toxiproxy/compare/v2.9.0...v2.10.0
