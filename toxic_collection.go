@@ -146,7 +146,10 @@ func (c *ToxicCollection) UpdateToxicJson(
 
 	toxic := c.findToxicByName(name)
 	if toxic != nil {
-		updated := copyToxic(toxic.Toxic)
+		updated, err := copyToxic(toxic.Toxic)
+		if err != nil {
+			return nil, err
+		}
 		attrs := &struct {
 			Attributes interface{} `json:"attributes"`
 			Toxicity   float32     `json:"toxicity"`
@@ -154,7 +157,7 @@ func (c *ToxicCollection) UpdateToxicJson(
 			updated,
 			toxic.Toxicity,
 		}
-		err := json.NewDecoder(data).Decode(attrs)
+		err = json.NewDecoder(data).Decode(attrs)
 		if err != nil {
 			return nil, joinError(err, ErrBadRequestBody)
 		}
@@ -225,11 +228,17 @@ func (c *ToxicCollection) RemoveLink(name string) {
 	delete(c.links, name)
 }
 
-func copyToxic(toxic toxics.Toxic) toxics.Toxic {
-	value := reflect.ValueOf(toxic).Elem()
-	copied := reflect.New(value.Type())
-	copied.Elem().Set(value)
-	return copied.Interface().(toxics.Toxic)
+func copyToxic(toxic toxics.Toxic) (toxics.Toxic, error) {
+	copied := reflect.New(reflect.TypeOf(toxic).Elem()).Interface().(toxics.Toxic)
+	data, err := json.Marshal(toxic)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(data, copied)
+	if err != nil {
+		return nil, err
+	}
+	return copied, nil
 }
 
 func validateToxic(toxic toxics.Toxic) error {
