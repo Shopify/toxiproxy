@@ -83,6 +83,8 @@ func TestClient_AuthToken(t *testing.T) {
 	}{
 		{"without token", "", ""},
 		{"with token", "secret", "Bearer secret"},
+		{"with surrounding whitespace", " secret\n", "Bearer secret"},
+		{"with only whitespace", " \n", ""},
 	}
 
 	for _, tc := range testCases {

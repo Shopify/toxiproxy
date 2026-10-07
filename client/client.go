@@ -238,8 +238,8 @@ func (c *Client) send(verb, path string, body io.Reader) ([]byte, error) {
 
 	req.Header.Set("User-Agent", c.UserAgent)
 	req.Header.Set("Content-Type", "application/json")
-	if c.AuthToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.AuthToken)
+	if token := strings.TrimSpace(c.AuthToken); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	resp, err := c.http.Do(req)

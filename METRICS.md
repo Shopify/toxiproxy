@@ -1,9 +1,16 @@
 # Metrics
 
 - [Metrics](#metrics)
+    - [Authentication](#authentication)
     - [Runtime Metrics](#runtime-metrics)
     - [Proxy Metrics](#proxy-metrics)
       - [toxiproxy_proxy_received_bytes_total / toxiproxy_proxy_sent_bytes_total](#toxiproxy_proxy_received_bytes_total--toxiproxy_proxy_sent_bytes_total)
+
+### Authentication
+
+When the server runs with `TOXIPROXY_AUTH_TOKEN` set, `/metrics` requires an
+`Authorization: Bearer <token>` header like every other endpoint. For Prometheus, set
+`authorization.credentials` (or `authorization.credentials_file`) in the scrape config.
 
 ### Runtime Metrics
 

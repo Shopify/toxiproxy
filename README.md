@@ -468,7 +468,9 @@ Toxiproxy listens for HTTP on port **8474**.
 The API is unauthenticated by default and can create proxies to arbitrary upstreams, so never
 expose it to an untrusted network. To require a token, start the server with `TOXIPROXY_AUTH_TOKEN`
 set; every request must then send `Authorization: Bearer <token>`. `toxiproxy-cli` reads the same
-variable (or `--auth-token`), and the Go client takes it via `Client.AuthToken`.
+variable (or `--auth-token`), and the Go client takes it via `Client.AuthToken`. The token is
+required on every endpoint, including `/version` and `/metrics`, so health checks and Prometheus
+scrapers must send the header too (see [METRICS.md](./METRICS.md#authentication)).
 
 #### Proxy fields:
 

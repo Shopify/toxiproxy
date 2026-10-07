@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -79,7 +80,7 @@ func run() error {
 
 	metrics := toxiproxy.NewMetricsContainer(prometheus.NewRegistry())
 	server := toxiproxy.NewServer(metrics, logger)
-	server.AuthToken = os.Getenv("TOXIPROXY_AUTH_TOKEN")
+	server.AuthToken = strings.TrimSpace(os.Getenv("TOXIPROXY_AUTH_TOKEN"))
 	if cli.proxyMetrics {
 		server.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
 	}
