@@ -1,5 +1,11 @@
 # [Unreleased]
 
+- Reject slicer toxics with `average_size` <= 0 or `size_variation` outside `[0, average_size]`,
+  and stop the slicer from recursing forever on degenerate sizes (#774, @iyaz-shaikh)
+- Add optional bearer token auth for the HTTP API via `TOXIPROXY_AUTH_TOKEN`, supported by the Go
+  client and `toxiproxy-cli`, and warn when the API is unauthenticated on a non-loopback address
+  (#774, @iyaz-shaikh)
+
 # [2.12.0]
 
 - Update go version to 1.23.0 (#628)

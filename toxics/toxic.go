@@ -47,6 +47,10 @@ type StatefulToxic interface {
 	NewState() interface{}
 }
 
+type ValidatedToxic interface {
+	Validate() error
+}
+
 type ToxicWrapper struct {
 	Toxic      `json:"attributes"`
 	Name       string           `json:"name"`

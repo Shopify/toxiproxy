@@ -2,8 +2,10 @@ package toxiproxy
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -30,10 +32,24 @@ func timeoutMiddleware(next http.Handler) http.Handler {
 	return http.TimeoutHandler(next, 25*time.Second, "")
 }
 
+func (server *ApiServer) authMiddleware(next http.Handler) http.Handler {
+	expected := []byte("Bearer " + server.AuthToken)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		actual := []byte(r.Header.Get("Authorization"))
+		if subtle.ConstantTimeCompare(actual, expected) != 1 {
+			w.Header().Set("WWW-Authenticate", "Bearer")
+			server.apiError(w, ErrUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 type ApiServer struct {
 	Collection *ProxyCollection
 	Metrics    *metricsContainer
 	Logger     *zerolog.Logger
+	AuthToken  string
 	http       *http.Server
 }
 
@@ -55,6 +71,7 @@ func (server *ApiServer) Listen(addr string) error {
 		Info().
 		Str("address", addr).
 		Msg("Starting Toxiproxy HTTP server")
+	server.warnIfUnauthenticatedAndExposed(addr)
 
 	server.http = &http.Server{
 		Addr:         addr,
@@ -70,6 +87,29 @@ func (server *ApiServer) Listen(addr string) error {
 	}
 
 	return err
+}
+
+func (server *ApiServer) warnIfUnauthenticatedAndExposed(addr string) {
+	if server.AuthToken != "" {
+		return
+	}
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil || isLoopbackHost(host) {
+		return
+	}
+	server.Logger.
+		Warn().
+		Str("address", addr).
+		Msg("HTTP API is unauthenticated and not bound to loopback; " +
+			"set TOXIPROXY_AUTH_TOKEN to require a token")
+}
+
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func (server *ApiServer) Shutdown() error {
@@ -107,6 +147,9 @@ func (server *ApiServer) Routes() *mux.Router {
 			Msg("")
 	}))
 	r.Use(stopBrowsersMiddleware)
+	if server.AuthToken != "" {
+		r.Use(server.authMiddleware)
+	}
 	r.Use(timeoutMiddleware)
 
 	r.HandleFunc("/reset", server.ResetState).Methods("POST").
@@ -505,6 +548,7 @@ func joinError(err error, wrapper *ApiError) *ApiError {
 }
 
 var (
+	ErrUnauthorized       = newError("missing or invalid auth token", http.StatusUnauthorized)
 	ErrBadRequestBody     = newError("bad request body", http.StatusBadRequest)
 	ErrMissingField       = newError("missing required field", http.StatusBadRequest)
 	ErrProxyNotFound      = newError("proxy not found", http.StatusNotFound)

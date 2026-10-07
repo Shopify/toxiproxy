@@ -244,6 +244,8 @@ $ docker run --rm -it ghcr.io/shopify/toxiproxy
 ```
 
 If using Toxiproxy from the host rather than other containers, enable host networking with `--net=host`.
+The image binds the API to `0.0.0.0`, so with host networking it is reachable on every host interface;
+pass `-e TOXIPROXY_AUTH_TOKEN=<token>` if other machines can reach the host (see [HTTP API](#http-api)).
 
 ```shell
 $ docker run --rm --entrypoint="/toxiproxy-cli" -it ghcr.io/shopify/toxiproxy list
@@ -437,8 +439,8 @@ sliced "packet".
 
 Attributes:
 
- - `average_size`: size in bytes of an average packet
- - `size_variation`: variation in bytes of an average packet (should be smaller than average_size)
+ - `average_size`: size in bytes of an average packet (must be greater than 0)
+ - `size_variation`: variation in bytes of an average packet (must be at least 0 and at most average_size)
  - `delay`: time in microseconds to delay each packet by
 
 #### limit_data
@@ -462,6 +464,13 @@ All communication with the Toxiproxy daemon from the client happens through the
 HTTP interface, which is described here.
 
 Toxiproxy listens for HTTP on port **8474**.
+
+The API is unauthenticated by default and can create proxies to arbitrary upstreams, so never
+expose it to an untrusted network. To require a token, start the server with `TOXIPROXY_AUTH_TOKEN`
+set; every request must then send `Authorization: Bearer <token>`. `toxiproxy-cli` reads the same
+variable (or `--auth-token`), and the Go client takes it via `Client.AuthToken`. The token is
+required on every endpoint, including `/version` and `/metrics`, so health checks and Prometheus
+scrapers must send the header too (see [METRICS.md](./METRICS.md#authentication)).
 
 #### Proxy fields:
 

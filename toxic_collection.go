@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -127,6 +128,11 @@ func (c *ToxicCollection) AddToxicJson(data io.Reader) (*toxics.ToxicWrapper, er
 		return nil, joinError(err, ErrBadRequestBody)
 	}
 
+	err = validateToxic(wrapper.Toxic)
+	if err != nil {
+		return nil, err
+	}
+
 	c.chainAddToxic(wrapper)
 	return wrapper, nil
 }
@@ -140,17 +146,28 @@ func (c *ToxicCollection) UpdateToxicJson(
 
 	toxic := c.findToxicByName(name)
 	if toxic != nil {
+		updated, err := copyToxic(toxic.Toxic)
+		if err != nil {
+			return nil, err
+		}
 		attrs := &struct {
 			Attributes interface{} `json:"attributes"`
 			Toxicity   float32     `json:"toxicity"`
 		}{
-			toxic.Toxic,
+			updated,
 			toxic.Toxicity,
 		}
-		err := json.NewDecoder(data).Decode(attrs)
+		err = json.NewDecoder(data).Decode(attrs)
 		if err != nil {
 			return nil, joinError(err, ErrBadRequestBody)
 		}
+
+		err = validateToxic(updated)
+		if err != nil {
+			return nil, err
+		}
+
+		toxic.Toxic = updated
 		toxic.Toxicity = attrs.Toxicity
 
 		c.chainUpdateToxic(toxic)
@@ -209,6 +226,30 @@ func (c *ToxicCollection) RemoveLink(name string) {
 	c.Lock()
 	defer c.Unlock()
 	delete(c.links, name)
+}
+
+func copyToxic(toxic toxics.Toxic) (toxics.Toxic, error) {
+	copied := reflect.New(reflect.TypeOf(toxic).Elem()).Interface().(toxics.Toxic)
+	data, err := json.Marshal(toxic)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(data, copied)
+	if err != nil {
+		return nil, err
+	}
+	return copied, nil
+}
+
+func validateToxic(toxic toxics.Toxic) error {
+	validated, ok := toxic.(toxics.ValidatedToxic)
+	if !ok {
+		return nil
+	}
+	if err := validated.Validate(); err != nil {
+		return joinError(err, ErrBadRequestBody)
+	}
+	return nil
 }
 
 // All following functions assume the lock is already grabbed.
