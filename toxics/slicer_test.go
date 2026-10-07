@@ -115,6 +115,7 @@ func TestSlicerToxicDegenerateAttributesTerminate(t *testing.T) {
 		{"zero average size", &toxics.SlicerToxic{}},
 		{"negative size variation", &toxics.SlicerToxic{AverageSize: 4, SizeVariation: -8}},
 		{"size variation above average size", &toxics.SlicerToxic{AverageSize: 1, SizeVariation: 200}},
+		{"size variation equal to average size", &toxics.SlicerToxic{AverageSize: 1, SizeVariation: 1}},
 	}
 
 	for _, tc := range testCases {
@@ -148,7 +149,8 @@ func TestSlicerToxicValidate(t *testing.T) {
 		{"zero values", &toxics.SlicerToxic{}, false},
 		{"negative average size", &toxics.SlicerToxic{AverageSize: -1}, false},
 		{"negative size variation", &toxics.SlicerToxic{AverageSize: 10, SizeVariation: -1}, false},
-		{"variation equal to average", &toxics.SlicerToxic{AverageSize: 10, SizeVariation: 10}, false},
+		{"variation above average", &toxics.SlicerToxic{AverageSize: 10, SizeVariation: 11}, false},
+		{"variation equal to average", &toxics.SlicerToxic{AverageSize: 10, SizeVariation: 10}, true},
 		{"zero size variation", &toxics.SlicerToxic{AverageSize: 1}, true},
 		{"variation below average", &toxics.SlicerToxic{AverageSize: 10, SizeVariation: 9}, true},
 	}

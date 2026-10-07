@@ -57,8 +57,8 @@ func (t *SlicerToxic) Validate() error {
 	if t.AverageSize <= 0 {
 		return errors.New("average_size must be greater than 0")
 	}
-	if t.SizeVariation < 0 || t.SizeVariation >= t.AverageSize {
-		return errors.New("size_variation must be at least 0 and less than average_size")
+	if t.SizeVariation < 0 || t.SizeVariation > t.AverageSize {
+		return errors.New("size_variation must be at least 0 and at most average_size")
 	}
 	return nil
 }

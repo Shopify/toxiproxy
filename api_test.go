@@ -1072,9 +1072,9 @@ func TestAddSlicerToxicWithInvalidAttributes(t *testing.T) {
 			{"zero average size", tclient.Attributes{"average_size": 0}},
 			{"negative average size", tclient.Attributes{"average_size": -1}},
 			{"negative size variation", tclient.Attributes{"average_size": 10, "size_variation": -1}},
-			{"size variation equal to average size", tclient.Attributes{
+			{"size variation above average size", tclient.Attributes{
 				"average_size":   10,
-				"size_variation": 10,
+				"size_variation": 11,
 			}},
 		}
 
