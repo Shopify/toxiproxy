@@ -231,7 +231,8 @@ $ port install toxiproxy
 
 **Windows**
 
-Toxiproxy for Windows is available for download at https://github.com/Shopify/toxiproxy/releases/download/v2.1.4/toxiproxy-server-windows-amd64.exe
+Toxiproxy for Windows is available for download at https://github.com/Shopify/toxiproxy/releases/latest/download/toxiproxy-server-windows-amd64.exe,
+with the matching CLI at https://github.com/Shopify/toxiproxy/releases/latest/download/toxiproxy-cli-windows-amd64.exe
 
 **Docker**
 
