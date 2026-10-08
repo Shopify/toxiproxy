@@ -629,8 +629,8 @@ For example, `shopify_test_redis_master` or `shopify_development_mysql_1`.
 
 ### Development
 
-Use Go 1.25 and golangci-lint v2.4.0 (built with Go 1.25 or newer), matching CI.
-Download the linter from its [v2.4.0 release](https://github.com/golangci/golangci-lint/releases/tag/v2.4.0)
+Use Go 1.27 and golangci-lint v2.14.0 (built with Go 1.27 or newer), matching CI.
+Download the linter from its [v2.14.0 release](https://github.com/golangci/golangci-lint/releases/tag/v2.14.0)
 and ensure both tools are in your `$PATH` before running the commands below.
 
 * `make`. Build a toxiproxy development binary for the current platform.
