@@ -203,6 +203,7 @@ func (proxy *Proxy) server() {
 			Str("client", client.RemoteAddr().String()).
 			Msg("Accepted client")
 
+		// #nosec G704 -- Connecting to operator-configured upstreams is this proxy's purpose.
 		upstream, err := net.Dial("tcp", proxy.Upstream)
 		if err != nil {
 			proxy.Logger.
