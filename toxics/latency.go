@@ -27,11 +27,6 @@ func (t *LatencyToxic) delay() time.Duration {
 	return time.Duration(delay) * time.Millisecond
 }
 
-// ExpectedDelay reports the largest delay this toxic can add to a chunk.
-func (t *LatencyToxic) ExpectedDelay() time.Duration {
-	return time.Duration(t.Latency+t.Jitter) * time.Millisecond
-}
-
 func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 	for {
 		select {
@@ -46,11 +41,10 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 			select {
 			case <-time.After(sleep):
 				c.Timestamp = c.Timestamp.Add(sleep)
-				_ = stub.WriteOutput(c, stub.Timeout())
+				_ = stub.WriteOutput(c, 0)
 			case <-stub.Interrupt:
-				// Exit fast without applying latency, but still bounded: the
-				// next toxic may already be gone.
-				_ = stub.WriteOutput(c, stub.Timeout())
+				// Exit fast without applying latency.
+				_ = stub.WriteOutput(c, 0) // Don't drop any data on the floor
 				return
 			}
 		}
