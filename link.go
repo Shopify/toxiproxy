@@ -71,15 +71,7 @@ func NewToxicLink(
 	}
 	link.stubs[len(link.stubs)-1].OutputDone = link.writeDone
 	link.output = stream.NewChanReader(last)
-	link.setOutputTimeout(collection.outputTimeout(direction))
 	return link
-}
-
-// setOutputTimeout updates every stub's send timeout for this link.
-func (link *ToxicLink) setOutputTimeout(d time.Duration) {
-	for _, stub := range link.stubs {
-		stub.SetTimeout(d)
-	}
 }
 
 // Start the link with the specified toxics.
@@ -273,7 +265,7 @@ func (link *ToxicLink) RemoveToxic(ctx context.Context, toxic *toxics.ToxicWrapp
 				if sinkDead {
 					continue
 				}
-				err := link.stubs[toxic_index].WriteOutput(tmp, link.stubs[toxic_index].Timeout())
+				err := link.stubs[toxic_index].WriteOutput(tmp, 5*time.Second)
 				if err != nil {
 					sinkDead = true
 					log.Err(err).
@@ -312,7 +304,7 @@ func (link *ToxicLink) drainBufferedInput(
 		if sinkDead {
 			continue
 		}
-		if err := stub.WriteOutput(tmp, stub.Timeout()); err != nil {
+		if err := stub.WriteOutput(tmp, 5*time.Second); err != nil {
 			sinkDead = true
 			log.Err(err).Msg("Could not write last packets after interrupt to Output")
 		}
