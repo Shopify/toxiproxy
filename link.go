@@ -92,17 +92,21 @@ func (link *ToxicLink) Start(
 			link.stubs[i].State = stateful.NewState()
 		}
 
-		if _, ok := toxic.Toxic.(*toxics.ResetToxic); ok {
-			if err := source.(*net.TCPConn).SetLinger(0); err != nil {
-				logger.Err(err).
-					Str("toxic", toxic.Type).
-					Msg("source: Unable to setLinger(ms)")
+		if _, ok := toxic.Toxic.(*toxics.ResetToxic); ok && toxic.Toxicity > 0 {
+			if tcpConn, ok := source.(*net.TCPConn); ok {
+				if err := tcpConn.SetLinger(0); err != nil {
+					logger.Err(err).
+						Str("toxic", toxic.Type).
+						Msg("source: Unable to setLinger(ms)")
+				}
 			}
 
-			if err := dest.(*net.TCPConn).SetLinger(0); err != nil {
-				logger.Err(err).
-					Str("toxic", toxic.Type).
-					Msg("dest: Unable to setLinger(ms)")
+			if tcpConn, ok := dest.(*net.TCPConn); ok {
+				if err := tcpConn.SetLinger(0); err != nil {
+					logger.Err(err).
+						Str("toxic", toxic.Type).
+						Msg("dest: Unable to setLinger(ms)")
+				}
 			}
 		}
 
