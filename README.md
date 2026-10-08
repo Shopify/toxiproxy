@@ -256,7 +256,7 @@ $ docker run --rm --entrypoint="/toxiproxy-cli" -it ghcr.io/shopify/toxiproxy li
 If you have Go installed, you can build Toxiproxy from source using the make file:
 ```bash
 $ make build
-$ ./toxiproxy-server
+$ ./dist/toxiproxy-server
 ```
 
 #### Upgrading from Toxiproxy 1.x
@@ -539,11 +539,11 @@ fields are consistent with the new data.
 $ toxiproxy-cli create -l localhost:26379 -u localhost:6379 redis
 Created new proxy redis
 $ toxiproxy-cli list
-Listen          Upstream        Name  Enabled Toxics
+Name   Listen           Upstream        Enabled  Toxics
 ======================================================================
-127.0.0.1:26379 localhost:6379  redis true    None
+redis  127.0.0.1:26379  localhost:6379  enabled  None
 
-Hint: inspect toxics with `toxiproxy-client inspect <proxyName>`
+Hint: inspect toxics with `toxiproxy-cli inspect <proxyName>`
 ```
 
 ```bash
@@ -558,6 +558,9 @@ OK
 $ toxiproxy-cli toxic add -t latency -a latency=1000 redis
 Added downstream latency toxic 'latency_downstream' on proxy 'redis'
 ```
+
+To set more than one attribute, repeat the `-a` flag, for example
+`-a latency=1000 -a jitter=500`.
 
 ```bash
 $ redis-cli -p 26379
