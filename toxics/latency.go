@@ -41,10 +41,10 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 			select {
 			case <-time.After(sleep):
 				c.Timestamp = c.Timestamp.Add(sleep)
-				stub.Output <- c
+				_ = stub.WriteOutput(c, 0)
 			case <-stub.Interrupt:
 				// Exit fast without applying latency.
-				stub.Output <- c // Don't drop any data on the floor
+				_ = stub.WriteOutput(c, 0) // Don't drop any data on the floor
 				return
 			}
 		}

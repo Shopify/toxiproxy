@@ -69,6 +69,12 @@ type ToxicStub struct {
 	Interrupt chan struct{}
 	running   chan struct{}
 	closed    chan struct{}
+
+	// OutputDone, when set, closes exactly when the stub reading Output stops
+	// for good. WriteOutput selects on it directly instead of checking it
+	// once before sending, so a send already in flight still unblocks the
+	// instant the consumer goes away. Nil for a stub built outside a ToxicLink.
+	OutputDone <-chan struct{}
 }
 
 func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.StreamChunk) *ToxicStub {
@@ -97,13 +103,19 @@ func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 // If duration is 0, then wait until other goroutines finish reading from Output.
 func (s *ToxicStub) WriteOutput(p *stream.StreamChunk, d time.Duration) error {
 	if d == 0 {
-		s.Output <- p
-		return nil
+		select {
+		case s.Output <- p:
+			return nil
+		case <-s.OutputDone:
+			return fmt.Errorf("output already closed")
+		}
 	}
 
 	select {
 	case s.Output <- p:
 		return nil
+	case <-s.OutputDone:
+		return fmt.Errorf("output already closed")
 	case <-time.After(d):
 		return fmt.Errorf("timeout: could not write to output in %d seconds", int(d.Seconds()))
 	}
@@ -128,6 +140,11 @@ func (s *ToxicStub) Closed() bool {
 	default:
 		return false
 	}
+}
+
+// Done reports when this stub itself stops; see ToxicStub.OutputDone.
+func (s *ToxicStub) Done() <-chan struct{} {
+	return s.closed
 }
 
 func (s *ToxicStub) Close() {
