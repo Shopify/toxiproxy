@@ -241,6 +241,35 @@ func TestToxicity(t *testing.T) {
 	}
 }
 
+func TestResetToxicZeroToxicity(t *testing.T) {
+	collection := NewToxicCollection(nil)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	collection.links["test"] = link
+
+	toxic := &toxics.ToxicWrapper{
+		Toxic:     new(toxics.ResetToxic),
+		Name:      "reset1",
+		Type:      "reset_peer",
+		Direction: stream.Downstream,
+		Toxicity:  0,
+	}
+	collection.chainAddToxic(toxic)
+
+	// With toxicity 0, reset_peer should behave as a Noop and not discard data
+	n, err := link.input.Write([]byte{99})
+	if n != 1 || err != nil {
+		t.Fatalf("Write failed: %d %v", n, err)
+	}
+	buf := make([]byte, 2)
+	n, err = link.output.Read(buf)
+	if n != 1 || err != nil {
+		t.Fatalf("Read failed: %d %v", n, err)
+	} else if buf[0] != 99 {
+		t.Fatalf("Read wrong byte: %x", buf[0])
+	}
+}
+
 func TestStateCreated(t *testing.T) {
 	collection := NewToxicCollection(nil)
 	log := zerolog.Nop()
