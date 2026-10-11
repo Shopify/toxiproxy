@@ -5,7 +5,6 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -189,26 +188,29 @@ func (server *ApiServer) Routes() *mux.Router {
 
 func (server *ApiServer) PopulateConfig(filename string) {
 	file, err := os.Open(filename)
+	logger := server.Logger
 	if err != nil {
-		server.Logger.Err(err).Str("config", filename).Msg("Error reading config file")
+		logger.Err(err).Str("config", filename).Msg("Error reading config file")
 		return
 	}
 	defer file.Close()
 
-	server.populateConfig(file, "file")
-}
-
-func (server *ApiServer) PopulateConfigFromJson(config string) {
-	server.populateConfig(strings.NewReader(config), "json")
-}
-
-func (server *ApiServer) populateConfig(data io.Reader, source string) {
-	proxies, err := server.Collection.PopulateJson(server, data)
+	proxies, err := server.Collection.PopulateJson(server, file)
 	if err != nil {
-		server.Logger.Err(err).Msgf("Failed to populate proxies from %s", source)
+		logger.Err(err).Msg("Failed to populate proxies from file")
 	} else {
-		server.Logger.Info().Int("proxies", len(proxies)).Msgf("Populated proxies from %s", source)
+		logger.Info().Int("proxies", len(proxies)).Msg("Populated proxies from file")
 	}
+}
+
+func (server *ApiServer) PopulateConfigFromJson(config string) error {
+	proxies, err := server.Collection.PopulateJson(server, strings.NewReader(config))
+	if err != nil {
+		return fmt.Errorf("failed to populate proxies from json: %w", err)
+	}
+
+	server.Logger.Info().Int("proxies", len(proxies)).Msg("Populated proxies from json")
+	return nil
 }
 
 func (server *ApiServer) ProxyIndex(response http.ResponseWriter, request *http.Request) {

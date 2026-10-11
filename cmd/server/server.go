@@ -65,6 +65,9 @@ func main() {
 
 func run() error {
 	cli := parseArguments()
+	if len(cli.config) > 0 && len(cli.configJson) > 0 {
+		return fmt.Errorf("-config and -config-json cannot be used together")
+	}
 
 	if cli.printVersion {
 		fmt.Printf("toxiproxy-server version %s\n", toxiproxy.Version)
@@ -91,14 +94,14 @@ func run() error {
 		server.Metrics.RuntimeMetrics = collectors.NewRuntimeMetricCollectors()
 	}
 
-	if len(cli.config) > 0 && len(cli.configJson) > 0 {
-		return fmt.Errorf("-config and -config-json cannot be used together")
-	}
 	if len(cli.config) > 0 {
 		server.PopulateConfig(cli.config)
 	}
 	if len(cli.configJson) > 0 {
-		server.PopulateConfigFromJson(cli.configJson)
+		err := server.PopulateConfigFromJson(cli.configJson)
+		if err != nil {
+			return err
+		}
 	}
 
 	addr := net.JoinHostPort(cli.host, cli.port)

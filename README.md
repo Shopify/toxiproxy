@@ -320,8 +320,14 @@ is useful when running Toxiproxy in a container, where mounting a file is not
 always easy:
 
 ```bash
-docker run -it ghcr.io/shopify/toxiproxy -config-json '[{"name": "redis", "listen": "0.0.0.0:26379", "upstream": "redis:6379"}]'
+docker run --rm -p 8474:8474 -p 26379:26379 ghcr.io/shopify/toxiproxy \
+  -host=0.0.0.0 \
+  -config-json '[{"name": "redis", "listen": "0.0.0.0:26379", "upstream": "redis:6379"}]'
 ```
+
+Any arguments you pass replace the image's default `-host=0.0.0.0`, so add it
+back to keep the API reachable from outside the container. If the JSON is not
+valid, the server exits with an error.
 
 An example `config/toxiproxy.json`:
 

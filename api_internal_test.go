@@ -45,7 +45,12 @@ func TestPopulateConfigFromJson(t *testing.T) {
 	server := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop())
 	defer server.Collection.Clear()
 
-	server.PopulateConfigFromJson(`[{"name": "one", "listen": "localhost:0", "upstream": "localhost:7171"}]`)
+	err := server.PopulateConfigFromJson(
+		`[{"name": "one", "listen": "localhost:0", "upstream": "localhost:7171"}]`,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if _, err := server.Collection.Get("one"); err != nil {
 		t.Fatalf("expected proxy to be created: %v", err)
@@ -55,9 +60,19 @@ func TestPopulateConfigFromJson(t *testing.T) {
 func TestPopulateConfigFromJsonWithInvalidJson(t *testing.T) {
 	server := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop())
 
-	server.PopulateConfigFromJson(`not json`)
+	err := server.PopulateConfigFromJson(`not json`)
 
-	if len(server.Collection.Proxies()) != 0 {
-		t.Fatalf("expected no proxies to be created")
+	if err == nil || !strings.Contains(err.Error(), ErrBadRequestBody.Message) {
+		t.Fatalf("expected bad request body error, got: %v", err)
+	}
+}
+
+func TestPopulateConfigFromJsonWithMissingUpstream(t *testing.T) {
+	server := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop())
+
+	err := server.PopulateConfigFromJson(`[{"name": "one", "listen": "localhost:0"}]`)
+
+	if err == nil || !strings.Contains(err.Error(), ErrMissingField.Message) {
+		t.Fatalf("expected missing field error, got: %v", err)
 	}
 }
