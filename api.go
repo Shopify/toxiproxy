@@ -193,6 +193,7 @@ func (server *ApiServer) PopulateConfig(filename string) {
 		logger.Err(err).Str("config", filename).Msg("Error reading config file")
 		return
 	}
+	defer file.Close()
 
 	proxies, err := server.Collection.PopulateJson(server, file)
 	if err != nil {
@@ -200,6 +201,16 @@ func (server *ApiServer) PopulateConfig(filename string) {
 	} else {
 		logger.Info().Int("proxies", len(proxies)).Msg("Populated proxies from file")
 	}
+}
+
+func (server *ApiServer) PopulateConfigFromJson(config string) error {
+	proxies, err := server.Collection.PopulateJson(server, strings.NewReader(config))
+	if err != nil {
+		return fmt.Errorf("failed to populate proxies from json: %w", err)
+	}
+
+	server.Logger.Info().Int("proxies", len(proxies)).Msg("Populated proxies from json")
+	return nil
 }
 
 func (server *ApiServer) ProxyIndex(response http.ResponseWriter, request *http.Request) {

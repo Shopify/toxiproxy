@@ -1,5 +1,6 @@
 # [Unreleased]
 
+- Add `-config-json` server option to create proxies on startup from a JSON string (#211, @worldtiki)
 - Reject slicer toxics with `average_size` <= 0 or `size_variation` outside `[0, average_size]`,
   and stop the slicer from recursing forever on degenerate sizes (#774, @iyaz-shaikh)
 - Add optional bearer token auth for the HTTP API via `TOXIPROXY_AUTH_TOKEN`, supported by the Go

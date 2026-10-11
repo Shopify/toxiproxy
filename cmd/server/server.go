@@ -24,6 +24,7 @@ type cliArguments struct {
 	host           string
 	port           string
 	config         string
+	configJson     string
 	seed           int64
 	printVersion   bool
 	proxyMetrics   bool
@@ -38,6 +39,8 @@ func parseArguments() cliArguments {
 		"Port for toxiproxy's API to listen on")
 	flag.StringVar(&result.config, "config", "",
 		"JSON file containing proxies to create on startup")
+	flag.StringVar(&result.configJson, "config-json", "",
+		"JSON string containing proxies to create on startup")
 	flag.Int64Var(&result.seed, "seed", time.Now().UTC().UnixNano(),
 		"Seed for randomizing toxics with")
 	flag.BoolVar(&result.runtimeMetrics, "runtime-metrics", false,
@@ -62,6 +65,9 @@ func main() {
 
 func run() error {
 	cli := parseArguments()
+	if len(cli.config) > 0 && len(cli.configJson) > 0 {
+		return fmt.Errorf("-config and -config-json cannot be used together")
+	}
 
 	if cli.printVersion {
 		fmt.Printf("toxiproxy-server version %s\n", toxiproxy.Version)
@@ -90,6 +96,12 @@ func run() error {
 
 	if len(cli.config) > 0 {
 		server.PopulateConfig(cli.config)
+	}
+	if len(cli.configJson) > 0 {
+		err := server.PopulateConfigFromJson(cli.configJson)
+		if err != nil {
+			return err
+		}
 	}
 
 	addr := net.JoinHostPort(cli.host, cli.port)

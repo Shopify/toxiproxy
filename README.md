@@ -315,6 +315,20 @@ separate configuration file. We use `config/toxiproxy.json`. This file can be
 passed to the server using the `-config` option, or loaded by the application
 to use with the `populate` function.
 
+You can also pass the same JSON as a string with the `-config-json` option. This
+is useful when running Toxiproxy in a container, where mounting a file is not
+always easy:
+
+```bash
+docker run --rm -p 8474:8474 -p 26379:26379 ghcr.io/shopify/toxiproxy \
+  -host=0.0.0.0 \
+  -config-json '[{"name": "redis", "listen": "0.0.0.0:26379", "upstream": "redis:6379"}]'
+```
+
+Any arguments you pass replace the image's default `-host=0.0.0.0`, so add it
+back to keep the API reachable from outside the container. If the JSON is not
+valid, the server exits with an error.
+
 An example `config/toxiproxy.json`:
 
 ```json

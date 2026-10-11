@@ -40,3 +40,39 @@ func TestWarnIfUnauthenticatedAndExposed(t *testing.T) {
 		})
 	}
 }
+
+func TestPopulateConfigFromJson(t *testing.T) {
+	server := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop())
+	defer server.Collection.Clear()
+
+	err := server.PopulateConfigFromJson(
+		`[{"name": "one", "listen": "localhost:0", "upstream": "localhost:7171"}]`,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if _, err := server.Collection.Get("one"); err != nil {
+		t.Fatalf("expected proxy to be created: %v", err)
+	}
+}
+
+func TestPopulateConfigFromJsonWithInvalidJson(t *testing.T) {
+	server := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop())
+
+	err := server.PopulateConfigFromJson(`not json`)
+
+	if err == nil || !strings.Contains(err.Error(), ErrBadRequestBody.Message) {
+		t.Fatalf("expected bad request body error, got: %v", err)
+	}
+}
+
+func TestPopulateConfigFromJsonWithMissingUpstream(t *testing.T) {
+	server := NewServer(NewMetricsContainer(prometheus.NewRegistry()), zerolog.Nop())
+
+	err := server.PopulateConfigFromJson(`[{"name": "one", "listen": "localhost:0"}]`)
+
+	if err == nil || !strings.Contains(err.Error(), ErrMissingField.Message) {
+		t.Fatalf("expected missing field error, got: %v", err)
+	}
+}
