@@ -3,29 +3,38 @@ package toxics_test
 import (
 	"bufio"
 	"bytes"
+	"context"
+	"crypto/rand"
 	"encoding/json"
+	"flag"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Shopify/toxiproxy"
-	"github.com/Shopify/toxiproxy/toxics"
-	"github.com/sirupsen/logrus"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/zerolog"
 	tomb "gopkg.in/tomb.v1"
+
+	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/collectors"
+	"github.com/Shopify/toxiproxy/v2/stream"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
-func init() {
-	logrus.SetLevel(logrus.FatalLevel)
-}
-
 func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
-	proxy := toxiproxy.NewProxy()
-
-	proxy.Name = name
-	proxy.Listen = "localhost:0"
-	proxy.Upstream = upstream
+	log := zerolog.Nop()
+	if flag.Lookup("test.v").DefValue == "true" {
+		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+	}
+	srv := toxiproxy.NewServer(
+		toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
+		log,
+	)
+	srv.Metrics.ProxyMetrics = collectors.NewProxyMetricCollectors()
+	proxy := toxiproxy.NewProxy(srv, name, "localhost:0", upstream)
 
 	return proxy
 }
@@ -48,7 +57,8 @@ func WithEchoServer(t *testing.T, f func(string, chan []byte)) {
 			select {
 			case <-tomb.Dying():
 			default:
-				t.Fatal("Failed to accept client")
+				t.Error("Failed to accept client")
+				return
 			}
 			return
 		}
@@ -73,7 +83,10 @@ func WithEchoServer(t *testing.T, f func(string, chan []byte)) {
 	close(response)
 }
 
-func WithEchoProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy)) {
+func WithEchoProxy(
+	t *testing.T,
+	f func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy),
+) {
 	WithEchoServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
 		proxy.Start()
@@ -139,6 +152,8 @@ func AssertEchoResponse(t *testing.T, client, server net.Conn) {
 }
 
 func TestPersistentConnections(t *testing.T) {
+	ctx := context.Background()
+
 	ln, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatal("Failed to create TCP server", err)
@@ -168,15 +183,17 @@ func TestPersistentConnections(t *testing.T) {
 	serverConn := <-serverConnRecv
 
 	proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_up", "noop", "upstream", &toxics.NoopToxic{}))
-	proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}))
+	proxy.Toxics.AddToxicJson(
+		ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}),
+	)
 
 	AssertEchoResponse(t, conn, serverConn)
 
-	proxy.Toxics.ResetToxics()
+	proxy.Toxics.ResetToxics(ctx)
 
 	AssertEchoResponse(t, conn, serverConn)
 
-	proxy.Toxics.ResetToxics()
+	proxy.Toxics.ResetToxics(ctx)
 
 	AssertEchoResponse(t, conn, serverConn)
 
@@ -224,11 +241,15 @@ func TestToxicAddRemove(t *testing.T) {
 				return
 			default:
 				if enabled {
-					proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_up", "noop", "upstream", &toxics.NoopToxic{}))
-					proxy.Toxics.RemoveToxic("noop_down")
+					proxy.Toxics.AddToxicJson(
+						ToxicToJson(t, "noop_up", "noop", "upstream", &toxics.NoopToxic{}),
+					)
+					proxy.Toxics.RemoveToxic(context.Background(), "noop_down")
 				} else {
-					proxy.Toxics.RemoveToxic("noop_up")
-					proxy.Toxics.AddToxicJson(ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}))
+					proxy.Toxics.RemoveToxic(context.Background(), "noop_up")
+					proxy.Toxics.AddToxicJson(
+						ToxicToJson(t, "noop_down", "noop", "downstream", &toxics.NoopToxic{}),
+					)
 				}
 				enabled = !enabled
 			}
@@ -337,4 +358,44 @@ func BenchmarkProxyBandwidth(b *testing.B) {
 	if err != nil {
 		b.Error("Failed to close TCP connection", err)
 	}
+}
+
+func TestToxicStub_WriteOutput(t *testing.T) {
+	input := make(chan *stream.StreamChunk)
+	output := make(chan *stream.StreamChunk)
+	stub := toxics.NewToxicStub(input, output)
+
+	buf := make([]byte, 42)
+	// #nosec G404 -- used only in tests
+	rand.Read(buf)
+
+	t.Run("when no read in 1 second", func(t *testing.T) {
+		err := stub.WriteOutput(&stream.StreamChunk{Data: buf}, time.Second)
+		if err == nil {
+			t.Error("Expected to have error")
+		}
+
+		expected := "timeout: could not write to output in 1 seconds"
+		if err.Error() != expected {
+			t.Errorf("Expected error: %s, got %s", expected, err)
+		}
+	})
+
+	t.Run("when read is available", func(t *testing.T) {
+		go func(t *testing.T, stub *toxics.ToxicStub, expected []byte) {
+			select {
+			case <-time.After(5 * time.Second):
+				t.Error("Timeout of running test to read from output.")
+			case chunk := <-output:
+				if !bytes.Equal(chunk.Data, buf) {
+					t.Error("Data in Output different from Write")
+				}
+			}
+		}(t, stub, buf)
+
+		err := stub.WriteOutput(&stream.StreamChunk{Data: buf}, 5*time.Second)
+		if err != nil {
+			t.Errorf("Unexpected error: %+v", err)
+		}
+	})
 }

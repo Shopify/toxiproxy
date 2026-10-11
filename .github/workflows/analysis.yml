@@ -1,0 +1,71 @@
+---
+
+name: Analysis
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: 13 7 * * 6
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: "1.27.x"
+          check-latest: true
+          cache: true
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a
+        with:
+          version: v2.14.0
+
+      - name: shellcheck
+        uses: azohra/shell-linter@30a9cf3f6cf25c08fc98f10d7dc4167f7b5c0c00
+        with:
+          path: scripts/test-*
+          severity: error
+
+      - name: yaml-lint
+        uses: ibiqlik/action-yamllint@2576378a8e339169678f9939646ee3ee325e845c # v3.1.1
+        with:
+          config_file: .yamllint.yml
+
+  vulnerabilities:
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: "1.27.x"
+          check-latest: true
+          cache: true
+
+      - name: initialize
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          languages: go
+
+      - name: codeql analyze
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9

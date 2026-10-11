@@ -1,14 +1,19 @@
 package toxiproxy
 
 import (
+	"context"
 	"encoding/binary"
+	"flag"
 	"io"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/Shopify/toxiproxy/stream"
-	"github.com/Shopify/toxiproxy/testhelper"
-	"github.com/Shopify/toxiproxy/toxics"
+	"github.com/rs/zerolog"
+
+	"github.com/Shopify/toxiproxy/v2/stream"
+	"github.com/Shopify/toxiproxy/v2/testhelper"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
 func TestToxicsAreLoaded(t *testing.T) {
@@ -19,14 +24,20 @@ func TestToxicsAreLoaded(t *testing.T) {
 
 func TestStubInitializaation(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 	if len(link.stubs) != 1 {
 		t.Fatalf("Link created with wrong number of stubs: %d != 1", len(link.stubs))
-	} else if cap(link.stubs) != toxics.Count()+1 {
+	}
+
+	if cap(link.stubs) != toxics.Count()+1 {
 		t.Fatalf("Link created with wrong capacity: %d != %d", cap(link.stubs), toxics.Count()+1)
-	} else if cap(link.stubs[0].Input) != 0 {
+	}
+
+	if cap(link.stubs[0].Input) != 0 {
 		t.Fatalf("Noop buffer was not initialized as 0: %d", cap(link.stubs[0].Input))
-	} else if cap(link.stubs[0].Output) != 0 {
+	}
+
+	if cap(link.stubs[0].Output) != 0 {
 		t.Fatalf("Link output buffer was not initialized as 0: %d", cap(link.stubs[0].Output))
 	}
 }
@@ -46,24 +57,36 @@ func TestStubInitializaationWithToxics(t *testing.T) {
 		Direction: stream.Downstream,
 		Toxicity:  1,
 	})
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
+
 	if len(link.stubs) != 3 {
 		t.Fatalf("Link created with wrong number of stubs: %d != 3", len(link.stubs))
-	} else if cap(link.stubs) != toxics.Count()+1 {
+	}
+
+	if cap(link.stubs) != toxics.Count()+1 {
 		t.Fatalf("Link created with wrong capacity: %d != %d", cap(link.stubs), toxics.Count()+1)
-	} else if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
+	}
+
+	if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
 		t.Fatalf("Link output buffer was not initialized as 0: %d", cap(link.stubs[0].Output))
 	}
+
 	for i, toxic := range collection.chain[stream.Downstream] {
 		if cap(link.stubs[i].Input) != toxic.BufferSize {
-			t.Fatalf("%s buffer was not initialized as %d: %d", toxic.Type, toxic.BufferSize, cap(link.stubs[i].Input))
+			t.Fatalf(
+				"%s buffer was not initialized as %d: %d",
+				toxic.Type,
+				toxic.BufferSize,
+				cap(link.stubs[i].Input),
+			)
 		}
 	}
 }
 
 func TestAddRemoveStubs(t *testing.T) {
+	ctx := context.Background()
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 
@@ -88,25 +111,36 @@ func TestAddRemoveStubs(t *testing.T) {
 	}
 	for i, toxic := range collection.chain[stream.Downstream] {
 		if cap(link.stubs[i].Input) != toxic.BufferSize {
-			t.Fatalf("%s buffer was not initialized as %d: %d", toxic.Type, toxic.BufferSize, cap(link.stubs[i].Input))
+			t.Fatalf(
+				"%s buffer was not initialized as %d: %d",
+				toxic.Type,
+				toxic.BufferSize,
+				cap(link.stubs[i].Input),
+			)
 		}
 	}
 
 	// Remove stubs
-	collection.chainRemoveToxic(toxic)
+	collection.chainRemoveToxic(ctx, toxic)
 	if cap(link.stubs[len(link.stubs)-1].Output) != 0 {
 		t.Fatalf("Link output buffer was not initialized as 0: %d", cap(link.stubs[0].Output))
 	}
 	for i, toxic := range collection.chain[stream.Downstream] {
 		if cap(link.stubs[i].Input) != toxic.BufferSize {
-			t.Fatalf("%s buffer was not initialized as %d: %d", toxic.Type, toxic.BufferSize, cap(link.stubs[i].Input))
+			t.Fatalf(
+				"%s buffer was not initialized as %d: %d",
+				toxic.Type,
+				toxic.BufferSize,
+				cap(link.stubs[i].Input),
+			)
 		}
 	}
 }
 
 func TestNoDataDropped(t *testing.T) {
+	ctx := context.Background()
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 
@@ -123,33 +157,33 @@ func TestNoDataDropped(t *testing.T) {
 	done := make(chan struct{})
 	defer close(done)
 	go func() {
-		for i := 0; i < 64*1024; i++ {
+		for i := uint16(0); i < 65535; i++ {
 			buf := make([]byte, 2)
-			binary.BigEndian.PutUint16(buf, uint16(i))
+			binary.BigEndian.PutUint16(buf, i)
 			link.input.Write(buf)
 		}
 		link.input.Close()
 	}()
-	go func() {
+	go func(ctx context.Context) {
 		for {
 			select {
 			case <-done:
 				return
 			default:
 				collection.chainAddToxic(toxic)
-				collection.chainRemoveToxic(toxic)
+				collection.chainRemoveToxic(ctx, toxic)
 			}
 		}
-	}()
+	}(ctx)
 
 	buf := make([]byte, 2)
-	for i := 0; i < 64*1024; i++ {
+	for i := uint16(0); i < 65535; i++ {
 		n, err := link.output.Read(buf)
 		if n != 2 || err != nil {
 			t.Fatalf("Read failed: %d %v", n, err)
 		} else {
 			val := binary.BigEndian.Uint16(buf)
-			if val != uint16(i) {
+			if val != i {
 				t.Fatalf("Read incorrect bytes: %v != %d", val, i)
 			}
 		}
@@ -162,7 +196,7 @@ func TestNoDataDropped(t *testing.T) {
 
 func TestToxicity(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 
@@ -209,7 +243,12 @@ func TestToxicity(t *testing.T) {
 
 func TestStateCreated(t *testing.T) {
 	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream)
+	log := zerolog.Nop()
+	if flag.Lookup("test.v").DefValue == "true" {
+		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+	}
+
+	link := NewToxicLink(nil, collection, stream.Downstream, log)
 	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
 	collection.links["test"] = link
 
@@ -222,4 +261,65 @@ func TestStateCreated(t *testing.T) {
 	if link.stubs[len(link.stubs)-1].State == nil {
 		t.Fatalf("New toxic did not have state object created.")
 	}
+}
+
+func TestRemoveToxicWithBrokenConnection(t *testing.T) {
+	ctx := context.Background()
+
+	log := zerolog.Nop()
+	if flag.Lookup("test.v").DefValue == "true" {
+		log = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+	}
+	ctx = log.WithContext(ctx)
+
+	collection := NewToxicCollection(nil)
+	link := NewToxicLink(nil, collection, stream.Downstream, log)
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	collection.links["test"] = link
+
+	toxics := [2]*toxics.ToxicWrapper{
+		{
+			Toxic: &toxics.BandwidthToxic{
+				Rate: 0,
+			},
+			Type:      "bandwidth",
+			Direction: stream.Downstream,
+			Toxicity:  1,
+		},
+		{
+			Toxic: &toxics.BandwidthToxic{
+				Rate: 0,
+			},
+			Type:      "bandwidth",
+			Direction: stream.Upstream,
+			Toxicity:  1,
+		},
+	}
+
+	collection.chainAddToxic(toxics[0])
+	collection.chainAddToxic(toxics[1])
+
+	done := make(chan struct{})
+	defer close(done)
+
+	var data uint16 = 42
+	go func(log zerolog.Logger) {
+		for {
+			select {
+			case <-done:
+				link.input.Close()
+				return
+			case <-time.After(10 * time.Second):
+				log.Print("Finish load")
+				return
+			default:
+				buf := make([]byte, 2)
+				binary.BigEndian.PutUint16(buf, data)
+				link.input.Write(buf)
+			}
+		}
+	}(log)
+
+	collection.chainRemoveToxic(ctx, toxics[0])
+	collection.chainRemoveToxic(ctx, toxics[1])
 }

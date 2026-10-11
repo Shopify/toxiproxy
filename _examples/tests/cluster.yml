@@ -1,0 +1,18 @@
+---
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  ipFamily: ipv4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # port forward 5432 on the host to 5432 on this node
+      - containerPort: 30950
+        hostPort: 5432
+        # optional: set the bind address on the host
+        # 0.0.0.0 is the current default
+        listenAddress: 127.0.0.1
+        # optional: set the protocol to one of TCP, UDP, SCTP.
+        # TCP is the default
+        protocol: TCP
+...

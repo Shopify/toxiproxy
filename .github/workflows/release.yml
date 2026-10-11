@@ -1,0 +1,78 @@
+---
+
+name: Release
+
+on:
+  push:
+    tags: [ v*.*.* ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      -
+        name: GPG config
+        run: |
+          mkdir -p ~/.gnupg
+          cat << EOF >> ~/.gnupg/gpg.conf
+          keyserver hkps://keys.openpgp.org
+          auto-key-import
+          auto-key-retrieve
+          EOF
+
+      -
+        name: Verify tag signature
+        run: |
+          # NOTE: Solve the problem with Github action checkout
+          # https://github.com/actions/checkout/issues/290
+          git fetch --tags --force
+
+          version=${GITHUB_REF#refs/tags/*}
+          git show $version
+          git tag -v $version
+
+      -
+        name: Log into registry ${{ env.REGISTRY }}
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      -
+        name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: "1.27.x"
+          check-latest: true
+          cache: false
+      -
+        name: Build release changelog
+        run: |
+          version=${GITHUB_REF#refs/tags/v*}
+          mkdir -p tmp
+          sed '/^# \['$version'\]/,/^# \[/!d;//d;/^\s*$/d' CHANGELOG.md > tmp/release_changelog.md
+
+      -
+        name: Release
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94
+        with:
+          distribution: goreleaser
+          version: v1.10.3
+          args: release --rm-dist --release-notes=tmp/release_changelog.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

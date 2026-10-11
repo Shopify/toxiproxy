@@ -2,21 +2,20 @@ package toxiproxy
 
 import (
 	"errors"
+	"net"
 	"sync"
 
-	"github.com/Shopify/toxiproxy/stream"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
 	tomb "gopkg.in/tomb.v1"
 
-	"net"
+	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
-// Proxy represents the proxy in its entirity with all its links. The main
+// Proxy represents the proxy in its entirety with all its links. The main
 // responsibility of Proxy is to accept new client and create Links between the
 // client and upstream.
 //
-// Client <-> toxiproxy <-> Upstream
-//
+// Client <-> toxiproxy <-> Upstream.
 type Proxy struct {
 	sync.Mutex
 
@@ -25,11 +24,14 @@ type Proxy struct {
 	Upstream string `json:"upstream"`
 	Enabled  bool   `json:"enabled"`
 
-	started chan error
+	listener net.Listener
+	started  chan error
 
 	tomb        tomb.Tomb
 	connections ConnectionList
 	Toxics      *ToxicCollection `json:"-"`
+	apiServer   *ApiServer
+	Logger      *zerolog.Logger
 }
 
 type ConnectionList struct {
@@ -47,10 +49,22 @@ func (c *ConnectionList) Unlock() {
 
 var ErrProxyAlreadyStarted = errors.New("Proxy already started")
 
-func NewProxy() *Proxy {
+func NewProxy(server *ApiServer, name, listen, upstream string) *Proxy {
+	l := server.Logger.
+		With().
+		Str("name", name).
+		Str("listen", listen).
+		Str("upstream", upstream).
+		Logger()
+
 	proxy := &Proxy{
+		Name:        name,
+		Listen:      listen,
+		Upstream:    upstream,
 		started:     make(chan error),
 		connections: ConnectionList{list: make(map[string]net.Conn)},
+		apiServer:   server,
+		Logger:      &l,
 	}
 	proxy.Toxics = NewToxicCollection(proxy)
 	return proxy
@@ -67,7 +81,12 @@ func (proxy *Proxy) Update(input *Proxy) error {
 	proxy.Lock()
 	defer proxy.Unlock()
 
-	if input.Listen != proxy.Listen || input.Upstream != proxy.Upstream {
+	differs, err := proxy.Differs(input)
+	if err != nil {
+		return err
+	}
+
+	if differs {
 		stop(proxy)
 		proxy.Listen = input.Listen
 		proxy.Upstream = input.Upstream
@@ -89,51 +108,79 @@ func (proxy *Proxy) Stop() {
 	stop(proxy)
 }
 
+func (proxy *Proxy) listen() error {
+	var err error
+	proxy.listener, err = net.Listen("tcp", proxy.Listen)
+	if err != nil {
+		proxy.started <- err
+		return err
+	}
+	proxy.Listen = proxy.listener.Addr().String()
+	proxy.started <- nil
+
+	proxy.Logger.
+		Info().
+		Msg("Started proxy")
+
+	return nil
+}
+
+func (proxy *Proxy) close() {
+	// Unblock proxy.listener.Accept()
+	err := proxy.listener.Close()
+	if err != nil {
+		proxy.Logger.
+			Warn().
+			Err(err).
+			Msg("Attempted to close an already closed proxy server")
+	}
+}
+
+func (proxy *Proxy) Differs(other *Proxy) (bool, error) {
+	newResolvedListen, err := net.ResolveTCPAddr("tcp", other.Listen)
+	if err != nil {
+		return false, err
+	}
+
+	if proxy.Listen != newResolvedListen.String() || proxy.Upstream != other.Upstream {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// This channel is to kill the blocking Accept() call below by closing the
+// net.Listener.
+func (proxy *Proxy) freeBlocker(acceptTomb *tomb.Tomb) {
+	<-proxy.tomb.Dying()
+
+	// Notify ln.Accept() that the shutdown was safe
+	acceptTomb.Killf("Shutting down from stop()")
+
+	proxy.close()
+
+	// Wait for the accept loop to finish processing
+	acceptTomb.Wait()
+	proxy.tomb.Done()
+}
+
 // server runs the Proxy server, accepting new clients and creating Links to
 // connect them to upstreams.
 func (proxy *Proxy) server() {
-	ln, err := net.Listen("tcp", proxy.Listen)
+	err := proxy.listen()
 	if err != nil {
-		proxy.started <- err
 		return
 	}
 
-	proxy.Listen = ln.Addr().String()
-	proxy.started <- nil
-
-	logrus.WithFields(logrus.Fields{
-		"name":     proxy.Name,
-		"proxy":    proxy.Listen,
-		"upstream": proxy.Upstream,
-	}).Info("Started proxy")
-
-	acceptTomb := tomb.Tomb{}
+	acceptTomb := &tomb.Tomb{}
 	defer acceptTomb.Done()
 
 	// This channel is to kill the blocking Accept() call below by closing the
 	// net.Listener.
-	go func() {
-		<-proxy.tomb.Dying()
-
-		// Notify ln.Accept() that the shutdown was safe
-		acceptTomb.Killf("Shutting down from stop()")
-		// Unblock ln.Accept()
-		err := ln.Close()
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"proxy":  proxy.Name,
-				"listen": proxy.Listen,
-				"err":    err,
-			}).Warn("Attempted to close an already closed proxy server")
-		}
-
-		// Wait for the accept loop to finish processing
-		acceptTomb.Wait()
-		proxy.tomb.Done()
-	}()
+	go proxy.freeBlocker(acceptTomb)
 
 	for {
-		client, err := ln.Accept()
+		client, err := proxy.listener.Accept()
 		if err != nil {
 			// This is to confirm we're being shut down in a legit way. Unfortunately,
 			// Go doesn't export the error when it's closed from Close() so we have to
@@ -143,30 +190,26 @@ func (proxy *Proxy) server() {
 			select {
 			case <-acceptTomb.Dying():
 			default:
-				logrus.WithFields(logrus.Fields{
-					"proxy":  proxy.Name,
-					"listen": proxy.Listen,
-					"err":    err,
-				}).Warn("Error while accepting client")
+				proxy.Logger.
+					Warn().
+					Err(err).
+					Msg("Error while accepting client")
 			}
 			return
 		}
 
-		logrus.WithFields(logrus.Fields{
-			"name":     proxy.Name,
-			"client":   client.RemoteAddr(),
-			"proxy":    proxy.Listen,
-			"upstream": proxy.Upstream,
-		}).Info("Accepted client")
+		proxy.Logger.
+			Info().
+			Str("client", client.RemoteAddr().String()).
+			Msg("Accepted client")
 
+		// #nosec G704 -- Connecting to operator-configured upstreams is this proxy's purpose.
 		upstream, err := net.Dial("tcp", proxy.Upstream)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"name":     proxy.Name,
-				"client":   client.RemoteAddr(),
-				"proxy":    proxy.Listen,
-				"upstream": proxy.Upstream,
-			}).Error("Unable to open connection to upstream")
+			proxy.Logger.
+				Err(err).
+				Str("client", client.RemoteAddr().String()).
+				Msg("Unable to open connection to upstream")
 			client.Close()
 			continue
 		}
@@ -176,8 +219,8 @@ func (proxy *Proxy) server() {
 		proxy.connections.list[name+"upstream"] = upstream
 		proxy.connections.list[name+"downstream"] = client
 		proxy.connections.Unlock()
-		proxy.Toxics.StartLink(name+"upstream", client, upstream, stream.Upstream)
-		proxy.Toxics.StartLink(name+"downstream", upstream, client, stream.Downstream)
+		proxy.Toxics.StartLink(proxy.apiServer, name+"upstream", client, upstream, stream.Upstream)
+		proxy.Toxics.StartLink(proxy.apiServer, name+"downstream", upstream, client, stream.Downstream)
 	}
 }
 
@@ -187,7 +230,7 @@ func (proxy *Proxy) RemoveConnection(name string) {
 	delete(proxy.connections.list, name)
 }
 
-// Starts a proxy, assumes the lock has already been taken
+// Starts a proxy, assumes the lock has already been taken.
 func start(proxy *Proxy) error {
 	if proxy.Enabled {
 		return ErrProxyAlreadyStarted
@@ -201,7 +244,7 @@ func start(proxy *Proxy) error {
 	return err
 }
 
-// Stops a proxy, assumes the lock has already been taken
+// Stops a proxy, assumes the lock has already been taken.
 func stop(proxy *Proxy) {
 	if !proxy.Enabled {
 		return
@@ -217,9 +260,7 @@ func stop(proxy *Proxy) {
 		conn.Close()
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"name":     proxy.Name,
-		"proxy":    proxy.Listen,
-		"upstream": proxy.Upstream,
-	}).Info("Terminated proxy")
+	proxy.Logger.
+		Info().
+		Msg("Terminated proxy")
 }

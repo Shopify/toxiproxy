@@ -1,11 +1,13 @@
 package toxics
 
 import (
+	"fmt"
 	"math/rand"
 	"reflect"
 	"sync"
+	"time"
 
-	"github.com/Shopify/toxiproxy/stream"
+	"github.com/Shopify/toxiproxy/v2/stream"
 )
 
 // A Toxic is something that can be attatched to a link to modify the way
@@ -22,7 +24,8 @@ import (
 // for multiple connections.
 
 type Toxic interface {
-	// Defines how packets flow through a ToxicStub. Pipe() blocks until the link is closed or interrupted.
+	// Defines how packets flow through a ToxicStub.
+	// Pipe() blocks until the link is closed or interrupted.
 	Pipe(*ToxicStub)
 }
 
@@ -42,6 +45,10 @@ type BufferedToxic interface {
 type StatefulToxic interface {
 	// Creates a new object to store toxic state in
 	NewState() interface{}
+}
+
+type ValidatedToxic interface {
+	Validate() error
 }
 
 type ToxicWrapper struct {
@@ -74,14 +81,31 @@ func NewToxicStub(input <-chan *stream.StreamChunk, output chan<- *stream.Stream
 }
 
 // Begin running a toxic on this stub, can be interrupted.
-// Runs a noop toxic randomly depending on toxicity
+// Runs a noop toxic randomly depending on toxicity.
 func (s *ToxicStub) Run(toxic *ToxicWrapper) {
 	s.running = make(chan struct{})
 	defer close(s.running)
-	if rand.Float32() < toxic.Toxicity {
+	randomToxicity := rand.Float32() // #nosec G404 -- was ignored before too
+	if randomToxicity < toxic.Toxicity {
 		toxic.Pipe(s)
 	} else {
 		new(NoopToxic).Pipe(s)
+	}
+}
+
+// WriteOutput allows to write to Output with timeout to avoid deadlocks.
+// If duration is 0, then wait until other goroutines finish reading from Output.
+func (s *ToxicStub) WriteOutput(p *stream.StreamChunk, d time.Duration) error {
+	if d == 0 {
+		s.Output <- p
+		return nil
+	}
+
+	select {
+	case s.Output <- p:
+		return nil
+	case <-time.After(d):
+		return fmt.Errorf("timeout: could not write to output in %d seconds", int(d.Seconds()))
 	}
 }
 
@@ -113,8 +137,10 @@ func (s *ToxicStub) Close() {
 	}
 }
 
-var ToxicRegistry map[string]Toxic
-var registryMutex sync.RWMutex
+var (
+	ToxicRegistry map[string]Toxic
+	registryMutex sync.RWMutex
+)
 
 func Register(typeName string, toxic Toxic) {
 	registryMutex.Lock()

@@ -2,7 +2,8 @@ package toxics
 
 import "time"
 
-// The TimeoutToxic stops any data from flowing through, and will close the connection after a timeout.
+// The TimeoutToxic stops any data from flowing through,
+// and will close the connection after a timeout.
 // If the timeout is set to 0, then the connection will not be closed.
 type TimeoutToxic struct {
 	// Times in milliseconds
@@ -19,7 +20,11 @@ func (t *TimeoutToxic) Pipe(stub *ToxicStub) {
 				return
 			case <-stub.Interrupt:
 				return
-			case <-stub.Input:
+			case c := <-stub.Input:
+				if c == nil {
+					stub.Close()
+					return
+				}
 				// Drop the data on the ground.
 			}
 		}
@@ -28,7 +33,11 @@ func (t *TimeoutToxic) Pipe(stub *ToxicStub) {
 			select {
 			case <-stub.Interrupt:
 				return
-			case <-stub.Input:
+			case c := <-stub.Input:
+				if c == nil {
+					stub.Close()
+					return
+				}
 				// Drop the data on the ground.
 			}
 		}

@@ -3,111 +3,16 @@ package toxiproxy_test
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"io"
-	"io/ioutil"
 	"net"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/Shopify/toxiproxy"
-	"github.com/sirupsen/logrus"
-	tomb "gopkg.in/tomb.v1"
+	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/testhelper"
 )
-
-func init() {
-	logrus.SetLevel(logrus.FatalLevel)
-}
-
-func NewTestProxy(name, upstream string) *toxiproxy.Proxy {
-	proxy := toxiproxy.NewProxy()
-
-	proxy.Name = name
-	proxy.Listen = "localhost:0"
-	proxy.Upstream = upstream
-
-	return proxy
-}
-
-func WithTCPServer(t *testing.T, f func(string, chan []byte)) {
-	ln, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatal("Failed to create TCP server", err)
-	}
-
-	defer ln.Close()
-
-	response := make(chan []byte, 1)
-	tomb := tomb.Tomb{}
-
-	go func() {
-		defer tomb.Done()
-		src, err := ln.Accept()
-		if err != nil {
-			select {
-			case <-tomb.Dying():
-			default:
-				t.Fatal("Failed to accept client")
-			}
-			return
-		}
-
-		ln.Close()
-
-		val, err := ioutil.ReadAll(src)
-		if err != nil {
-			t.Fatal("Failed to read from client")
-		}
-
-		response <- val
-	}()
-
-	f(ln.Addr().String(), response)
-
-	tomb.Killf("Function body finished")
-	ln.Close()
-	tomb.Wait()
-
-	close(response)
-}
-
-func TestSimpleServer(t *testing.T) {
-	WithTCPServer(t, func(addr string, response chan []byte) {
-		conn, err := net.Dial("tcp", addr)
-		if err != nil {
-			t.Error("Unable to dial TCP server", err)
-		}
-
-		msg := []byte("hello world")
-
-		_, err = conn.Write(msg)
-		if err != nil {
-			t.Error("Failed writing to TCP server", err)
-		}
-
-		err = conn.Close()
-		if err != nil {
-			t.Error("Failed to close TCP connection", err)
-		}
-
-		resp := <-response
-		if !bytes.Equal(resp, msg) {
-			t.Error("Server didn't read bytes from client")
-		}
-	})
-}
-
-func WithTCPProxy(t *testing.T, f func(proxy net.Conn, response chan []byte, proxyServer *toxiproxy.Proxy)) {
-	WithTCPServer(t, func(upstream string, response chan []byte) {
-		proxy := NewTestProxy("test", upstream)
-		proxy.Start()
-
-		conn := AssertProxyUp(t, proxy.Listen, true)
-
-		f(conn, response, proxy)
-
-		proxy.Stop()
-	})
-}
 
 func TestProxySimpleMessage(t *testing.T) {
 	WithTCPProxy(t, func(conn net.Conn, response chan []byte, proxy *toxiproxy.Proxy) {
@@ -136,7 +41,7 @@ func TestProxyToDownUpstream(t *testing.T) {
 
 	conn := AssertProxyUp(t, proxy.Listen, true)
 	// Check to make sure the connection is closed
-	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 	_, err := conn.Read(make([]byte, 1))
 	if err != io.EOF {
 		t.Error("Proxy did not close connection when upstream down", err)
@@ -216,7 +121,7 @@ func TestStartTwoProxiesOnSameAddress(t *testing.T) {
 }
 
 func TestStopProxyBeforeStarting(t *testing.T) {
-	WithTCPServer(t, func(upstream string, response chan []byte) {
+	testhelper.WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
 		AssertProxyUp(t, proxy.Listen, false)
 
@@ -238,7 +143,7 @@ func TestStopProxyBeforeStarting(t *testing.T) {
 }
 
 func TestProxyUpdate(t *testing.T) {
-	WithTCPServer(t, func(upstream string, response chan []byte) {
+	testhelper.WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
 		err := proxy.Start()
 		if err != nil {
@@ -274,8 +179,64 @@ func TestProxyUpdate(t *testing.T) {
 	})
 }
 
+func TestProxyUpdateWithHostname(t *testing.T) {
+	testhelper.WithTCPServer(t, func(upstream string, response chan []byte) {
+		proxy := NewTestProxy("test", upstream)
+		err := proxy.Start()
+		if err != nil {
+			t.Error("Proxy failed to start", err)
+		}
+		AssertProxyUp(t, proxy.Listen, true)
+
+		connectionLost := make(chan bool)
+
+		// Start a goroutine to check if connection is maintained
+		go func() {
+			conn, err := net.Dial("tcp", proxy.Listen)
+			if err != nil {
+				t.Error("Failed to connect to proxy", err)
+			}
+			defer conn.Close()
+
+			// Try to read from the connection
+			buf := make([]byte, 1024)
+			conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+			_, err = conn.Read(buf)
+			if err != nil && !errors.Is(err, os.ErrDeadlineExceeded) {
+				connectionLost <- true
+				return
+			}
+
+			connectionLost <- false
+		}()
+
+		_, port, err := net.SplitHostPort(proxy.Listen)
+		if err != nil {
+			t.Error("Failed to split host and port", err)
+		}
+
+		input := &toxiproxy.Proxy{
+			Listen:   net.JoinHostPort("localhost", port),
+			Upstream: proxy.Upstream,
+			Enabled:  true,
+		}
+		err = proxy.Update(input)
+		if err != nil {
+			t.Error("Failed to update proxy", err)
+		}
+
+		// Check if the connection was lost during the update
+		if lost := <-connectionLost; lost {
+			t.Error("Connection was lost during proxy update")
+		}
+
+		// Verify proxy is still up after the update
+		AssertProxyUp(t, proxy.Listen, true)
+	})
+}
+
 func TestRestartFailedToStartProxy(t *testing.T) {
-	WithTCPServer(t, func(upstream string, response chan []byte) {
+	testhelper.WithTCPServer(t, func(upstream string, response chan []byte) {
 		proxy := NewTestProxy("test", upstream)
 		conflict := NewTestProxy("test2", upstream)
 
@@ -305,12 +266,27 @@ func TestRestartFailedToStartProxy(t *testing.T) {
 	})
 }
 
-func AssertProxyUp(t *testing.T, addr string, up bool) net.Conn {
-	conn, err := net.Dial("tcp", addr)
-	if err != nil && up {
-		t.Error("Expected proxy to be up:", err)
-	} else if err == nil && !up {
-		t.Error("Expected proxy to be down")
-	}
-	return conn
+func TestProxyDiffers(t *testing.T) {
+	testhelper.WithTCPServer(t, func(upstream string, response chan []byte) {
+		proxy := NewTestProxy("test", upstream)
+		proxy.Start()
+		_, port, err := net.SplitHostPort(proxy.Listen)
+		if err != nil {
+			t.Error("Failed to split host and port", err)
+		}
+		otherProxy := &toxiproxy.Proxy{
+			Name:     "other",
+			Listen:   net.JoinHostPort("localhost", port),
+			Upstream: upstream,
+			Enabled:  true,
+		}
+
+		differs, err := proxy.Differs(otherProxy)
+		if err != nil {
+			t.Error("Failed to check if proxy differs", err)
+		}
+		if differs {
+			t.Error("Proxy should not differ ")
+		}
+	})
 }

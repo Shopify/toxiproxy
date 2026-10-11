@@ -1,0 +1,55 @@
+---
+version: "2"
+run:
+  go: "1.27"
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - dogsled
+    - exhaustive
+    - funlen
+    - gocritic
+    - gocyclo
+    - godot
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - staticcheck
+    - unused
+    - whitespace
+  settings:
+    funlen:
+      lines: 80
+      statements: 30
+    gosec:
+      excludes:
+        - G107
+    lll:
+      line-length: 100
+      tab-width: 2
+    misspell:
+      locale: US
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

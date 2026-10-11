@@ -1,0 +1,63 @@
+---
+
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        go: ["1.27.x"]
+    name: go ${{ matrix.go }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: ${{ matrix.go }}
+          check-latest: true
+          cache: true
+
+      - name: Tests
+        run: make test
+
+      - name: benchmarks
+        run: make bench
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: "1.27.x"
+          check-latest: true
+          cache: true
+
+      - name: E2E tests
+        run: make test-e2e
+
+      - name: Build
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94
+        with:
+          distribution: goreleaser
+          version: v1.10.3
+          args: build --snapshot --rm-dist --skip-post-hooks --skip-validate --single-target
+        env:
+          GOOS: linux

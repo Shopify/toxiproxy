@@ -2,14 +2,15 @@ package toxics_test
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/Shopify/toxiproxy"
-	"github.com/Shopify/toxiproxy/testhelper"
-	"github.com/Shopify/toxiproxy/toxics"
+	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/testhelper"
+	"github.com/Shopify/toxiproxy/v2/toxics"
 )
 
 func WithEstablishedProxy(t *testing.T, f func(net.Conn, net.Conn, *toxiproxy.Proxy)) {
@@ -69,8 +70,12 @@ func WithEstablishedProxy(t *testing.T, f func(net.Conn, net.Conn, *toxiproxy.Pr
 
 func TestTimeoutToxicDoesNotCauseHang(t *testing.T) {
 	WithEstablishedProxy(t, func(conn, _ net.Conn, proxy *toxiproxy.Proxy) {
-		proxy.Toxics.AddToxicJson(ToxicToJson(t, "might_block", "latency", "upstream", &toxics.LatencyToxic{Latency: 10}))
-		proxy.Toxics.AddToxicJson(ToxicToJson(t, "timeout", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 0}))
+		proxy.Toxics.AddToxicJson(
+			ToxicToJson(t, "might_block", "latency", "upstream", &toxics.LatencyToxic{Latency: 10}),
+		)
+		proxy.Toxics.AddToxicJson(
+			ToxicToJson(t, "timeout", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 0}),
+		)
 
 		for i := 0; i < 5; i++ {
 			_, err := conn.Write([]byte("hello"))
@@ -81,7 +86,7 @@ func TestTimeoutToxicDoesNotCauseHang(t *testing.T) {
 		}
 
 		err := testhelper.TimeoutAfter(time.Second, func() {
-			proxy.Toxics.RemoveToxic("might_block")
+			proxy.Toxics.RemoveToxic(context.Background(), "might_block")
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -91,9 +96,11 @@ func TestTimeoutToxicDoesNotCauseHang(t *testing.T) {
 
 func TestTimeoutToxicClosesConnectionOnRemove(t *testing.T) {
 	WithEstablishedProxy(t, func(conn, serverConn net.Conn, proxy *toxiproxy.Proxy) {
-		proxy.Toxics.AddToxicJson(ToxicToJson(t, "to_delete", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 0}))
+		proxy.Toxics.AddToxicJson(
+			ToxicToJson(t, "to_delete", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 0}),
+		)
 
-		proxy.Toxics.RemoveToxic("to_delete")
+		proxy.Toxics.RemoveToxic(context.Background(), "to_delete")
 
 		err := testhelper.TimeoutAfter(time.Second, func() {
 			buf := make([]byte, 1)

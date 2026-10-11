@@ -20,7 +20,7 @@ client api has changed:
     down a proxy.
  - `proxy.ToxicsUpstream` and `proxy.ToxicsDownstream` have been merged into a
     single `ActiveToxics` list.
- - `proxy.Toxics()`` no longer requires a direction to be specified, and will
+ - `proxy.Toxics()` no longer requires a direction to be specified, and will
     return toxics for both directions.
  - `proxy.SetToxic()` has been replaced by `proxy.AddToxic()`,
    `proxy.UpdateToxic()`, and `proxy.RemoveToxic()`.
@@ -32,14 +32,17 @@ documentation](http://godoc.org/github.com/Shopify/toxiproxy/client).
 
 First import toxiproxy and create a new client:
 ```go
-import "github.com/Shopify/toxiproxy/client"
+import toxiproxy "github.com/Shopify/toxiproxy/v2/client"
 
 client := toxiproxy.NewClient("localhost:8474")
 ```
 
 You can then create a new proxy using the client:
 ```go
-proxy := client.CreateProxy("redis", "localhost:26379", "localhost:6379")
+proxy, err := client.CreateProxy("redis", "localhost:26379", "localhost:6379")
+if err != nil {
+    panic(err)
+}
 ```
 
 For large amounts of proxies, they can also be created using a configuration file:
@@ -88,24 +91,23 @@ proxy.Delete()
 
 ```go
 import (
-    "net/http"
     "testing"
     "time"
 
-    "github.com/Shopify/toxiproxy/client"
-    "github.com/garyburd/redigo/redis"
+    toxiproxy "github.com/Shopify/toxiproxy/v2/client"
+    "github.com/gomodule/redigo/redis"
 )
 
 var toxiClient *toxiproxy.Client
-var proxies map[string]*toxiproxy.Proxy
 
 func init() {
     var err error
     toxiClient = toxiproxy.NewClient("localhost:8474")
-    proxies, err = toxiClient.Populate([]toxiproxy.Proxy{{
+    _, err = toxiClient.Populate([]toxiproxy.Proxy{{
         Name:     "redis",
         Listen:   "localhost:26379",
         Upstream: "localhost:6379",
+        // note: you cannot set toxics here via ActiveToxics
     }})
     if err != nil {
         panic(err)
@@ -115,8 +117,9 @@ func init() {
 }
 
 func TestRedisBackendDown(t *testing.T) {
-    proxies["redis"].Disable()
-    defer proxies["redis"].Enable()
+    var proxy, _ = toxiClient.Proxy("redis")
+    proxy.Disable()
+    defer proxy.Enable()
 
     // Test that redis is down
     _, err := redis.Dial("tcp", ":26379")
@@ -126,10 +129,12 @@ func TestRedisBackendDown(t *testing.T) {
 }
 
 func TestRedisBackendSlow(t *testing.T) {
-    proxies["redis"].AddToxic("", "latency", "", 1, toxiproxy.Attributes{
+    var proxy, _ = toxiClient.Proxy("redis")
+    proxy.AddToxic("", "latency", "", 1, toxiproxy.Attributes{
         "latency": 1000,
     })
-    defer proxies["redis"].RemoveToxic("latency_downstream")
+    proxy.Save()
+    defer removeToxic(proxy, "latency_downstream")
 
     // Test that redis is slow
     start := time.Now()
@@ -146,16 +151,8 @@ func TestRedisBackendSlow(t *testing.T) {
     }
 }
 
-func TestEphemeralProxy(t *testing.T) {
-    proxy, _ := toxiClient.CreateProxy("test", "", "google.com:80")
-    defer proxy.Delete()
-
-    // Test connection through proxy.Listen
-    resp, err := http.Get("http://" + proxy.Listen)
-    if err != nil {
-        t.Fatal(err)
-    } else if resp.StatusCode != 200 {
-        t.Fatal("Proxy to google failed:", resp.StatusCode)
-    }
+func removeToxic(p *toxiproxy.Proxy, n string) {
+    p.RemoveToxic(n)
+    p.Save()
 }
 ```

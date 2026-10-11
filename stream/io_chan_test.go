@@ -42,11 +42,11 @@ func TestReadMoreThanWrite(t *testing.T) {
 	go writer.Write(send)
 	buf := make([]byte, len(send)+10)
 	n, err := reader.Read(buf)
-	if n != len(send) {
-		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(send))
-	}
 	if err != nil {
 		t.Fatal("Couldn't read from stream", err)
+	}
+	if n != len(send) {
+		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(send))
 	}
 	if !bytes.Equal(buf[:n], send) {
 		t.Fatal("Got wrong message from stream", string(buf[:n]))
@@ -69,22 +69,22 @@ func TestReadLessThanWrite(t *testing.T) {
 	go writer.Write(send)
 	buf := make([]byte, 6)
 	n, err := reader.Read(buf)
-	if n != len(buf) {
-		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(buf))
-	}
 	if err != nil {
 		t.Fatal("Couldn't read from stream", err)
+	}
+	if n != len(buf) {
+		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(buf))
 	}
 	if !bytes.Equal(buf, send[:len(buf)]) {
 		t.Fatal("Got wrong message from stream", string(buf))
 	}
 	writer.Close()
 	n, err = reader.Read(buf)
-	if n != len(send)-len(buf) {
-		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(send)-len(buf))
-	}
 	if err != nil {
 		t.Fatal("Couldn't read from stream", err)
+	}
+	if n != len(send)-len(buf) {
+		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(send)-len(buf))
 	}
 	if !bytes.Equal(buf[:n], send[len(buf):]) {
 		t.Fatal("Got wrong message from stream", string(buf[:n]))
@@ -153,49 +153,71 @@ func TestMultiWriteWithCopy(t *testing.T) {
 	}
 }
 
-func TestReadInterrupt(t *testing.T) {
-	send := []byte("hello world")
+func TestStream_ReadCorrectness(t *testing.T) {
+	sendMsg := []byte("hello world")
 	c := make(chan *StreamChunk)
 	interrupt := make(chan struct{})
 	writer := NewChanWriter(c)
 	reader := NewChanReader(c)
 	reader.SetInterrupt(interrupt)
-	go writer.Write(send)
-	buf := make([]byte, len(send))
-	n, err := reader.Read(buf)
-	if n != len(send) {
-		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(send))
-	}
+
+	go writer.Write(sendMsg)
+	readMsg := make([]byte, len(sendMsg))
+	n, err := reader.Read(readMsg)
 	if err != nil {
-		t.Fatal("Couldn't read from stream", err)
-	}
-	if !bytes.Equal(buf, send) {
-		t.Fatal("Got wrong message from stream", string(buf))
+		t.Fatalf("Couldn't read from stream: %v", err)
 	}
 
-	// Try interrupting the stream mid-read
+	if n != len(sendMsg) {
+		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(sendMsg))
+	}
+
+	if !bytes.Equal(readMsg, sendMsg) {
+		t.Fatal("Got wrong message from stream", string(readMsg))
+	}
+}
+
+func TestStream_ReadInterrupt(t *testing.T) {
+	sendMsg := []byte("hello world")
+	c := make(chan *StreamChunk)
+	interrupt := make(chan struct{})
+	writer := NewChanWriter(c)
+	reader := NewChanReader(c)
+	reader.SetInterrupt(interrupt)
+
+	go writer.Write(sendMsg)
+	readMsg := make([]byte, len(sendMsg))
+	reader.Read(readMsg)
+
+	// Interrupting the stream mid-read
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		interrupt <- struct{}{}
 	}()
-	n, err = reader.Read(buf)
+
+	n, err := reader.Read(readMsg)
+
 	if err != ErrInterrupted {
-		t.Fatal("Read returned wrong error after interrupt:", err)
+		t.Fatalf("Read returned wrong error after interrupt: %v", err)
 	}
+
 	if n != 0 {
 		t.Fatalf("Read still returned data after interrput: %d bytes", n)
 	}
 
 	// Try writing again after the channel was interrupted
-	go writer.Write(send)
-	n, err = reader.Read(buf)
-	if n != len(send) {
-		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(send))
+	go writer.Write(sendMsg)
+	n, err = reader.Read(readMsg)
+
+	if n != len(sendMsg) {
+		t.Fatalf("Read wrong number of bytes: %d expected %d", n, len(sendMsg))
 	}
+
 	if err != nil {
-		t.Fatal("Couldn't read from stream", err)
+		t.Fatalf("Couldn't read from stream: %v", err)
 	}
-	if !bytes.Equal(buf, send) {
-		t.Fatal("Got wrong message from stream", string(buf))
+
+	if !bytes.Equal(readMsg, sendMsg) {
+		t.Fatal("Got wrong message from stream", string(readMsg))
 	}
 }
