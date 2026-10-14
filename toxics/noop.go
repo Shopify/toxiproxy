@@ -13,7 +13,9 @@ func (t *NoopToxic) Pipe(stub *ToxicStub) {
 				stub.Close()
 				return
 			}
-			stub.Output <- c
+			// Waits as long as the next stage reads, but returns once it is gone
+			// (e.g. reset_peer closed itself), so removal can't hang.
+			_ = stub.WriteOutput(c, 0)
 		}
 	}
 }

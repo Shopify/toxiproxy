@@ -24,7 +24,7 @@ func (t *SlowCloseToxic) Pipe(stub *ToxicStub) {
 					return
 				}
 			}
-			stub.Output <- c
+			_ = stub.WriteOutput(c, 0)
 		}
 	}
 }
