@@ -37,7 +37,7 @@ func (t *LimitDataToxic) Pipe(stub *ToxicStub) {
 			}
 
 			if len(c.Data) > 0 {
-				stub.Output <- c
+				_ = stub.WriteOutput(c, 0)
 				state.bytesTransmitted += int64(len(c.Data))
 			}
 

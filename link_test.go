@@ -332,57 +332,90 @@ func TestRemoveToxicWithBrokenConnection(t *testing.T) {
 // (reset_peer) closing itself used to leave the earlier one blocked forever
 // forwarding into it, hanging RemoveToxic.
 func TestRemoveToxicDoesNotHangWhenNextToxicStopsReading(t *testing.T) {
-	ctx := context.Background()
-
-	collection := NewToxicCollection(nil)
-	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
-	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
-	collection.links["test"] = link
-
-	latency := &toxics.ToxicWrapper{
-		Toxic:      new(toxics.LatencyToxic),
-		Type:       "latency",
-		Direction:  stream.Downstream,
-		BufferSize: 1024,
-		Toxicity:   1,
+	cases := []struct {
+		name  string
+		toxic toxics.Toxic
+		// middle, when set, sits between toxic and reset_peer and must stop
+		// blocking once reset_peer is gone, or toxic stays stuck behind it.
+		middle toxics.Toxic
+	}{
+		{name: "latency", toxic: new(toxics.LatencyToxic)},
+		{name: "slow_close", toxic: new(toxics.SlowCloseToxic)},
+		{name: "limit_data", toxic: &toxics.LimitDataToxic{Bytes: 1 << 30}},
+		{name: "slicer", toxic: &toxics.SlicerToxic{AverageSize: 1}},
+		{name: "bandwidth", toxic: &toxics.BandwidthToxic{Rate: 1 << 20}},
+		{
+			name:   "latency_before_packet_loss",
+			toxic:  new(toxics.LatencyToxic),
+			middle: new(toxics.PacketLossToxic),
+		},
 	}
-	collection.chainAddToxic(latency)
 
-	// reset_peer reads one chunk, then closes for good.
-	reset := &toxics.ToxicWrapper{
-		Toxic:     &toxics.ResetToxic{Timeout: 0},
-		Type:      "reset_peer",
-		Direction: stream.Downstream,
-		Toxicity:  1,
-	}
-	collection.chainAddToxic(reset)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 
-	done := make(chan struct{})
-	defer close(done)
-	go func() {
-		buf := make([]byte, 2)
-		for {
-			select {
-			case <-done:
-				return
-			default:
-				_, _ = link.input.Write(buf)
+			collection := NewToxicCollection(nil)
+			link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
+			go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+			collection.links["test"] = link
+
+			toxic := &toxics.ToxicWrapper{
+				Toxic:      tc.toxic,
+				Type:       tc.name,
+				Direction:  stream.Downstream,
+				BufferSize: 1024,
+				Toxicity:   1,
 			}
-		}
-	}()
+			collection.chainAddToxic(toxic)
 
-	// Give the load a moment to trip reset_peer first.
-	time.Sleep(100 * time.Millisecond)
+			if tc.middle != nil {
+				collection.chainAddToxic(&toxics.ToxicWrapper{
+					Toxic:      tc.middle,
+					Type:       "middle",
+					Direction:  stream.Downstream,
+					BufferSize: 1024,
+					Toxicity:   1,
+				})
+			}
 
-	err := testhelper.TimeoutAfter(tightRegressionBound, func() {
-		collection.chainRemoveToxic(ctx, latency)
-	})
-	if err != nil {
-		t.Fatalf(
-			"Removing a toxic must not hang when a later toxic in the chain "+
-				"stopped reading on its own: %v",
-			err,
-		)
+			// reset_peer reads one chunk, then closes for good.
+			reset := &toxics.ToxicWrapper{
+				Toxic:     &toxics.ResetToxic{Timeout: 0},
+				Type:      "reset_peer",
+				Direction: stream.Downstream,
+				Toxicity:  1,
+			}
+			collection.chainAddToxic(reset)
+
+			done := make(chan struct{})
+			defer close(done)
+			go func() {
+				buf := make([]byte, 2)
+				for {
+					select {
+					case <-done:
+						return
+					default:
+						_, _ = link.input.Write(buf)
+					}
+				}
+			}()
+
+			// Give the load a moment to trip reset_peer first.
+			time.Sleep(100 * time.Millisecond)
+
+			err := testhelper.TimeoutAfter(tightRegressionBound, func() {
+				collection.chainRemoveToxic(ctx, toxic)
+			})
+			if err != nil {
+				t.Fatalf(
+					"Removing a toxic must not hang when a later toxic in the chain "+
+						"stopped reading on its own: %v",
+					err,
+				)
+			}
+		})
 	}
 }
 

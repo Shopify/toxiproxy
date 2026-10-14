@@ -70,6 +70,9 @@ func (t *PacketLossToxic) Pipe(stub *ToxicStub) {
 			// Forward the chunk unmodified.
 			select {
 			case stub.Output <- chunk:
+			case <-stub.OutputDone:
+				// The next stage is gone (e.g. reset_peer closed itself); keep
+				// draining Input so earlier toxics don't block on us.
 			case <-stub.Interrupt:
 				return
 			}

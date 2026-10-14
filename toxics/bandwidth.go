@@ -45,10 +45,10 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 			for t.Rate > 0 && int64(len(p.Data)) > t.Rate*100 {
 				select {
 				case <-time.After(100 * time.Millisecond):
-					stub.Output <- &stream.StreamChunk{
+					_ = stub.WriteOutput(&stream.StreamChunk{
 						Data:      p.Data[:t.Rate*100],
 						Timestamp: p.Timestamp,
-					}
+					}, 0)
 					p.Data = p.Data[t.Rate*100:]
 					sleep -= 100 * time.Millisecond
 				case <-stub.Interrupt:
@@ -68,6 +68,8 @@ func (t *BandwidthToxic) Pipe(stub *ToxicStub) {
 				sleep -= time.Since(start)
 				select {
 				case stub.Output <- p:
+				case <-stub.OutputDone:
+					// The next stage is gone; see ToxicStub.OutputDone.
 				case <-stub.Interrupt:
 					err := stub.WriteOutput(p, 5*time.Second)
 					if err != nil {
