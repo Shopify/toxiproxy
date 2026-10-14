@@ -388,19 +388,7 @@ func TestRemoveToxicDoesNotHangWhenNextToxicStopsReading(t *testing.T) {
 			}
 			collection.chainAddToxic(reset)
 
-			done := make(chan struct{})
-			defer close(done)
-			go func() {
-				buf := make([]byte, 2)
-				for {
-					select {
-					case <-done:
-						return
-					default:
-						_, _ = link.input.Write(buf)
-					}
-				}
-			}()
+			defer writeUntilStopped(link)()
 
 			// Give the load a moment to trip reset_peer first.
 			time.Sleep(100 * time.Millisecond)
@@ -479,19 +467,7 @@ func TestRemoveToxicDoesNotHangWhenDestinationDies(t *testing.T) {
 	// Simulate what write would do once the real destination died.
 	close(link.writeDone)
 
-	done := make(chan struct{})
-	defer close(done)
-	go func() {
-		buf := make([]byte, 2)
-		for {
-			select {
-			case <-done:
-				return
-			default:
-				_, _ = link.input.Write(buf)
-			}
-		}
-	}()
+	defer writeUntilStopped(link)()
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -505,4 +481,21 @@ func TestRemoveToxicDoesNotHangWhenDestinationDies(t *testing.T) {
 			err,
 		)
 	}
+}
+
+// writeUntilStopped keeps writing to link.input until the returned func is called.
+func writeUntilStopped(link *ToxicLink) (stop func()) {
+	done := make(chan struct{})
+	go func() {
+		buf := make([]byte, 2)
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				_, _ = link.input.Write(buf)
+			}
+		}
+	}()
+	return func() { close(done) }
 }
