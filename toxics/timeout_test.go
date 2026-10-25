@@ -118,3 +118,36 @@ func TestTimeoutToxicClosesConnectionOnRemove(t *testing.T) {
 		}
 	})
 }
+
+func TestTimeoutToxicClosesConnectionWhileDataIsSent(t *testing.T) {
+	WithEstablishedProxy(t, func(conn, serverConn net.Conn, proxy *toxiproxy.Proxy) {
+		proxy.Toxics.AddToxicJson(
+			ToxicToJson(t, "timeout", "timeout", "upstream", &toxics.TimeoutToxic{Timeout: 300}),
+		)
+
+		// Keep sending data more often than the timeout.
+		done := make(chan struct{})
+		defer close(done)
+		go func() {
+			for {
+				select {
+				case <-done:
+					return
+				case <-time.After(50 * time.Millisecond):
+					_, _ = conn.Write([]byte("hello"))
+				}
+			}
+		}()
+
+		err := testhelper.TimeoutAfter(time.Second, func() {
+			buf := make([]byte, 1)
+			_, err := serverConn.Read(buf)
+			if err != io.EOF {
+				t.Error("expected EOF from closed server connection, got", err)
+			}
+		})
+		if err != nil {
+			t.Fatal("timeout toxic did not close the connection while data kept arriving:", err)
+		}
+	})
+}
