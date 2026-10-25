@@ -407,6 +407,40 @@ func TestRemoveToxicDoesNotHangWhenNextToxicStopsReading(t *testing.T) {
 	}
 }
 
+// TestRemoveResetPeerToxicDoesNotWaitForTimeout: reset_peer waits `timeout`
+// after the first chunk before resetting. Removing it during that wait must
+// not block until the timeout fires.
+func TestRemoveResetPeerToxicDoesNotWaitForTimeout(t *testing.T) {
+	ctx := context.Background()
+
+	collection := NewToxicCollection(nil)
+	link := NewToxicLink(nil, collection, stream.Downstream, zerolog.Nop())
+	go link.stubs[0].Run(collection.chain[stream.Downstream][0])
+	collection.links["test"] = link
+
+	reset := &toxics.ToxicWrapper{
+		Toxic:     &toxics.ResetToxic{Timeout: 10000},
+		Type:      "reset_peer",
+		Direction: stream.Downstream,
+		Toxicity:  1,
+	}
+	collection.chainAddToxic(reset)
+
+	_, err := link.input.Write([]byte{1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Give reset_peer a moment to read the chunk and start waiting.
+	time.Sleep(100 * time.Millisecond)
+
+	err = testhelper.TimeoutAfter(tightRegressionBound, func() {
+		collection.chainRemoveToxic(ctx, reset)
+	})
+	if err != nil {
+		t.Fatalf("Removing reset_peer waited for its timeout: %v", err)
+	}
+}
+
 // TestWriteClosesWriteDoneWhenDestinationDies: a single latency toxic, no
 // reset_peer, the real destination died instead. write must close
 // link.writeDone once it stops draining link.output.

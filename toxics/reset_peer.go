@@ -26,8 +26,11 @@ func (t *ResetToxic) Pipe(stub *ToxicStub) {
 		case <-stub.Interrupt:
 			return
 		case <-stub.Input:
-			<-time.After(timeout)
-			stub.Close()
+			select {
+			case <-time.After(timeout):
+				stub.Close()
+			case <-stub.Interrupt:
+			}
 			return
 		}
 	}
