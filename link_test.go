@@ -483,6 +483,59 @@ func TestRemoveToxicDoesNotHangWhenDestinationDies(t *testing.T) {
 	}
 }
 
+// TestRemoveToxicDoesNotDeadlockWhenStalledDestinationDies: a removal waits for
+// a destination that stopped reading while holding the collection lock. Once
+// that destination dies, write must close link.writeDone before it takes the
+// same lock to remove the link, or both wait on each other forever.
+func TestRemoveToxicDoesNotDeadlockWhenStalledDestinationDies(t *testing.T) {
+	ctx := context.Background()
+
+	server := NewServer(&metricsContainer{}, zerolog.Nop())
+	proxy := NewProxy(server, "test", "localhost:0", "localhost:0")
+	link := NewToxicLink(proxy, proxy.Toxics, stream.Downstream, zerolog.Nop())
+	go link.stubs[0].Run(proxy.Toxics.chain[stream.Downstream][0])
+	proxy.Toxics.links["test"] = link
+
+	latency := &toxics.ToxicWrapper{
+		Toxic:      new(toxics.LatencyToxic),
+		Name:       "latency",
+		Type:       "latency",
+		Direction:  stream.Downstream,
+		BufferSize: 1024,
+		Toxicity:   1,
+	}
+	proxy.Toxics.chainAddToxic(latency)
+
+	// Nothing reads pr, so writing to the destination stalls like a client
+	// that stopped reading.
+	pr, pw := io.Pipe()
+	go link.write(nil, "test", server, pw)
+	defer writeUntilStopped(link)()
+
+	time.Sleep(100 * time.Millisecond)
+
+	removed := make(chan error, 1)
+	go func() {
+		removed <- proxy.Toxics.RemoveToxic(ctx, "latency")
+	}()
+
+	// Wait until RemoveToxic holds the collection lock before the client dies.
+	for proxy.Toxics.TryLock() {
+		proxy.Toxics.Unlock()
+		time.Sleep(time.Millisecond)
+	}
+	pr.Close()
+
+	select {
+	case err := <-removed:
+		if err != nil {
+			t.Fatalf("RemoveToxic returned an error: %v", err)
+		}
+	case <-time.After(tightRegressionBound):
+		t.Fatal("Removing a toxic deadlocked after its stalled destination died")
+	}
+}
+
 // writeUntilStopped keeps writing to link.input until the returned func is called.
 func writeUntilStopped(link *ToxicLink) (stop func()) {
 	done := make(chan struct{})
