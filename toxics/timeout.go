@@ -13,9 +13,12 @@ type TimeoutToxic struct {
 func (t *TimeoutToxic) Pipe(stub *ToxicStub) {
 	timeout := time.Duration(t.Timeout) * time.Millisecond
 	if timeout > 0 {
+		// A single timer, so data arriving in the meantime doesn't push the close back.
+		timer := time.NewTimer(timeout)
+		defer timer.Stop()
 		for {
 			select {
-			case <-time.After(timeout):
+			case <-timer.C:
 				stub.Close()
 				return
 			case <-stub.Interrupt:
