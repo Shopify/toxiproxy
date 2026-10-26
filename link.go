@@ -157,9 +157,10 @@ func (link *ToxicLink) write(
 		Str("link_addr", fmt.Sprintf("%p", link)).
 		Logger()
 
-	defer close(link.writeDone)
-
 	bytes, err := io.Copy(dest, link.output)
+	// Close before RemoveLink takes the collection lock: a RemoveToxic holding
+	// that lock may be waiting on writeDone to stop forwarding to this link.
+	close(link.writeDone)
 	if err != nil {
 		logger.Warn().
 			Int64("bytes", bytes).
