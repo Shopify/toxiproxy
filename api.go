@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -50,7 +51,10 @@ type ApiServer struct {
 	Metrics    *metricsContainer
 	Logger     *zerolog.Logger
 	AuthToken  string
-	http       *http.Server
+
+	mu      sync.Mutex // guards http and stopped
+	http    *http.Server
+	stopped bool
 }
 
 const (
@@ -73,7 +77,7 @@ func (server *ApiServer) Listen(addr string) error {
 		Msg("Starting Toxiproxy HTTP server")
 	server.warnIfUnauthenticatedAndExposed(addr)
 
-	server.http = &http.Server{
+	httpServer := &http.Server{
 		Addr:         addr,
 		Handler:      server.Routes(),
 		WriteTimeout: wait_timeout,
@@ -81,7 +85,15 @@ func (server *ApiServer) Listen(addr string) error {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	err := server.http.ListenAndServe()
+	server.mu.Lock()
+	if server.stopped {
+		server.mu.Unlock()
+		return nil
+	}
+	server.http = httpServer
+	server.mu.Unlock()
+
+	err := httpServer.ListenAndServe()
 	if err == http.ErrServerClosed {
 		err = nil
 	}
@@ -112,15 +124,22 @@ func isLoopbackHost(host string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
+// Shutdown stops the HTTP server. It is final: a Listen that has not started
+// serving yet, even one called after Shutdown returns, returns nil without serving.
 func (server *ApiServer) Shutdown() error {
-	if server.http == nil {
+	server.mu.Lock()
+	server.stopped = true
+	httpServer := server.http
+	server.mu.Unlock()
+
+	if httpServer == nil {
 		return nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), wait_timeout)
 	defer cancel()
 
-	err := server.http.Shutdown(ctx)
+	err := httpServer.Shutdown(ctx)
 	if err != nil {
 		return err
 	}

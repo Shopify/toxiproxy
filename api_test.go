@@ -16,6 +16,7 @@ import (
 
 	"github.com/Shopify/toxiproxy/v2"
 	tclient "github.com/Shopify/toxiproxy/v2/client"
+	"github.com/Shopify/toxiproxy/v2/testhelper"
 )
 
 var testServer *toxiproxy.ApiServer
@@ -1281,6 +1282,61 @@ func TestInvalidStream(t *testing.T) {
 			t.Fatal("Error setting toxic:", err)
 		}
 	})
+}
+
+func newShutdownTestServer() *toxiproxy.ApiServer {
+	return toxiproxy.NewServer(
+		toxiproxy.NewMetricsContainer(prometheus.NewRegistry()),
+		zerolog.Nop(),
+	)
+}
+
+// Regression test for https://github.com/Shopify/toxiproxy/issues/667.
+func TestShutdownBeforeListen(t *testing.T) {
+	server := newShutdownTestServer()
+	defer server.Shutdown()
+
+	if err := server.Shutdown(); err != nil {
+		t.Fatal("Failed to shut down unstarted server:", err)
+	}
+
+	var listenErr error
+	err := testhelper.TimeoutAfter(time.Second, func() {
+		listenErr = server.Listen("localhost:0")
+	})
+	if err != nil {
+		t.Fatal("Listen kept serving after Shutdown:", err)
+	}
+	if listenErr != nil {
+		t.Fatal("Listen after Shutdown returned an error:", listenErr)
+	}
+}
+
+// Regression test for https://github.com/Shopify/toxiproxy/issues/667. Whichever of
+// Listen and Shutdown runs first, Listen must return and the race detector must stay quiet.
+func TestConcurrentListenAndShutdown(t *testing.T) {
+	for range 100 {
+		server := newShutdownTestServer()
+
+		listenErr := make(chan error, 1)
+		go func() {
+			listenErr <- server.Listen("localhost:0")
+		}()
+
+		if err := server.Shutdown(); err != nil {
+			t.Fatal("Failed to shut down server:", err)
+		}
+
+		select {
+		case err := <-listenErr:
+			if err != nil {
+				t.Fatal("Listen returned an error:", err)
+			}
+		case <-time.After(5 * time.Second):
+			server.Shutdown()
+			t.Fatal("Listen kept serving after Shutdown")
+		}
+	}
 }
 
 func AssertToxicExists(
