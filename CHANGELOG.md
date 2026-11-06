@@ -1,5 +1,8 @@
 # [Unreleased]
 
+- Fix a data race between `ApiServer.Listen` and `Shutdown`, and a lost shutdown when
+  `Shutdown` runs before `Listen` starts serving (#790, @alexciuca)
+
 # [2.13.0] - 2026-10-14
 
 - Reject slicer toxics with `average_size` <= 0 or `size_variation` outside `[0, average_size]`,
