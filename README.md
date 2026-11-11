@@ -306,6 +306,9 @@ Alternatively use the CLI to create proxies, e.g.:
 toxiproxy-cli create -l localhost:26379 -u localhost:6379 shopify_test_redis_master
 ```
 
+Pass `--disabled` to create a proxy without starting it. It won't accept
+connections until it is enabled, e.g. with `toxiproxy-cli toggle <proxyName>`.
+
 We recommend a naming such as the above: `<app>_<env>_<data store>_<shard>`.
 This makes sure there are no clashes between applications using the same
 Toxiproxy.

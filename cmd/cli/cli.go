@@ -80,6 +80,12 @@ var (
 )
 
 func main() {
+	isTTY = terminal.IsTerminal(int(os.Stdout.Fd()))
+
+	newApp().Run(os.Args)
+}
+
+func newApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = "toxiproxy-cli"
 	app.Version = toxiproxyServer.Version
@@ -106,9 +112,7 @@ func main() {
 		},
 	}
 
-	isTTY = terminal.IsTerminal(int(os.Stdout.Fd()))
-
-	app.Run(os.Args)
+	return app
 }
 
 func cliCommands() []*cli.Command {
@@ -128,7 +132,8 @@ func cliCommands() []*cli.Command {
 		{
 			Name: "create",
 			Usage: "create a new proxy\n\t" +
-				"usage: 'toxiproxy-cli create --listen <addr> --upstream <addr> <proxyName>'\n",
+				"usage: 'toxiproxy-cli create --listen <addr> --upstream <addr> " +
+				"[--disabled] <proxyName>'\n",
 			Aliases: []string{"c", "new"},
 			Flags: []cli.Flag{
 				&cli.StringFlag{
@@ -140,6 +145,10 @@ func cliCommands() []*cli.Command {
 					Name:    "upstream",
 					Aliases: []string{"u"},
 					Usage:   "proxy will forward to this address",
+				},
+				&cli.BoolFlag{
+					Name:  "disabled",
+					Usage: "create the proxy without starting it, so it does not accept connections",
 				},
 			},
 			Action: withToxi(createProxy),
@@ -426,7 +435,12 @@ func createProxy(c *cli.Context, t *toxiproxy.Client) error {
 	if err != nil {
 		return err
 	}
-	_, err = t.CreateProxy(proxyName, listen, upstream)
+	proxy := t.NewProxy()
+	proxy.Name = proxyName
+	proxy.Listen = listen
+	proxy.Upstream = upstream
+	proxy.Enabled = !c.Bool("disabled")
+	err = proxy.Save()
 	if err != nil {
 		return errorf("Failed to create proxy: %s\n", err.Error())
 	}

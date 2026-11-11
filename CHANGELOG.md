@@ -1,5 +1,8 @@
 # [Unreleased]
 
+- Add a `--disabled` flag to `toxiproxy-cli create` to create a proxy without starting it
+  (#156, @officialasishkumar)
+
 # [2.13.0] - 2026-10-14
 
 - Reject slicer toxics with `average_size` <= 0 or `size_variation` outside `[0, average_size]`,
