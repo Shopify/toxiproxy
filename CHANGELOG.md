@@ -1,5 +1,9 @@
 # [Unreleased]
 
+- Fix stacked latency toxics not adding up their delays for data that queued behind earlier
+  chunks, treat negative delays from `jitter` > `latency` as no delay, and document how the
+  latency toxic applies `jitter` (#556, @officialasishkumar)
+
 # [2.13.0] - 2026-10-14
 
 - Reject slicer toxics with `average_size` <= 0 or `size_variation` outside `[0, average_size]`,
