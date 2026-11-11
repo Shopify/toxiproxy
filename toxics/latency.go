@@ -24,6 +24,11 @@ func (t *LatencyToxic) delay() time.Duration {
 		// #nosec G404 -- was ignored before too
 		delay += rand.Int63n(jitter*2) - jitter
 	}
+	// A jitter larger than the latency can push the delay below zero, which
+	// means no delay rather than sending the data early.
+	if delay < 0 {
+		delay = 0
+	}
 	return time.Duration(delay) * time.Millisecond
 }
 
@@ -37,10 +42,15 @@ func (t *LatencyToxic) Pipe(stub *ToxicStub) {
 				stub.Close()
 				return
 			}
-			sleep := t.delay() - time.Since(c.Timestamp)
+			delay := t.delay()
+			sleep := delay - time.Since(c.Timestamp)
 			select {
 			case <-time.After(sleep):
-				c.Timestamp = c.Timestamp.Add(sleep)
+				// Advance by the full delay rather than the remaining sleep, so a
+				// following toxic measures from when this chunk was due to be sent.
+				// Otherwise time the chunk spent queued behind earlier chunks would
+				// be deducted from the next toxic's delay.
+				c.Timestamp = c.Timestamp.Add(delay)
 				_ = stub.WriteOutput(c, 0)
 			case <-stub.Interrupt:
 				// Exit fast without applying latency.

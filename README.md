@@ -392,6 +392,18 @@ stream (`server -> client`). It does not delay the opposite direction unless you
 also add a latency toxic with `stream=upstream`. For a symmetric round-trip delay,
 add latency on both streams.
 
+The delay is drawn separately for each chunk of data read from the connection,
+uniformly from `latency - jitter` up to (but not including) `latency + jitter`, in
+whole milliseconds. If `jitter` is greater than `latency`, delays that would be
+negative are treated as zero, so some chunks are sent without any delay. Data is
+never reordered: a chunk read while an earlier one is still being delayed is not
+sent before it, and the time spent waiting counts towards its own delay.
+
+Multiple latency toxics on the same stream add up, each drawing its own delay.
+Note that `toxicity` applies per connection, not per chunk: a latency toxic with
+a toxicity of `0.1` delays all data on roughly 10% of connections, rather than
+occasionally delaying data on every connection.
+
 Attributes:
 
  - `latency`: time in milliseconds

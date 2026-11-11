@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Shopify/toxiproxy/v2"
+	"github.com/Shopify/toxiproxy/v2/stream"
 	"github.com/Shopify/toxiproxy/v2/testhelper"
 	"github.com/Shopify/toxiproxy/v2/toxics"
 )
@@ -216,6 +217,70 @@ func TestTwoLatencyToxics(t *testing.T) {
 			t.Error("Failed to close TCP connection", err)
 		}
 	})
+}
+
+func TestTwoLatencyToxicsWithQueuedChunk(t *testing.T) {
+	input := make(chan *stream.StreamChunk)
+	middle := make(chan *stream.StreamChunk)
+	output := make(chan *stream.StreamChunk)
+	first := toxics.NewToxicStub(input, middle)
+	second := toxics.NewToxicStub(middle, output)
+
+	go (&toxics.LatencyToxic{Latency: 100}).Pipe(first)
+	go (&toxics.LatencyToxic{Latency: 100}).Pipe(second)
+	defer close(input)
+
+	// A chunk that was read 60ms ago, e.g. one that queued behind earlier chunks,
+	// only has 40ms left of the first toxic's delay, but must still get the whole
+	// delay of the second toxic.
+	readAt := time.Now().Add(-60 * time.Millisecond)
+	input <- &stream.StreamChunk{Data: []byte("hello"), Timestamp: readAt}
+
+	select {
+	case chunk := <-output:
+		if elapsed := time.Since(readAt); elapsed < 200*time.Millisecond {
+			t.Errorf("Expected a delay of at least 200ms since the read, got %s", elapsed)
+		}
+		if want := readAt.Add(200 * time.Millisecond); !chunk.Timestamp.Equal(want) {
+			t.Errorf("Expected timestamp to be advanced by both delays to %s, got %s",
+				want, chunk.Timestamp)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timed out waiting for the chunk to pass both latency toxics")
+	}
+}
+
+func TestLatencyToxicJitterBelowZero(t *testing.T) {
+	const chunks = 20
+	input := make(chan *stream.StreamChunk, chunks)
+	middle := make(chan *stream.StreamChunk)
+	output := make(chan *stream.StreamChunk)
+	first := toxics.NewToxicStub(input, middle)
+	second := toxics.NewToxicStub(middle, output)
+
+	// With jitter greater than latency the sampled delay can be negative. It must
+	// be treated as no delay, rather than taking time off the next toxic.
+	go (&toxics.LatencyToxic{Latency: 0, Jitter: 1}).Pipe(first)
+	go (&toxics.LatencyToxic{Latency: 100}).Pipe(second)
+	defer close(input)
+
+	readAt := time.Now()
+	for i := 0; i < chunks; i++ {
+		input <- &stream.StreamChunk{Data: []byte{byte(i)}, Timestamp: readAt}
+	}
+
+	want := readAt.Add(100 * time.Millisecond)
+	for i := 0; i < chunks; i++ {
+		select {
+		case chunk := <-output:
+			if !chunk.Timestamp.Equal(want) {
+				t.Fatalf("Expected timestamp of chunk %d to be %s, got %s",
+					chunk.Data[0], want, chunk.Timestamp)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("Timed out waiting for chunks to pass both latency toxics")
+		}
+	}
 }
 
 func TestLatencyToxicBandwidth(t *testing.T) {
